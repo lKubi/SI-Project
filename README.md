@@ -20,10 +20,10 @@ Cada semana se irán proponiendo objetivos concretos de mejora y cambio en el pr
 ============================================================================
 
 # Objetivos para la semana 1
+
 El objetivo de esta semana es conseguir adecuar el entorno doméstico a vuestras necesidades: 
 
 Modificar el desplazamiento de los agentes en el entorno, de forma que solo se desplace a izquierda, derecha, arriba o abajo una casilla cada vez, evitando los obstáculos que aparezcan
 Añadir una o varias zonas de almacenamiento para medicamentos.
 Conseguir que los agentes se posicionen al lado de la zona de almacenamiento y al lado uno de otro.
 Visualizar la apertura de la zona de almacenamiento y el decremento de medicamentos.
-===============================================================================
