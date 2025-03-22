@@ -1,0 +1,24 @@
+/*
+    assistantHome
+    ---------------------------
+
+    Jason Application File
+
+    This file defines the initial state of the MAS
+
+    Jason 3.3.0
+    marzo 21, 2025 - 13:12:22
+*/
+
+MAS assistantHome {
+
+    environment: domotic.HouseEnv(gui) // use "nogui" as parameter to not show the GUI
+    
+    agents: enfermera robot.asl;
+			//auxiliar;
+            owner; 
+			//guest owner.asl;
+            repartidor supermarket.asl;
+
+    aslSourcePath: "src/agt";
+}
