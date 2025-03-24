@@ -26,7 +26,7 @@ public class HouseView extends GridWorldView {
 		setSize(viewSize, viewSize/2);
         defaultFont = new Font("Arial", Font.BOLD, 14); // change default font
         setVisible(true);
-        repaint();
+        //repaint();
 		currentDirectory = Paths.get("").toAbsolutePath().toString();
         //System.out.println("Directorio actual: " + currentDirectory);
     }
@@ -145,7 +145,7 @@ public class HouseView extends GridWorldView {
             drawString(g, x, y, defaultFont, "Fr ("+hmodel.availableDrugs+")");
             break; 
 		}
-        repaint();
+        //repaint();
     }
                           
     @Override

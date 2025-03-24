@@ -31,41 +31,41 @@ public class HouseModel extends GridWorldModel {
     int availableDrugs  = 2; // how many drugs are available
     
 	// Initialization of the objects Location on the domotic home scene 
-    Location lSofa	 	= new Location(GSize/2, GSize-2);
-    Location lChair1  	= new Location(GSize/2+2, GSize-3);
-    Location lChair3 	= new Location(GSize/2-1, GSize-3);
-    Location lChair2 	= new Location(GSize/2+1, GSize-4); 
-    Location lChair4 	= new Location(GSize/2, GSize-4); 
-    Location lDeliver 	= new Location(0, GSize-1);
-    Location lWasher 	= new Location(GSize/3, 0);	
-    Location lFridge 	= new Location(2, 0);
-    Location lTable  	= new Location(GSize/2, GSize-3);
-	Location lBed2		= new Location(GSize+2, 0);
-	Location lBed3		= new Location(GSize*2-3,0);
-	Location lBed1		= new Location(GSize+1, GSize*3/4);
+    Location lSofa	 	= new Location(GSize/2, GSize-2); //(6,10)
+    Location lChair1  	= new Location(GSize/2+2, GSize-3); //(8,9)
+    Location lChair3 	= new Location(GSize/2-1, GSize-3); //(5,9)
+    Location lChair2 	= new Location(GSize/2+1, GSize-4); //(7,8)
+    Location lChair4 	= new Location(GSize/2, GSize-4); //(6,8)
+    Location lDeliver 	= new Location(0, GSize-1); //(0,11)
+    Location lWasher 	= new Location(GSize/3, 0);	//(4,0)
+    Location lFridge 	= new Location(2, 0); //(2,0)
+    Location lTable  	= new Location(GSize/2, GSize-3); //(6,9)
+	Location lBed2		= new Location(GSize+2, 0); //(14,0)
+	Location lBed3		= new Location(GSize*2-3,0); //(21,0)
+	Location lBed1		= new Location(GSize+1, GSize*3/4); //(13,9)
 
 	// Initialization of the doors location on the domotic home scene 
-	Location lDoorHome 	= new Location(0, GSize-1);  
-	Location lDoorKit1	= new Location(0, GSize/2);
-	Location lDoorKit2	= new Location(GSize/2+1, GSize/2-1); 
-	Location lDoorSal1	= new Location(GSize/4, GSize-1);  
-	Location lDoorSal2	= new Location(GSize+1, GSize/2);
-	Location lDoorBed1	= new Location(GSize-1, GSize/2);
-	Location lDoorBath1	= new Location(GSize-1, GSize/4+1);
-	Location lDoorBed3	= new Location(GSize*2-1, GSize/4+1); 	
-	Location lDoorBed2	= new Location(GSize+1, GSize/4+1); 	
-	Location lDoorBath2	= new Location(GSize*2-4, GSize/2+1); 	
+	Location lDoorHome 	= new Location(0, GSize-1); //(0,11)
+	Location lDoorKit1	= new Location(0, GSize/2); //(0,10)
+	Location lDoorKit2	= new Location(GSize/2+1, GSize/2-1); //(7,5)
+	Location lDoorSal1	= new Location(GSize/4, GSize-1); //(3,11)
+	Location lDoorSal2	= new Location(GSize+1, GSize/2); //(13,6)
+	Location lDoorBed1	= new Location(GSize-1, GSize/2); //(11,6)
+	Location lDoorBath1	= new Location(GSize-1, GSize/4+1); //(11,4)
+	Location lDoorBed3	= new Location(GSize*2-1, GSize/4+1); //(23,4)
+	Location lDoorBed2	= new Location(GSize+1, GSize/4+1); //(13,4)
+	Location lDoorBath2	= new Location(GSize*2-4, GSize/2+1); //(20,7)
 	
 	// Initialization of the area modeling the home rooms      
-	Area kitchen 	= new Area(0, 0, GSize/2+1, GSize/2-1);
-	Area livingroom	= new Area(GSize/3, GSize/2+1, GSize, GSize-1);
-	Area bath1	 	= new Area(GSize/2+2, 0, GSize-1, GSize/3);
-	Area bath2	 	= new Area(GSize*2-3, GSize/2+1, GSize*2-1, GSize-1);
-	Area bedroom1	= new Area(GSize+1, GSize/2+1, GSize*2-4, GSize-1);
-	Area bedroom2	= new Area(GSize, 0, GSize*3/4-1, GSize/3);
-	Area bedroom3	= new Area(GSize*3/4, 0, GSize*2-1, GSize/3);
-	Area hall		= new Area(0, GSize/2+1, GSize/4, GSize-1);
-	Area hallway	= new Area(GSize/2+2, GSize/2-1, GSize*2-1, GSize/2);
+	Area kitchen 	= new Area(0, 0, GSize/2+1, GSize/2-1); //(0,0,7,5)
+	Area livingroom	= new Area(GSize/3, GSize/2+1, GSize, GSize-1); //(4,7,12,11)
+	Area bath1	 	= new Area(GSize/2+2, 0, GSize-1, GSize/3); //(8,0,11,4)
+	Area bath2	 	= new Area(GSize*2-3, GSize/2+1, GSize*2-1, GSize-1); //(21,7,23,11)
+	Area bedroom1	= new Area(GSize+1, GSize/2+1, GSize*2-4, GSize-1); //(13,7,20,11)
+	Area bedroom2	= new Area(GSize, 0, GSize*3/4-1, GSize/3); //(12,0,8,4)
+	Area bedroom3	= new Area(GSize*3/4, 0, GSize*2-1, GSize/3); //(9,0,23,4)
+	Area hall		= new Area(0, GSize/2+1, GSize/4, GSize-1); //(0,7,3,11)
+	Area hallway	= new Area(GSize/2+2, GSize/2-1, GSize*2-1, GSize/2); //(8,5,23,6)
 	/*
 	Modificar el modelo para que la casa sea un conjunto de habitaciones
 	Dar un codigo a cada habitación y vincular un Area a cada habitación
