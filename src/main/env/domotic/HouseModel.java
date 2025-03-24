@@ -46,7 +46,7 @@ public class HouseModel extends GridWorldModel {
 
 	// Initialization of the doors location on the domotic home scene 
 	Location lDoorHome 	= new Location(0, GSize-1); //(0,11)
-	Location lDoorKit1	= new Location(0, GSize/2); //(0,10)
+	Location lDoorKit1	= new Location(0, GSize/2); //(0,6)
 	Location lDoorKit2	= new Location(GSize/2+1, GSize/2-1); //(7,5)
 	Location lDoorSal1	= new Location(GSize/4, GSize-1); //(3,11)
 	Location lDoorSal2	= new Location(GSize+1, GSize/2); //(13,6)
