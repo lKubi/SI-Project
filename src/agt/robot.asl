@@ -23,7 +23,7 @@ connect(livingroom, hallway, doorSal2).
 free.
 
 // initially, I believe that there is some drug in the fridge
-available(drug, fridge).
+available(drug, medCab).
 
 // my owner should not consume more than 10 drugs a day :-)
 limit(drug,10).  
@@ -40,9 +40,9 @@ answer(Request, "It will be nice to check the weather forecast, don't?.") :-
 	
 answer(Request, "I don't understand what are you talking about.").
 
-bringDrug(Ag) :- available(drug, fridge) & not too_much(drug, Ag).
+bringDrug(Ag) :- available(drug, medCab) & not too_much(drug, Ag).
 
-orderDrug(Ag) :- not available(drug, fridge) & not too_much(drug, Ag).  
+orderDrug(Ag) :- not available(drug, medCab) & not too_much(drug, Ag).  
 
 /* Plans */
 
@@ -52,12 +52,12 @@ orderDrug(Ag) :- not available(drug, fridge) & not too_much(drug, Ag).
 		.wait(1000);
 		//!at(enfermera, owner); 
     	-free[source(self)];      
-		!at(enfermera, fridge);
+		!at(enfermera, medCab);
 		
-		open(fridge); // Change it by an internal operation similar to fridge.open
+		open(medCab); // Change it by an internal operation similar to fridge.open
 		get(drug);    // Change it by a set of internal operations that recognize the drug an take it
 		              // maybe it need to take other products and change their place in the fridge
-		close(fridge);// Change it by an internal operation similar to fridge.close
+		close(medCab);// Change it by an internal operation similar to fridge.close
 		!at(enfermera, Ag);
 		hand_in(drug);// In this case this operation could be external or internal their intention
 		              // is to inform that the owner has the drug in his hand and could begin to drink
@@ -78,13 +78,13 @@ orderDrug(Ag) :- not available(drug, fridge) & not too_much(drug, Ag).
 		.println("SECOND RULE ====================================");
 		.wait(1000);
    		-free[source(self)]; 
-		!at(enfermera, fridge);
+		!at(enfermera, medCab);
 		.send(repartidor, achieve, order(drug, 5)); 
 		!at(enfermera, delivery);     // go to deliver area and wait there.
 		.wait(delivered);
-		!at(enfermera, fridge);       // go to fridge 
+		!at(enfermera, medCab);       // go to fridge 
 		deliver(Product,5);
-		+available(drug, fridge); 
+		+available(drug, medCab); 
 		+free[source(self)];
 		.println("Trying to bring drug after order it");
 		!has(Ag, drug)[source(Ag)].               
@@ -181,12 +181,12 @@ orderDrug(Ag) :- not available(drug, fridge) & not too_much(drug, Ag).
 // When the fridge is opened, the drug stock is perceived
 // and thus the available belief is updated
 +stock(drug, 0)
-   :  available(drug, fridge)
-   <- -available(drug, fridge). 
+   :  available(drug, medCab)
+   <- -available(drug, medCab). 
    
 +stock(drug, N)
-   :  N > 0 & not available(drug, fridge)
-   <- +available(drug, fridge).     
+   :  N > 0 & not available(drug, medCab)
+   <- +available(drug, medCab).     
    
 +chat(Msg)[source(Ag)] : answer(Msg, Answ) <-  
 	.println("El agente ", Ag, " me ha chateado: ", Msg);

@@ -8,6 +8,8 @@ import java.util.logging.Logger;
 public class HouseEnv extends Environment {
 
     // common literals
+	public static final Literal omc  = Literal.parseLiteral("open(medCab)");
+	public static final Literal cmc  = Literal.parseLiteral("close(medCab)");
     public static final Literal of   = Literal.parseLiteral("open(fridge)");
     public static final Literal clf  = Literal.parseLiteral("close(fridge)");
     public static final Literal gb   = Literal.parseLiteral("get(drug)");
@@ -15,10 +17,12 @@ public class HouseEnv extends Environment {
     public static final Literal sb   = Literal.parseLiteral("sip(drug)");
     public static final Literal hob  = Literal.parseLiteral("has(owner,drug)");
 
+	public static final Literal amc  = Literal.parseLiteral("at(enfermera, medCab)");
     public static final Literal af   = Literal.parseLiteral("at(enfermera,fridge)");
     public static final Literal ao   = Literal.parseLiteral("at(enfermera,owner)");
     public static final Literal ad   = Literal.parseLiteral("at(enfermera,delivery)");
 	
+	public static final Literal oamc = Literal.parseLiteral("at(owner, medCab)");
     public static final Literal oaf  = Literal.parseLiteral("at(owner,fridge)");
     public static final Literal oac1 = Literal.parseLiteral("at(owner,chair1)");
     public static final Literal oac2 = Literal.parseLiteral("at(owner,chair2)");
@@ -93,6 +97,8 @@ public class HouseEnv extends Environment {
 	 */
     void updateThingsPlace() {
 		// get the fridge location
+		String medCabPlace = model.getRoom(model.lMedCab);
+		addPercept(Literal.parseLiteral("atRoom(medCab, "+medCabPlace+")"));
 		String fridgePlace = model.getRoom(model.lFridge);						// Obtiene habitacion del objeto
 		addPercept(Literal.parseLiteral("atRoom(fridge, "+fridgePlace+")"));	// añade una percepcion de ubicacion del objeto
 		String sofaPlace = model.getRoom(model.lSofa);
@@ -126,7 +132,15 @@ public class HouseEnv extends Environment {
 		
 		Location lRobot = model.getAgPos(0);
 		Location lOwner = model.getAgPos(1);
+
+		if (lRobot.distance(model.lMedCab) < 2) {
+			addPercept("enfermera", amc);
+		}
 		
+		if (lOwner.distance(model.lMedCab) < 2) {
+			addPercept("owner", oamc);
+		}
+
         if (lRobot.distance(model.lFridge)<2) {
             addPercept("enfermera", af);
         } 
@@ -173,7 +187,7 @@ public class HouseEnv extends Environment {
         }
 
         // add drug "status" the percepts
-        if (model.fridgeOpen) {
+        if (model.medCabOpen) {
             addPercept("enfermera", Literal.parseLiteral("stock(drug,"+model.availableDrugs+")"));
         }
         if (model.sipCount > 0) {
@@ -219,16 +233,24 @@ public class HouseEnv extends Environment {
 			} catch (Exception e) {
                e.printStackTrace();
 			}     
-        } else if (action.equals(of)) { // of = open(fridge)
-            result = model.openFridge();
+        } else if (action.equals(omc)) { // omc = open(medCab)
+            result = model.openMedCab();
 
-        } else if (action.equals(clf)) { // clf = close(fridge)
-            result = model.closeFridge();
+        } else if (action.equals(cmc)) { // cmc = close(medCab)
+            result = model.closeMedCab();
                                                                      
-        } else if (action.getFunctor().equals("move_towards")) {
+        } else if (action.equals(of)) {		// of = open(fridge)
+			result = model.openFridge();
+
+		} else if (action.equals(clf)) {	// clf = close(fridge)
+			result = model.closeFridge();
+
+		} else if (action.getFunctor().equals("move_towards")) {
             String l = action.getTerm(0).toString();
             Location dest = null;
 			switch (l) {
+				case "medCab": dest = model.lMedCab;
+				break;
 				case "fridge": dest = model.lFridge; 
 				break;
 				case "owner": dest = model.getAgPos(1);  

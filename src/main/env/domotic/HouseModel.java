@@ -8,8 +8,7 @@ import jason.environment.grid.Location;
 /** class that implements the Model of Domestic Robot application */
 public class HouseModel extends GridWorldModel {
 
-    // constants for the grid objects
-
+    // Objetos que se meten en el grid
     public static final int COLUMN  =    4;
     public static final int CHAIR  	=    8;
     public static final int SOFA  	=   16;
@@ -20,52 +19,58 @@ public class HouseModel extends GridWorldModel {
     public static final int TABLE  	=  512;
     public static final int BED	   	= 1024;
     public static final int WALLV   = 2048;
+	public static final int MEDCAB 	= 4096;				// Medician Cabinet :-> Luggar (unico por ahora) donde se guardan las medicinas
 
     // the grid size                                                     
     public static final int GSize = 12;        //Cells
 	public final int GridSize = 1080;    //Width
-                          
-    boolean fridgeOpen   = false; // whether the fridge is open                                   
-    boolean carryingDrug = false; // whether the robot is carrying drug
-    int sipCount        = 0; // how many sip the owner did
-    int availableDrugs  = 2; // how many drugs are available
+	private static final int nAgents = 2;		//AGENTES ENTORNO: 0 -> enfermera (robot) , 1 -> owner , 2-> supermarket
+
+	boolean fridgeOpen 	 = false;				// comprueba si el fridge esta abierto o no
+    boolean medCabOpen   = false;            	// comprueba                         
+    boolean carryingDrug = false; 				// si el robot lleva o no medicina
+    int sipCount        = 0; 					// (se podria usar para implementar bebidas en el fridge)
+    int availableDrugs  = 2; 					// numero de medicamentos disponibles
+	 
     
 	// Initialization of the objects Location on the domotic home scene 
-    Location lSofa	 	= new Location(GSize/2, GSize-2); //(6,10)
-    Location lChair1  	= new Location(GSize/2+2, GSize-3); //(8,9)
-    Location lChair3 	= new Location(GSize/2-1, GSize-3); //(5,9)
-    Location lChair2 	= new Location(GSize/2+1, GSize-4); //(7,8)
-    Location lChair4 	= new Location(GSize/2, GSize-4); //(6,8)
-    Location lDeliver 	= new Location(0, GSize-1); //(0,11)
-    Location lWasher 	= new Location(GSize/3, 0);	//(4,0)
-    Location lFridge 	= new Location(2, 0); //(2,0)
-    Location lTable  	= new Location(GSize/2, GSize-3); //(6,9)
-	Location lBed2		= new Location(GSize+2, 0); //(14,0)
-	Location lBed3		= new Location(GSize*2-3,0); //(21,0)
-	Location lBed1		= new Location(GSize+1, GSize*3/4); //(13,9)
+    Location lSofa	 	= new Location(6, 10); 
+    Location lChair1  	= new Location(8, 9); 
+    Location lChair3 	= new Location(5, 9); 
+    Location lChair2 	= new Location(7, 8); 
+    Location lChair4 	= new Location(6, 8); 
+    Location lDeliver 	= new Location(0, 11); 
+    Location lWasher 	= new Location(4, 0);	
+    Location lFridge 	= new Location(2, 0); 
+	Location lMedCab	= new Location(0, 2);
+    Location lTable  	= new Location(6, 9); 
+	Location lBed2		= new Location(14, 0); 
+	Location lBed3		= new Location(21,0); 
+	Location lBed1		= new Location(13, 9); 
+
 
 	// Initialization of the doors location on the domotic home scene 
-	Location lDoorHome 	= new Location(0, GSize-1); //(0,11)
-	Location lDoorKit1	= new Location(0, GSize/2); //(0,6)
-	Location lDoorKit2	= new Location(GSize/2+1, GSize/2-1); //(7,5)
-	Location lDoorSal1	= new Location(GSize/4, GSize-1); //(3,11)
-	Location lDoorSal2	= new Location(GSize-1, GSize/2); //(11,6)
-	Location lDoorBed1	= new Location(GSize+1, GSize/2); //(13,6)
-	Location lDoorBed2	= new Location(GSize+1, GSize/4+1); //(13,4)
-	Location lDoorBed3	= new Location(GSize*2-1, GSize/4+1); //(23,4)
-	Location lDoorBath1	= new Location(GSize-1, GSize/4+1); //(11,4)
-	Location lDoorBath2	= new Location(GSize*2-4, GSize/2+1); //(20,7)
+	Location lDoorHome 	= new Location(0, 11); 
+	Location lDoorKit1	= new Location(0, 6); 
+	Location lDoorKit2	= new Location(7, 5); 
+	Location lDoorSal1	= new Location(3, 11); 
+	Location lDoorSal2	= new Location(11, 6);
+	Location lDoorBed1	= new Location(13, 6); 
+	Location lDoorBed2	= new Location(13, 4); 
+	Location lDoorBed3	= new Location(23, 4); 
+	Location lDoorBath1	= new Location(11, 4); 
+	Location lDoorBath2	= new Location(20, 7); 
 	
 	// Initialization of the area modeling the home rooms      
-	Area kitchen 	= new Area(0, 0, GSize/2+1, GSize/2-1); //(0,0,7,5)
-	Area livingroom	= new Area(GSize/3, GSize/2+1, GSize, GSize-1); //(4,7,12,11)
-	Area bath1	 	= new Area(GSize/2+2, 0, GSize-1, GSize/3); //(8,0,11,4)
-	Area bath2	 	= new Area(GSize*2-3, GSize/2+1, GSize*2-1, GSize-1); //(21,7,23,11)
-	Area bedroom1	= new Area(GSize+1, GSize/2+1, GSize*2-4, GSize-1); //(13,7,20,11)
-	Area bedroom2	= new Area(GSize, 0, GSize+5, GSize/3); //(12,0,17,4)
-	Area bedroom3	= new Area(GSize+6, 0, GSize*2-1, GSize/3); //(18,0,23,4)
-	Area hall		= new Area(0, GSize/2+1, GSize/4, GSize-1); //(0,7,3,11)
-	Area hallway	= new Area(GSize/2+2, GSize/2-1, GSize*2-1, GSize/2); //(8,5,23,6)
+	Area kitchen 	= new Area(0, 0, 7, 6); 					
+	Area livingroom	= new Area(4, 7, 12, 11);  
+	Area bath1	 	= new Area(8, 0, 11, 4); 
+	Area bath2	 	= new Area(21, 7, 23, 11); 
+	Area bedroom1	= new Area(13, 7, 20, 11); 
+	Area bedroom2	= new Area(12, 0, 17, 4); 
+	Area bedroom3	= new Area(18, 0, 23, 4); 
+	Area hall		= new Area(0, 7, 3, 11); 						
+	Area hallway	= new Area(8, 5, 23, 6); 
 	/*
 	Modificar el modelo para que la casa sea un conjunto de habitaciones
 	Dar un codigo a cada habitación y vincular un Area a cada habitación
@@ -74,20 +79,23 @@ public class HouseModel extends GridWorldModel {
 	Identificar objetos globales que precisen de un único identificador
 	*/
 	
+	/**
+	 * Constructor del modelo 
+	 */
     public HouseModel() {
+
         // create a GSize x 2GSize grid with 3 mobile agent
-        super(2*GSize, GSize, 2);
+        super(2*GSize, GSize, nAgents);
                                                                            
-        // initial location of robot (column 3, line 3)
-        // ag code 0 means the robot
-        setAgPos(0, 19, 10);  
-		setAgPos(1, 23, 8);
-		//setAgPos(2, GSize*2-1, GSize*3/5);
+
+        setAgPos(0, 19, 10);  	// Posicion partida enfermera
+		setAgPos(1, 23, 8);		// Posicion partida owner
 
 		// Do a new method to create literals for each object placed on
 		// the model indicating their nature to inform agents their existence
 		
-        // initial location of fridge and owner
+        // Objetos a añadir al modelo
+		add(MEDCAB, lMedCab);
         add(FRIDGE, lFridge); 
 		add(WASHER, lWasher); 
 		add(DOOR,   lDeliver); 
@@ -101,39 +109,37 @@ public class HouseModel extends GridWorldModel {
 		add(BED,	lBed2);
 		add(BED,	lBed3);
 		
-		addWall(GSize/2+1, 0, GSize/2+1, GSize/2-2);  		
-		add(DOOR, lDoorKit2);                              
-		//addWall(GSize/2+1, GSize/2-1, GSize/2+1, GSize-2);  
-		add(DOOR, lDoorSal1); 
 
-		addWall(GSize/2+1, GSize/4+1, GSize-2, GSize/4+1);   
-		//addWall(GSize+1, GSize/4+1, GSize*2-1, GSize/4+1);   
+		// Añadir puertas al modelo 
+		add(DOOR, lDoorKit2);                              
+		add(DOOR, lDoorSal1); 
+		add(DOOR, lDoorBath1); 
  		add(DOOR, lDoorBath1); 
-		//addWall(GSize+1, GSize*2/5+1, GSize*2-2, GSize*2/5+1);   
-		addWall(GSize+2, GSize/4+1, GSize*2-2, GSize/4+1);   
-		addWall(GSize*2-6, 0, GSize*2-6, GSize/4);
 		add(DOOR, lDoorBed1); 
-		
-		addWall(GSize, 0, GSize, GSize/4+1);  
-		//addWall(GSize+1, GSize/4+1, GSize, GSize/4+1);  
  		add(DOOR, lDoorBed2); 
-		
-		addWall(1, GSize/2, GSize-1, GSize/2);            
 		add(DOOR, lDoorKit1);                
 		add(DOOR, lDoorSal2);
-
-		addWall(GSize/4, GSize/2+1, GSize/4, GSize-2);            
-		
-		addWall(GSize, GSize/2, GSize, GSize-1);  
-		addWall(GSize*2-4, GSize/2+2, GSize*2-4, GSize-1);  
-		addWall(GSize+2, GSize/2, GSize*2-1, GSize/2);  
  		add(DOOR, lDoorBed3);  
- 		add(DOOR, lDoorBath2);  
+ 		add(DOOR, lDoorBath2);
+
 		
+		// Paredes a añadir al modelo
+		addWall(7, 0, 7, 4);  	
+		addWall(8, 4, 10, 4); 
+		addWall(14, 4, 22, 4);  	
+		addWall(18, 0, 18, 3);				
+		addWall(12, 0, 12, 4);  							
+		addWall(1, 6, 10, 6);   				        
+		addWall(3, 7, 3, 10);			           		
+		addWall(12, 6, 12, 11);  				
+		addWall(20, 8, 20, 11);  	
+		addWall(14,6, 23, 6);  		
+  
      }
 	
 	/**
 	 * Metodo que devuelve la habitacion del objeto thing
+	 * @param thing Objeto a localizar
 	 */
 	 String getRoom (Location thing){  
 		
@@ -166,13 +172,37 @@ public class HouseModel extends GridWorldModel {
 		return byDefault;
 	}
 
+	/**
+	 * Metodo para sentar agentes
+	 * @param Ag agente a localizar
+	 * @param dest destino donde quiere sentarse
+	 */
 	boolean sit(int Ag, Location dest) { 
 		Location loc = getAgPos(Ag);
-		if (loc.isNeigbour(dest)) {
-			setAgPos(Ag, dest);
+
+		if (loc.isNeigbour(dest)) {			// Si esta cerca del objeto
+			setAgPos(Ag, dest);				// Lo sienta
 		};
 		return true;
 	}
+
+	boolean openMedCab() {
+        if (!medCabOpen) {
+            medCabOpen = true;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    boolean closeMedCab() {
+        if (medCabOpen) {
+            medCabOpen = false;
+            return true;
+        } else {
+            return false;
+        }
+    }   
 
 	boolean openFridge() {
         if (!fridgeOpen) {
@@ -190,7 +220,7 @@ public class HouseModel extends GridWorldModel {
         } else {
             return false;
         }
-    }   
+    } 
 
 	boolean canMoveTo (int Ag, int x, int y) {
 		if (Ag < 1) {
@@ -208,16 +238,18 @@ public class HouseModel extends GridWorldModel {
 		if (r1.distance(dest)>0) {
 			if (r1.x < dest.x && canMoveTo(Ag,r1.x+1,r1.y)) {
 				r1.x++;
-			}
-			else if (r1.x > dest.x && canMoveTo(Ag,r1.x-1,r1.y)) {
+			} else {
+				if(r1.x > dest.x && canMoveTo(Ag,r1.x-1,r1.y)) {
 				r1.x--;
+				}
 			};
 			
 			if (r1.y < dest.y && r1.distance(dest)>0 && canMoveTo(Ag,r1.x,r1.y+1)) {
 				r1.y++;
-			}
-			else if (r1.y > dest.y && r1.distance(dest)>0 && canMoveTo(Ag,r1.x,r1.y-1)) {  
+			} else {
+				if (r1.y > dest.y && r1.distance(dest)>0 && canMoveTo(Ag,r1.x,r1.y-1)) {  
 				r1.y--;
+				}
 			};
         };
 		
@@ -242,16 +274,16 @@ public class HouseModel extends GridWorldModel {
     }                                                                                 
 
     boolean getDrug() {
-        if (fridgeOpen && availableDrugs > 0 && !carryingDrug) {
+        if (medCabOpen && availableDrugs > 0 && !carryingDrug) {
             availableDrugs--;
             carryingDrug = true;
             return true;
         } else {  
-			if (fridgeOpen) {
-				System.out.println("The fridge is opened. ");
+			if (medCabOpen) {
+				System.out.println("The medicacian cabinet is opened. ");
 			};
 			if (availableDrugs > 0){ 
-				System.out.println("The fridge has drugs enough. ");
+				System.out.println("The medician cabinet has drugs enough. ");
 			};
 			if (!carryingDrug){ 
 				System.out.println("The robot is not bringing a drug. ");

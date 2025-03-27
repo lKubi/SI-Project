@@ -83,7 +83,7 @@ connect(livingroom, hallway, doorSal2).
 	!at(Ag, sofa);
 	sit(sofa);
 	.wait(5000);
-	!at(Ag, fridge);
+	!at(Ag, medCab);
 	.wait(10000);
 	!at(Ag, chair3);
 	sit(chair3);
@@ -97,14 +97,14 @@ connect(livingroom, hallway, doorSal2).
 	+busy; 																		// añade creencia de que esta ocupado
 	.println("Owner goes to the fridge to get a beer.");
 	.wait(1000);
-	!at(Ag, fridge);															// owner se mueve al fridge
+	!at(Ag, medCab);															// owner se mueve al fridge
 	.println("Owner is hungry and is at the fridge getting something"); 
 	//.println("He llegado al frigorifico");
 	.wait(2000);
 	!at(Ag, chair3);															// owner se mueve a chair3
 	sit(chair3);																// metodo de java??
-	.wait(4000);
-	!at(Ag, chair4);
+	.wait(1000);
+	/*!at(Ag, chair4);
 	sit(chair4);
 	.wait(4000);
 	!at(Ag, chair2);
@@ -115,7 +115,7 @@ connect(livingroom, hallway, doorSal2).
 	.wait(4000);
 	!at(Ag, sofa);
 	sit(sofa);
-	.wait(10000);
+	.wait(10000);*/
 	!get(drug); 
 	.wait(50000);
 	-busy.																		// quitar creencia de ocupado

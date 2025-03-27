@@ -52,6 +52,7 @@ public class HouseView extends GridWorldView {
 				drawMultipleScaledImage(g, x, y, "/doc/doubleBedlt.png", 2, 2, 100, 100);
 				g.setColor(Color.red);
 				super.drawString(g, x, y, defaultFont, " 1 ");
+				
 			};
 			if (hmodel.lBed2.equals(loc)) {  
 				objPath = "/doc/singleBed.png";//currentDirectory.concat("/doc/singleBed.png");
@@ -132,7 +133,7 @@ public class HouseView extends GridWorldView {
             break;
         case HouseModel.FRIDGE:
             g.setColor(Color.lightGray); 
-			if (lRobot.isNeigbour(hmodel.lFridge)) { 
+			if (lRobot.isNeigbour(hmodel.lFridge) | lOwner.isNeigbour(hmodel.lFridge)) { 
 				objPath = "/doc/openNevera.png";//currentDirectory.concat("/doc/openNevera.png");
 				drawImage(g, x, y, objPath);
 				g.setColor(Color.yellow);
@@ -144,8 +145,21 @@ public class HouseView extends GridWorldView {
 			}                      
             drawString(g, x, y, defaultFont, "Fr ("+hmodel.availableDrugs+")");
             break; 
+			case HouseModel.MEDCAB:
+				g.setColor(Color.lightGray); 
+				if (lRobot.isNeigbour(hmodel.lMedCab) | lOwner.isNeigbour(hmodel.lMedCab)) {
+					objPath = "/doc/MedicalOpenR.png";
+					drawImage(g, x, y, objPath);
+            		g.setColor(Color.green);
+				} else {
+					objPath = "/doc/MedicalCloseR.png";
+					drawImage(g, x, y, objPath);
+            		g.setColor(Color.blue);
+				}
+            drawString(g, x, y, defaultFont, "Ptmol("+hmodel.availableDrugs+")");
+            break;
 		}
-        //repaint();
+        repaint();
     }
                           
     @Override
