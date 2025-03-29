@@ -119,8 +119,8 @@ connect(livingroom, hallway, doorSal2).
 	!at(Ag, sofa);
 	sit(sofa);
 	.wait(10000);*/
-	!get(drug);                                         //Elegir si se necesita una medicina o una cerveza
-	//!get(beer); 
+	//!get(drug);                                         //Elegir si se necesita una medicina o una cerveza
+	!get(beer); 
 	.wait(50000);
 	-busy.	
 
@@ -139,27 +139,28 @@ connect(livingroom, hallway, doorSal2).
 +!take_medicine : .my_name(Name) & not busy 
    <- 
       +busy;
-	  !at(Ag, medCab);
+      !at(Ag, medCab);
       .println("Owner is at the medicine shelf.");
       
-	  open(medCab); 
-	  //Coger con la mano y obtener el medicamento
-	  get(drug); 		
-	  close(medCab);
-	  
-	  //Notificar al robot que el Owner ha tomado la medicación.
-	  .send(enfermera, tell, chat("I have taken the drug."));
-      .println("Owner is taking the drug.");
-	  !at(Ag, sofa);
-	  .wait(5000);
-	  -busy.
+      open(medCab); 
+      get(drug); 
+      close(medCab);
+      
+	  .println("Owner is taking the drug.");
+      // Notificar al robot que ha tomado la medicación
+      .send(enfermera, tell, medication_consumed(drug));
+            
+      !at(Ag, sofa);
+      .wait(5000);
+      -busy.
  
 +!take_medicine : .my_name(Name) & busy
    <- 
       .println("Owner is doing something else and cannot take medicine now.");
       .wait(5000);
       !take_medicine.
-	  
+
+
 // ----- OBJETIVO: Verificar si el owner está en un lugar y si no esta, moverse hacia allí -----
 +!at(Ag, P) : at(Ag, P) <- 														
 	.println("Owner is at ",P);													

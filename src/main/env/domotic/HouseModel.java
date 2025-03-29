@@ -33,7 +33,7 @@ public class HouseModel extends GridWorldModel {
 	int sipCount       = 0; 					// (se podria usar para implementar bebidas en el fridge)
     int drugsCount        = 0; 					// (se podria usar para implementar bebidas en el fridge)
     int availableDrugs  = 2; 					// numero de medicamentos disponibles
-	int availableBeers  = 4; 					// numero de medicamentos disponibles
+	int availableBeers  = 1; 					// numero de medicamentos disponibles
 
 	 
     

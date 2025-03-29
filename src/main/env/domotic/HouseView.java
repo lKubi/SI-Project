@@ -208,6 +208,9 @@ public class HouseView extends GridWorldView {
 				if (hmodel.sipCount > 0) {
 					o +=  " ("+hmodel.sipCount+")";
 				}
+				if (hmodel.drugsCount > 0) {
+					o +=  " ("+hmodel.drugsCount+")";
+				}
 				g.setColor(Color.yellow);
 				drawString(g, x, y, defaultFont, o);
 			}                                                           

@@ -319,10 +319,21 @@ public class HouseEnv extends Environment {
         } else if (action.equals(sb)) {
             result = model.sipBeer();
 
-        } else if (action.getFunctor().equals("deliver")) {
+        } else if (action.getFunctor().equals("deliverdrug")) {
+             
             // wait 4 seconds to finish "deliver"
             try {
                 result = model.addDrug((int)((NumberTerm)action.getTerm(1)).solve());
+                Thread.sleep(4000);
+            } catch (Exception e) {
+                logger.info("Failed to execute action deliver!" + e);
+            }
+
+        } else if (action.getFunctor().equals("deliverbeer")) {
+             
+            // wait 4 seconds to finish "deliver"
+            try {
+                result = model.addBeer((int)((NumberTerm)action.getTerm(1)).solve());
                 Thread.sleep(4000);
             } catch (Exception e) {
                 logger.info("Failed to execute action deliver!" + e);
