@@ -26,7 +26,7 @@ public class HouseView extends GridWorldView {
 		setSize(viewSize, viewSize/2);
         defaultFont = new Font("Arial", Font.BOLD, 14); // change default font
         setVisible(true);
-        //repaint();
+        repaint();
 		currentDirectory = Paths.get("").toAbsolutePath().toString();
         //System.out.println("Directorio actual: " + currentDirectory);
     }
@@ -52,7 +52,6 @@ public class HouseView extends GridWorldView {
 				drawMultipleScaledImage(g, x, y, "/doc/doubleBedlt.png", 2, 2, 100, 100);
 				g.setColor(Color.red);
 				super.drawString(g, x, y, defaultFont, " 1 ");
-				
 			};
 			if (hmodel.lBed2.equals(loc)) {  
 				objPath = "/doc/singleBed.png";//currentDirectory.concat("/doc/singleBed.png");
@@ -133,7 +132,7 @@ public class HouseView extends GridWorldView {
             break;
         case HouseModel.FRIDGE:
             g.setColor(Color.lightGray); 
-			if (lRobot.isNeigbour(hmodel.lFridge) | lOwner.isNeigbour(hmodel.lFridge)) { 
+			if (lRobot.isNeigbour(hmodel.lFridge)) { 
 				objPath = "/doc/openNevera.png";//currentDirectory.concat("/doc/openNevera.png");
 				drawImage(g, x, y, objPath);
 				g.setColor(Color.yellow);
@@ -143,7 +142,7 @@ public class HouseView extends GridWorldView {
 				drawImage(g, x, y, objPath);	
 				g.setColor(Color.blue);
 			}                      
-            drawString(g, x, y, defaultFont, "Fr ("+hmodel.availableDrugs+")");
+            drawString(g, x, y, defaultFont, "Fr ("+hmodel.availableBeers+")");
             break; 
 			case HouseModel.MEDCAB:
 				g.setColor(Color.lightGray); 
@@ -156,7 +155,7 @@ public class HouseView extends GridWorldView {
 					drawImage(g, x, y, objPath);
             		g.setColor(Color.blue);
 				}
-            drawString(g, x, y, defaultFont, "Ptmol("+hmodel.availableDrugs+")");
+            drawString(g, x, y, defaultFont, "Med("+hmodel.availableDrugs+")");
             break;
 		}
         repaint();
@@ -170,9 +169,9 @@ public class HouseView extends GridWorldView {
 		String objPath = currentDirectory;
 
 		if (id < 1) { 
-			if (!lRobot.equals(lOwner) && !lRobot.equals(hmodel.lFridge)) {
+			if (!lRobot.equals(lOwner) && (!lRobot.equals(hmodel.lFridge) || !lRobot.equals(hmodel.lMedCab))) {
 				c = Color.yellow;
-				if (hmodel.carryingDrug) {//c = Color.orange;
+				if (hmodel.carryingDrug || hmodel.carryingBeer) {//c = Color.orange;
 					//super.drawAgent(g, x, y, c, -1);
 					objPath = "/doc/beerBot.png";//currentDirectory.concat("/doc/beerBot.png");
 					drawImage(g,x,y,objPath);

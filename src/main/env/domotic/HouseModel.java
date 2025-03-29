@@ -29,8 +29,12 @@ public class HouseModel extends GridWorldModel {
 	boolean fridgeOpen 	 = false;				// comprueba si el fridge esta abierto o no
     boolean medCabOpen   = false;            	// comprueba                         
     boolean carryingDrug = false; 				// si el robot lleva o no medicina
-    int sipCount        = 0; 					// (se podria usar para implementar bebidas en el fridge)
+	boolean carryingBeer = false; 				// si el robot lleva o no medicina
+	int sipCount       = 0; 					// (se podria usar para implementar bebidas en el fridge)
+    int drugsCount        = 0; 					// (se podria usar para implementar bebidas en el fridge)
     int availableDrugs  = 2; 					// numero de medicamentos disponibles
+	int availableBeers  = 4; 					// numero de medicamentos disponibles
+
 	 
     
 	// Initialization of the objects Location on the domotic home scene 
@@ -41,7 +45,7 @@ public class HouseModel extends GridWorldModel {
     Location lChair4 	= new Location(6, 8); 
     Location lDeliver 	= new Location(0, 11); 
     Location lWasher 	= new Location(4, 0);	
-    Location lFridge 	= new Location(2, 0); 
+    Location lFridge 	= new Location(2, 1); 
 	Location lMedCab	= new Location(0, 2);
     Location lTable  	= new Location(6, 9); 
 	Location lBed2		= new Location(14, 0); 
@@ -271,7 +275,60 @@ public class HouseModel extends GridWorldModel {
 		setAgPos(Ag, r1); // move the agent in the grid 
 		
         return true;        
-    }                                                                                 
+    }  
+	
+	/* Metodos cerveza */
+	
+	boolean getBeer() {
+        if (fridgeOpen && availableBeers > 0 && !carryingBeer) {
+            availableBeers--;
+            carryingBeer = true;
+            return true;
+        } else {  
+			if (fridgeOpen) {
+				System.out.println("The fridge is opened. ");
+			};
+			if (availableBeers > 0){ 
+				System.out.println("The fridge has beers enough. ");
+			};
+			if (!carryingBeer){ 
+				System.out.println("The robot is not bringing a beer. ");
+			};
+            return false;
+        }
+    }
+
+    boolean addBeer(int n) {
+        availableBeers += n;
+        //if (view != null)
+        //    view.update(lFridge.x,lFridge.y);
+        return true;
+    }
+
+    boolean handInBeer() {
+        if (carryingBeer) {
+            sipCount = 10;
+            carryingBeer = false;
+            //if (view != null)
+                //view.update(lOwner.x,lOwner.y);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    boolean sipBeer() {
+        if (sipCount > 0) {
+            sipCount--;
+            //if (view != null)
+                //view.update(lOwner.x,lOwner.y);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+	/* Metodos medicamentos */
 
     boolean getDrug() {
         if (medCabOpen && availableDrugs > 0 && !carryingDrug) {
@@ -301,7 +358,7 @@ public class HouseModel extends GridWorldModel {
 
     boolean handInDrug() {
         if (carryingDrug) {
-            sipCount = 10;
+            drugsCount = 10;
             carryingDrug = false;
             //if (view != null)
                 //view.update(lOwner.x,lOwner.y);
@@ -312,8 +369,8 @@ public class HouseModel extends GridWorldModel {
     }
 
     boolean sipDrug() {
-        if (sipCount > 0) {
-            sipCount--;
+        if (drugsCount > 0) {
+            drugsCount--;
             //if (view != null)
                 //view.update(lOwner.x,lOwner.y);
             return true;
