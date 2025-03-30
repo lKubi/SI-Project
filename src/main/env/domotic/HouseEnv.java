@@ -319,6 +319,33 @@ public class HouseEnv extends Environment {
         } else if (action.equals(sb)) {
             result = model.sipBeer();
 
+        }else if (action.getFunctor().equals("obtener_medicamento")) {
+            try {
+                // Extract the drug name (which is the first term, index 0)
+                Term drugTerm = action.getTerm(0);
+                String drugName = "";
+
+                // Correctly get the string value depending on whether it's an Atom or a StringTerm
+                if (drugTerm instanceof StringTerm) {
+                    // If the action was like obtener_medicamento("Paracetamol 500mg")
+                    drugName = ((StringTerm) drugTerm).getString();
+                } else {
+                    // If the action was like obtener_medicamento(paracetamol)
+                    // Atom.toString() or Term.toString() usually works
+                    drugName = drugTerm.toString();
+                    // You might need to remove quotes if toString() adds them unexpectedly
+                    // drugName = drugTerm.toString().replace("\"", "");
+                }
+
+                // Call the model's method with the specific drug name
+                // Optionally, you could add a check here: if (ag.equals("enfermera")) { ... }
+                result = model.obtener_medicamento(drugName);
+
+            } catch (Exception e) {
+                logger.log(java.util.logging.Level.SEVERE, "Error executing action " + action + " for agent " + ag, e);
+                result = false; // Ensure result is false on error
+            }
+            
         } else if (action.getFunctor().equals("deliverdrug")) {
              
             // wait 4 seconds to finish "deliver"

@@ -119,8 +119,8 @@ connect(livingroom, hallway, doorSal2).
 	!at(Ag, sofa);
 	sit(sofa);
 	.wait(10000);*/
-	//!get(drug);                                         //Elegir si se necesita una medicina o una cerveza
-	!get(beer); 
+	!get(drug);                                         //Elegir si se necesita una medicina o una cerveza
+	//!get(beer); 
 	.wait(50000);
 	-busy.	
 
