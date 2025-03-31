@@ -92,6 +92,9 @@ public class HouseModel extends GridWorldModel {
     Area hall       = new Area(0, 7, 3, 12);
     Area hallway    = new Area(8, 5, 23, 6);
 
+    private Map<Integer, String> directionMap = new HashMap<>();
+
+
     /**
      * Constructor del modelo
      */
@@ -316,115 +319,94 @@ public class HouseModel extends GridWorldModel {
     boolean moveTowards(int Ag, Location dest) {
         Location start = getAgPos(Ag);
 
-        // Si ya está en el destino, no hacer nada
         if (start.equals(dest)) {
             return true;
         }
 
-        // --- Implementación de A* ---
+        Map<Location, Location> cameFrom = new HashMap<>();
+        Map<Location, Integer> gScore = new HashMap<>();
+        Map<Location, Integer> fScore = new HashMap<>();
 
-        // 1. Inicialización
-        Map<Location, Location> cameFrom = new HashMap<>(); // Para reconstruir el camino
-        Map<Location, Integer> gScore = new HashMap<>(); // Costo desde el inicio hasta el nodo
-        Map<Location, Integer> fScore = new HashMap<>(); // Costo total estimado (gScore + heurística)
-
-        // Usamos Manhattan distance como heurística (admisible para movimientos ortogonales)
         Comparator<Location> fScoreComparator = Comparator.comparingInt(loc -> fScore.getOrDefault(loc, Integer.MAX_VALUE));
-        PriorityQueue<Location> openSet = new PriorityQueue<>(fScoreComparator); // Nodos por evaluar
+        PriorityQueue<Location> openSet = new PriorityQueue<>(fScoreComparator);
+        Set<Location> closedSet = new HashSet<>();
 
-        Set<Location> closedSet = new HashSet<>(); // Nodos ya evaluados
-
-        // Inicializar valores para el nodo de inicio
         gScore.put(start, 0);
         fScore.put(start, manhattanDistance(start, dest));
         openSet.add(start);
 
-        // 2. Bucle principal de A*
         while (!openSet.isEmpty()) {
-            Location current = openSet.poll(); // Obtener nodo con menor fScore
+            Location current = openSet.poll();
 
-            // Si hemos llegado al destino
             if (current.equals(dest)) {
-                // Reconstruir el camino y mover un paso
                 List<Location> path = reconstructPath(cameFrom, current);
-                if (path.size() > 1) { // El camino incluye el inicio, necesitamos al menos 2 nodos para movernos
-                    Location nextStep = path.get(1); // El siguiente paso después del inicio
-                    setAgPos(Ag, nextStep); // Mover el agente
-                    return true; // Movimiento realizado
+                if (path.size() > 1) {
+                    Location nextStep = path.get(1);
+
+                    // Calcular dirección
+                    int dx = nextStep.x - start.x;
+                    int dy = nextStep.y - start.y;
+                    String dir = "walkr";
+
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        dir = (dx > 0) ? "walk_right" : "walk_left";
+                    } else if (Math.abs(dy) > 0) {
+                        dir = (dy > 0) ? "walk_down" : "walk_up";
+                    }
+
+                    directionMap.put(Ag, dir);
+                    setAgPos(Ag, nextStep);
+                    return true;
                 } else {
-                    // El camino solo tiene el nodo inicial (o está vacío), ¿quizás start == dest?
-                    // Ya se manejó al principio. Si llegamos aquí, es un caso raro.
                     System.err.println("A* found a path with < 2 steps, but start != dest.");
-                    return true; // Consideramos que no hay movimiento necesario o posible
+                    return true;
                 }
             }
 
-            closedSet.add(current); // Marcar como evaluado
+            closedSet.add(current);
 
-             // 3. Explorar vecinos (arriba, abajo, izquierda, derecha)
-			 int[] dx = {0, 0, 1, -1};
-			 int[] dy = {1, -1, 0, 0};
- 
-			 for (int i = 0; i < 4; i++) {
-				 int nextX = current.x + dx[i];
-				 int nextY = current.y + dy[i];
-				 Location neighbor = new Location(nextX, nextY);
- 
-				 // --- INICIO DE LA MODIFICACIÓN ---
-				 // Validar vecino: Aplicar canMoveTo SÓLO si el vecino NO es el destino final.
-				 // Si es el destino final, permitimos que A* lo considere para completar la ruta,
-				 // aunque no podamos "pisarlo" según canMoveTo. El movimiento real se detendrá antes.
-				 if (!neighbor.equals(dest)) {
-					 if (!canMoveTo(Ag, nextX, nextY)) {
-						 continue; // Ignorar si no es transitable (pared, obstáculo, fuera de límites)
-					 }
-				 } else {
-					 // Si es el destino, al menos verificamos que esté dentro de los límites del grid
-					 // (aunque canMoveTo ya lo haría si se llamase)
-					  if (nextX < 0 || nextX >= getWidth() || nextY < 0 || nextY >= getHeight()) {
-						 continue;
-					  }
-					  // También podríamos verificar si es un OBSTACLE (pared), ya que eso sí sería infranqueable.
-					  if (hasObject(OBSTACLE, nextX, nextY)){
-						 continue;
-					  }
-					  // No aplicamos el resto de chequeos de canMoveTo (FRIDGE, CHAIR, etc.) aquí.
-				 }
-				 // --- FIN DE LA MODIFICACIÓN ---
- 
- 
-				 if (closedSet.contains(neighbor)) {
-					 continue; // Ignorar si ya fue evaluado
-				 }
- 
-				 // Costo de moverse al vecino (asumimos costo 1 para movimientos ortogonales)
-				 int tentativeGScore = gScore.getOrDefault(current, Integer.MAX_VALUE) + 1;
- 
-				 // Si esta ruta hacia el vecino es mejor que cualquier ruta anterior
-				 if (tentativeGScore < gScore.getOrDefault(neighbor, Integer.MAX_VALUE)) {
-					 // Actualizar información del camino
-					 cameFrom.put(neighbor, current);
-					 gScore.put(neighbor, tentativeGScore);
-					 fScore.put(neighbor, tentativeGScore + manhattanDistance(neighbor, dest));
- 
-					 // Añadir a openSet si no está ya, o actualizar su prioridad
-					 // (Java PriorityQueue maneja esto al re-añadir o si contains es falso)
-					 if (!openSet.contains(neighbor)) {
-						  openSet.add(neighbor);
-					 } else {
-						 // Para forzar la actualización de prioridad en Java PQ si ya existe:
-						 openSet.remove(neighbor);
-						 openSet.add(neighbor);
-					 }
-				 }
-			 }
-		 } // Fin del while (!openSet.isEmpty())
+            int[] dx = {0, 0, 1, -1};
+            int[] dy = {1, -1, 0, 0};
 
-        // Si el bucle termina y no se encontró el destino, no hay camino posible
+            for (int i = 0; i < 4; i++) {
+                int nextX = current.x + dx[i];
+                int nextY = current.y + dy[i];
+                Location neighbor = new Location(nextX, nextY);
+
+                if (!neighbor.equals(dest)) {
+                    if (!canMoveTo(Ag, nextX, nextY)) continue;
+                } else {
+                    if (nextX < 0 || nextX >= getWidth() || nextY < 0 || nextY >= getHeight()) continue;
+                    if (hasObject(OBSTACLE, nextX, nextY)) continue;
+                }
+
+                if (closedSet.contains(neighbor)) continue;
+
+                int tentativeGScore = gScore.getOrDefault(current, Integer.MAX_VALUE) + 1;
+
+                if (tentativeGScore < gScore.getOrDefault(neighbor, Integer.MAX_VALUE)) {
+                    cameFrom.put(neighbor, current);
+                    gScore.put(neighbor, tentativeGScore);
+                    fScore.put(neighbor, tentativeGScore + manhattanDistance(neighbor, dest));
+
+                    if (!openSet.contains(neighbor)) {
+                        openSet.add(neighbor);
+                    } else {
+                        openSet.remove(neighbor);
+                        openSet.add(neighbor);
+                    }
+                }
+            }
+        }
+
         System.out.println("Agent " + Ag + " could not find a path from " + start + " to " + dest);
-        return true; // Indicar que el intento se hizo, aunque no hubo movimiento.
-                     // Podría devolverse false si se quiere indicar fallo en encontrar ruta.
+        return true;
     }
+
+    public String getLastDirection(int ag) {
+        return directionMap.getOrDefault(ag, "walkr");
+    }
+
 
     /**
      * Calcula la distancia Manhattan entre dos localizaciones.
