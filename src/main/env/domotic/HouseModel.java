@@ -32,9 +32,12 @@ public class HouseModel extends GridWorldModel {
     public static final int WALLV    =  2048; // No usado en el código proporcionado, pero lo dejamos
     public static final int MEDCAB   =  4096; // Medician Cabinet :-> Lugar (unico por ahora) donde se guardan las medicinas
 
+
     // --- Configuración del Grid y Agentes (sin cambios) ---
-    public static final int GSize = 12;      // Cells
-    public final int GridSize = 1080;      // Width (No usado directamente en la lógica del grid, pero lo dejamos)
+    public static final int GSize = 15;      // Cells
+    public final int GridSize = 2000;      // Width (No usado directamente en la lógica del grid, pero lo dejamos)
+    public static final int ROBOT_AGENT_ID = 0; // enfermera (robot)
+    public static final int OWNER_AGENT_ID = 1; // owner
     private static final int nAgents = 2;      // AGENTES ENTORNO: 0 -> enfermera (robot) , 1 -> owner , 2-> supermarket (no implementado)
 
     // --- Estado del Modelo (sin cambios) ---
@@ -55,18 +58,26 @@ public class HouseModel extends GridWorldModel {
     Location lChair3    = new Location(5, 9);
     Location lChair2    = new Location(7, 8);
     Location lChair4    = new Location(6, 8);
-    Location lDeliver   = new Location(0, 11);
+    Location lDeliver   = new Location(0, 12);
     Location lWasher    = new Location(4, 0);
-    Location lFridge    = new Location(2, 1);
+    Location lFridge    = new Location(0, 0);
     Location lMedCab    = new Location(0, 2);
     Location lTable     = new Location(6, 9);
     Location lBed2      = new Location(14, 0);
     Location lBed3      = new Location(21,0);
     Location lBed1      = new Location(13, 9);
+   // Define las ubicaciones válidas para los muros invisibles
+   Location linvisibleWall1 = new Location(7, 9);   // Válido
+   Location linvisibleWall2 = new Location(7, 10);  // Válido
+   Location linvisibleWall3 = new Location(14, 1);  // Válido (y=14 es el límite)
+   Location linvisibleWall4 = new Location(15, 1); // --> Coordenada Y inválida
+   Location linvisibleWall5 = new Location(22, 1); // --> Coordenada Y inválida
+   Location linvisibleWall6 = new Location(13, 10); // Válido
+   Location linvisibleWall7 = new Location(14, 10); // Válido (y=14 es el límite)
 
 
     // --- Ubicaciones de Puertas (sin cambios) ---
-    Location lDoorHome  = new Location(0, 11);
+    Location lDoorHome  = new Location(0, 12);  // La puerta de casa coincide con lDeliver
     Location lDoorKit1  = new Location(0, 6);
     Location lDoorKit2  = new Location(7, 5);
     Location lDoorSal1  = new Location(3, 11);
@@ -79,13 +90,13 @@ public class HouseModel extends GridWorldModel {
 
     // --- Definición de Áreas/Habitaciones (sin cambios) ---
     Area kitchen    = new Area(0, 0, 7, 6);
-    Area livingroom = new Area(4, 7, 12, 11);
+    Area livingroom = new Area(4, 7, 12, 12);
     Area bath1      = new Area(8, 0, 11, 4);
-    Area bath2      = new Area(21, 7, 23, 11);
-    Area bedroom1   = new Area(13, 7, 20, 11);
+    Area bath2      = new Area(21, 7, 23, 12);
+    Area bedroom1   = new Area(13, 7, 20, 12);
     Area bedroom2   = new Area(12, 0, 17, 4);
     Area bedroom3   = new Area(18, 0, 23, 4);
-    Area hall       = new Area(0, 7, 3, 11);
+    Area hall       = new Area(0, 7, 3, 12);
     Area hallway    = new Area(8, 5, 23, 6);
 
     /**
@@ -93,11 +104,11 @@ public class HouseModel extends GridWorldModel {
      */
     public HouseModel() {
         // create a 2*GSize x GSize grid with nAgents mobile agent
-        super(2*GSize, GSize, nAgents); // Grid de 24x12
+        super(2*GSize-5, GSize, nAgents); // Grid de 24x12
 
         // Posiciones iniciales de los agentes
         setAgPos(0, 19, 10);   // Posicion partida enfermera (robot)
-        setAgPos(1, 23, 8);    // Posicion partida owner
+        setAgPos(1, 13, 9);    // Posicion partida owner
 
         // Añadir objetos fijos al modelo
         add(MEDCAB, lMedCab);
@@ -113,11 +124,12 @@ public class HouseModel extends GridWorldModel {
         add(BED,    lBed1);
         add(BED,    lBed2);
         add(BED,    lBed3);
+      
+        
 
         // Añadir puertas al modelo (como obstáculos tipo DOOR)
         add(DOOR, lDoorKit2);
         add(DOOR, lDoorSal1);
-        // add(DOOR, lDoorBath1); // Duplicado en el original
         add(DOOR, lDoorBath1);
         add(DOOR, lDoorBed1);
         add(DOOR, lDoorBed2);
@@ -127,6 +139,10 @@ public class HouseModel extends GridWorldModel {
         add(DOOR, lDoorBath2);
 
         // Añadir paredes al modelo
+        addWall(1, 12, 24, 12);
+        addWall(24, 0, 24, 11);
+
+
         addWall(7, 0, 7, 4);
         addWall(8, 4, 10, 4);
         addWall(14, 4, 22, 4);
@@ -137,14 +153,15 @@ public class HouseModel extends GridWorldModel {
         addWall(12, 6, 12, 11);
         addWall(20, 8, 20, 11);
         addWall(14, 6, 23, 6); // Intersecta con lDoorBed3(23,4)? No, la puerta está fuera de esta pared.
+
                                // Intersecta con lDoorBath2(20,7)? No, la puerta está fuera de esta pared.
 
 	    // 2. Añadir 5 medicamentos diferentes con sus cantidades iniciales
-		contadorMedicamentos.put("Paracetamol 500mg", 3); // Añade Paracetamol 
-		contadorMedicamentos.put("Ibuprofeno 600mg", 2);   // Añade Ibuprofeno
-		contadorMedicamentos.put("Amoxicilina 500mg", 1);  // Añade Amoxicilina
-		contadorMedicamentos.put("Omeprazol 20mg", 2);   // Añade Omeprazol 
-		contadorMedicamentos.put("Loratadina 10mg", 2);   // Añade Loratadina
+		contadorMedicamentos.put("Paracetamol 500mg", 1); // Añade Paracetamol 
+		contadorMedicamentos.put("Ibuprofeno 600mg", 0);   // Añade Ibuprofeno
+		contadorMedicamentos.put("Amoxicilina 500mg", 0);  // Añade Amoxicilina
+		contadorMedicamentos.put("Omeprazol 20mg", 0);   // Añade Omeprazol 
+		contadorMedicamentos.put("Loratadina 10mg", 0);   // Añade Loratadina
 	 
 		this.availableDrugs  = calcularTotalMedicamentos(contadorMedicamentos); 					// numero de medicamentos disponibles
    }
@@ -236,34 +253,70 @@ public class HouseModel extends GridWorldModel {
      * Esta función es usada por el algoritmo A* para determinar los vecinos válidos.
      * (Mantenemos la lógica original)
      */
+   /**
+     * Verifica si el agente Ag puede moverse a la casilla (x, y).
+     * VERSIÓN CON BLOQUEO DE COORDENADAS DIRECTO.
+     */
     boolean canMoveTo (int Ag, int x, int y) {
-        // Verifica límites del grid
+        // 1. Verifica límites del grid
         if (x < 0 || x >= getWidth() || y < 0 || y >= getHeight()) {
-             return false;
-        }
-
-        // Verifica si la casilla está libre (sin paredes u otros agentes)
-        boolean isCellFree = isFree(x, y);
-        if (!isCellFree) {
             return false;
         }
 
-        // Aplica restricciones específicas de objetos según el tipo de agente
-        if (Ag == 0) { // Agente 0 es el robot/enfermera
+        // 2. Verifica OBSTACLES (paredes físicas)
+        if (hasObject(OBSTACLE, x, y)) {
+             return false;
+        }
+
+        // 3. Verifica si hay OTRO agente en la celda
+        int agentInCell = getAgAtPos(x,y);
+        if (agentInCell != -1 && agentInCell != Ag) {
+             return false;
+        }
+        // (Opcional: usar isFree si maneja agentes y obstáculos)
+        // if (!isFree(x, y)) return false;
+
+
+        // 4. Aplica restricciones específicas según el agente y la celda
+        if (Ag == ROBOT_AGENT_ID || Ag == OWNER_AGENT_ID) { // Agente 0 es el robot/enfermera
+
+            // --- INICIO: Bloqueo de coordenadas específicas para el robot ---
+            // Comprueba si la celda (x,y) es una de las prohibidas
+            // (Coordenadas tomadas de tus definiciones linvisibleWallX válidas)
+            if ( (x == 7 && y == 9) ||   
+                 (x == 7 && y == 10) ||  
+                 (x == 14 && y == 1) ||  
+                 (x == 15 && y == 1) ||  
+                 (x == 15 && y == 0) ||  
+                 (x == 21 && y == 1) ||  
+                 (x == 22 && y == 1) ||  
+                 (x == 22 && y == 0) ||  
+                 (x == 13 && y == 10) || 
+                 (x == 14 && y == 9) || 
+                 (x == 14 && y == 10) )  
+            {
+                // System.out.println("Debug: Robot blocked by specific coordinate rule at " + x + "," + y); // Opcional para depurar
+                return false; // El robot NO puede entrar en estas celdas específicas
+            }
+            // --- FIN: Bloqueo de coordenadas específicas ---
+
+            // Si no está bloqueado por coordenadas específicas,
+            // aplicar bloqueo por objetos intransitables para el robot.
+
             return !hasObject(WASHER, x, y) && !hasObject(TABLE, x, y) &&
                    !hasObject(SOFA, x, y) && !hasObject(CHAIR, x, y) &&
-                   !hasObject(BED, x, y) && !hasObject(FRIDGE, x, y) && // Añadido por si acaso
-                   !hasObject(MEDCAB, x, y); // Añadido por si acaso
-                   // Nota: Las puertas (DOOR) no se consideran obstáculos intransitables aquí
-        } else { // Otros agentes (ej. owner)
-            // El owner puede tener menos restricciones, pero mantenemos las originales:
-             return !hasObject(WASHER, x, y) && !hasObject(TABLE, x, y);
-             // Podríamos permitir al owner moverse sobre sillas o sofás si tuviera sentido
-        }
-        // Devolver true por defecto si no es Ag==0 y no hay WASHER/TABLE
-        // return true; // Esta línea es alcanzada si Ag != 0 y no hay WASHER/TABLE
-    }
+                   !hasObject(BED, x, y) && !hasObject(FRIDGE, x, y) &&
+                   !hasObject(MEDCAB, x, y); 
 
+        } else if (Ag == OWNER_AGENT_ID) { // Agente 1 es el owner
+             // El owner solo está bloqueado por WASHER y TABLE.
+             return !hasObject(WASHER, x, y) && !hasObject(TABLE, x, y);
+
+        } else {
+             // Comportamiento para otros agentes
+             return true; // Por defecto, permitir movimiento
+        }
+    }
 
     /**
      * Calcula el camino óptimo usando A* y mueve el agente un paso hacia el destino.
@@ -471,27 +524,37 @@ public class HouseModel extends GridWorldModel {
 
     /* Metodos medicamentos (sin cambios, pero con mejoras en mensajes y lógica similar a cerveza) */
 
-    boolean getDrug() {
-        if (medCabOpen && availableDrugs > 0 && !carryingDrug) {
-            availableDrugs--;
-            carryingDrug = true;
-            System.out.println("Robot got a drug. Drugs left: " + availableDrugs);
-            // view?.update(lMedCab.x, lMedCab.y);
-            // view?.update(getAgPos(0).x, getAgPos(0).y);
-            return true;
-        } else {
-            if (!medCabOpen) System.out.println("Failed to get drug: MedCab is closed.");
-            if (availableDrugs <= 0) System.out.println("Failed to get drug: No drugs available.");
-            if (carryingDrug) System.out.println("Failed to get drug: Robot already carrying a drug.");
+    
+
+     boolean addDrug(int n) {
+        if (n <= 0) {
+            System.out.println("Error: Cannot add zero or negative quantity of drugs.");
             return false;
         }
-    }
 
-    boolean addDrug(int n) {
-         if (n <= 0) return false;
-        availableDrugs += n;
-        System.out.println("Added " + n + " drugs. Total drugs: " + availableDrugs);
-        // view?.update(lMedCab.x, lMedCab.y);
+        System.out.println("Attempting to restock: Adding " + n + " units to EACH drug type.");
+
+        // Iterar sobre todas las claves (nombres de medicamentos) en el HashMap
+        for (String drugName : contadorMedicamentos.keySet()) {
+            // Obtener la cantidad actual o 0 si no existe (aunque debería existir por el constructor)
+            int currentCount = contadorMedicamentos.getOrDefault(drugName, 0);
+        
+            // Actualizar la cantidad en el HashMap
+            contadorMedicamentos.put(drugName, currentCount + n);
+            System.out.println("  - Added " + n + " units to '" + drugName + "'. New count: " + contadorMedicamentos.get(drugName));
+            
+        }
+
+        // MUY IMPORTANTE: Recalcular el total de availableDrugs basado en el HashMap actualizado
+        this.availableDrugs = calcularTotalMedicamentos(contadorMedicamentos);
+
+        System.out.println("Restock complete. Total available drugs now: " + availableDrugs);
+
+        // Opcional: Notificar a la vista para actualizar el estado visual del MedCab si existe
+        // if (view != null) {
+        //     view.update(lMedCab.x, lMedCab.y);
+        // }
+
         return true;
     }
 
@@ -527,58 +590,158 @@ public class HouseModel extends GridWorldModel {
         }
 	}
 
+    boolean getDrug() {
+        if (medCabOpen && availableDrugs > 0 && !carryingDrug) {
+            availableDrugs--;
+            carryingDrug = true;
+            System.out.println("Robot got a drug. Drugs left: " + availableDrugs);
+            // view?.update(lMedCab.x, lMedCab.y);
+            // view?.update(getAgPos(0).x, getAgPos(0).y);
+            return true;
+        } else {
+            if (!medCabOpen) System.out.println("Failed to get drug: MedCab is closed.");
+            if (availableDrugs <= 0) System.out.println("Failed to get drug: No drugs available.");
+            if (carryingDrug) System.out.println("Failed to get drug: Robot already carrying a drug.");
+            return false;
+        }
+    }
 
-	boolean obtener_medicamento(String nombreMedicamento) {
-			System.out.println("\nIntentando coger: " + nombreMedicamento); // Mensaje de acción
-		
-			// --- Comprobaciones de Precondiciones ---
-			if (!medCabOpen) {
-				System.out.println("Error: El armario de medicinas está cerrado.");
-				return false;
-			}
-			if (carryingDrug) {
-				System.out.println("Error: El robot ya está llevando un medicamento.");
-				return false;
-			}
-		
-			// --- Comprobación del Medicamento Específico y Disponibilidad General ---
-			// Primero verificamos si el medicamento específico existe y tiene stock
-			if (contadorMedicamentos.containsKey(nombreMedicamento)) {
-				int cantidadEspecifica = contadorMedicamentos.get(nombreMedicamento);
-		
-				if (cantidadEspecifica > 0) {
-					// Ahora, aunque no es estrictamente necesario si el HashMap es la fuente de verdad,
-					// comprobamos también el contador general como solicitaste,
-					// aunque lo lógico sería que availableDrugs refleje la suma del HashMap.
-					// Si availableDrugs es 0 pero el HashMap dice que hay, hay una inconsistencia.
-					// Vamos a priorizar el HashMap y decrementar availableDrugs si cogemos uno.
-					if (availableDrugs > 0) { // Comprobamos si el contador general indica que hay algo
-						// --- Éxito: Coger el medicamento ---
-						contadorMedicamentos.put(nombreMedicamento, cantidadEspecifica - 1); // Decrementar stock específico
-						availableDrugs--;         // Decrementar stock general <<<--- LÍNEA AÑADIDA/MODIFICADA
-						carryingDrug = true;      // Actualizar estado del robot
-						drugsCount++;             // Incrementar contador total de medicamentos cogidos
-						System.out.println("Éxito: Robot ha cogido " + nombreMedicamento + ".");
-						System.out.println("Quedan " + contadorMedicamentos.get(nombreMedicamento) + " unidades específicas.");
-						System.out.println("Quedan " + availableDrugs + " unidades totales (aprox)."); // Informar del total
-						return true;
-					} else {
-						 // Esto indica una inconsistencia: el HashMap dice que hay, pero el contador general no.
-						 System.out.println("Error/Inconsistencia: El inventario específico indica stock, pero el contador general availableDrugs es 0.");
-						 return false;
-					}
-		
-				} else {
-					// --- Fallo: No quedan unidades específicas ---
-					System.out.println("Error: No quedan unidades de " + nombreMedicamento + ".");
-					return false;
-				}
-			} else {
-				// --- Fallo: Medicamento no encontrado ---
-				System.out.println("Error: El medicamento '" + nombreMedicamento + "' no existe en el inventario.");
-				return false;
-			}
-	}
+
+
+	  // --- Métodos Medicamentos ---
+
+    /**
+     * Acción para que el ROBOT (Ag 0) coja un medicamento ESPECÍFICO del MedCab.
+     * @param nombreMedicamento El nombre exacto del medicamento.
+     * @return true si el robot cogió el medicamento, false en caso contrario.
+     */
+    boolean robotGetSpecificDrug(String nombreMedicamento) {
+        System.out.println("\nROBOT trying to get: " + nombreMedicamento);
+
+        // --- Precondiciones ---
+        if (!medCabOpen) {
+            System.out.println("Error (Robot): MedCab is closed.");
+            return false;
+        }
+        if (carryingDrug) {
+            System.out.println("Error (Robot): Already carrying a drug.");
+            return false;
+        }
+        // Verificar proximidad del ROBOT al MedCab
+        Location robotPos = getAgPos(0);
+        if (!robotPos.isNeigbour(lMedCab)) {
+             System.out.println("Error (Robot): Not near MedCab at " + lMedCab);
+             return false;
+        }
+
+
+        // --- Comprobación del Medicamento ---
+        if (contadorMedicamentos.containsKey(nombreMedicamento)) {
+            int cantidadEspecifica = contadorMedicamentos.get(nombreMedicamento);
+
+            if (cantidadEspecifica > 0) {
+                // Priorizamos el HashMap. Si el HashMap dice que hay, y availableDrugs es > 0, todo OK.
+                // Si availableDrugs fuera 0 aquí, indicaría inconsistencia.
+                 if (availableDrugs > 0) {
+                     // --- Éxito ---
+                     contadorMedicamentos.put(nombreMedicamento, cantidadEspecifica - 1); // Decrementar stock específico
+                     availableDrugs--;           // Decrementar stock general
+                     carryingDrug = true;        // Robot ahora lleva el medicamento
+                     // drugsCount NO se toca aquí, se usa para el owner.
+                     System.out.println("Success (Robot): Got " + nombreMedicamento + ".");
+                     System.out.println("Specific units left: " + contadorMedicamentos.get(nombreMedicamento));
+                     System.out.println("Total units left: " + availableDrugs);
+                     // view?.update...
+                     return true;
+                 } else {
+                      // Inconsistencia: HashMap dice que hay, pero contador total es 0.
+                      System.out.println("Error/Inconsistency (Robot): Specific drug found, but availableDrugs is 0.");
+                      // Opcional: Recalcular availableDrugs para intentar corregir
+                      // this.availableDrugs = calcularTotalMedicamentos(contadorMedicamentos);
+                      // if(this.availableDrugs > 0) { ... reintentar lógica ... } else { return false; }
+                      return false;
+                 }
+            } else {
+                // --- Fallo: No quedan unidades específicas ---
+                System.out.println("Error (Robot): No units of " + nombreMedicamento + " left.");
+                return false;
+            }
+        } else {
+            // --- Fallo: Medicamento no encontrado ---
+            System.out.println("Error (Robot): Drug '" + nombreMedicamento + "' not found in inventory.");
+            return false;
+        }
+    }
+
+    /**
+     * Acción para que el OWNER (Ag 1) coja un medicamento ESPECÍFICO del MedCab.
+     * @param nombreMedicamento El nombre exacto del medicamento.
+     * @return true si el owner cogió el medicamento, false en caso contrario.
+     */
+    boolean ownerGetSpecificDrug(String nombreMedicamento) {
+        System.out.println("\nOWNER trying to get: " + nombreMedicamento);
+
+        // --- Precondiciones ---
+        if (!medCabOpen) {
+            System.out.println("Error (Owner): MedCab is closed.");
+            return false;
+        }
+        // Verificar si el owner ya tiene un medicamento listo para tomar
+        if (drugsCount > 0) {
+            System.out.println("Error (Owner): Already has a drug ready (drugsCount=" + drugsCount + "). Must take it first.");
+            return false;
+        }
+        // Verificar proximidad del OWNER al MedCab
+        Location ownerPos = getAgPos(1);
+        if (!ownerPos.isNeigbour(lMedCab)) {
+             System.out.println("Error (Owner): Not near MedCab at " + lMedCab);
+             return false;
+        }
+        // carryingDrug (del robot) NO se comprueba aquí.
+
+        // --- Comprobación del Medicamento ---
+        if (contadorMedicamentos.containsKey(nombreMedicamento)) {
+            int cantidadEspecifica = contadorMedicamentos.get(nombreMedicamento);
+
+            if (cantidadEspecifica > 0) {
+                if (availableDrugs > 0) { // Comprobar consistencia con contador general
+                     // --- Éxito ---
+                     contadorMedicamentos.put(nombreMedicamento, cantidadEspecifica - 1); // Decrementar stock específico
+                     availableDrugs--;           // Decrementar stock general
+                     drugsCount = 1;             // Owner ahora tiene 1 unidad/dosis lista para tomar
+                     // carryingDrug NO se toca
+                     System.out.println("Success (Owner): Got " + nombreMedicamento + ".");
+                     System.out.println("Specific units left: " + contadorMedicamentos.get(nombreMedicamento));
+                     System.out.println("Total units left: " + availableDrugs);
+                     // view?.update...
+                     return true;
+                } else {
+                    System.out.println("Error/Inconsistency (Owner): Specific drug found, but availableDrugs is 0.");
+                    return false;
+                }
+
+            } else {
+                // --- Fallo: No quedan unidades específicas ---
+                System.out.println("Error (Owner): No units of " + nombreMedicamento + " left.");
+                return false;
+            }
+        } else {
+            // --- Fallo: Medicamento no encontrado ---
+            System.out.println("Error (Owner): Drug '" + nombreMedicamento + "' not found in inventory.");
+            return false;
+        }
+    }
+
+     /** (Opcional) Método genérico para añadir medicamentos (podría usarse para reponer stock) */
+     boolean addSpecificDrug(String nombreMedicamento, int cantidad) {
+        if (cantidad <= 0) return false;
+        int cantidadActual = contadorMedicamentos.getOrDefault(nombreMedicamento, 0);
+        contadorMedicamentos.put(nombreMedicamento, cantidadActual + cantidad);
+        this.availableDrugs = calcularTotalMedicamentos(contadorMedicamentos); // Recalcular total
+        System.out.println("Added " + cantidad + " units of " + nombreMedicamento + ". New count: " + contadorMedicamentos.get(nombreMedicamento) + ". Total drugs: " + availableDrugs);
+        // view?.update...
+        return true;
+    }
 	
 	
 		private int calcularTotalMedicamentos(HashMap<String, Integer> inventario) {

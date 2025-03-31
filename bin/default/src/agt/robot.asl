@@ -34,8 +34,8 @@
 
 	/* ----- LÍMITE DE CONSUMO DE MEDICAMENTOS ----- */
 	// El robot tiene la regla de no permitir que el dueño consuma más de 10 medicamentos al día.
-	limit(drug,10).  
-	limit(beer,10).  
+	limit(drug,5).  
+	limit(beer,5).  
 
 
 	/* ----- REGLA DE CONSUMO EXCESIVO ----- */
@@ -76,7 +76,7 @@
 			-free[source(self)];      
 			!at(enfermera, medCab);
 			open(medCab); 
-			get(drug); 		
+			get(drug);	
 			close(medCab);
 			!at(enfermera, Ag);
 			hand_in(drug);
@@ -119,7 +119,7 @@
 			!at(enfermera, delivery);     // go to deliver area and wait there.
 			.wait(delivered);
 			!at(enfermera, medCab);     
-			deliver(Product,5);
+			deliverdrug(Product,5); 	
 			+available(drug, medCab); 
 			+free[source(self)];
 			.println("Trying to bring drug after order it");
@@ -137,7 +137,7 @@
 			!at(enfermera, delivery);     // go to deliver area and wait there.
 			.wait(delivered);
 			!at(enfermera, fridge);      
-			deliver(Product,5);
+			deliverbeer(Product,5);
 			+available(beer, fridge); 
 			+free[source(self)];
 			.println("Trying to bring beer after order it");
@@ -281,3 +281,9 @@
 	+?time(T) : true
 	<-  time.check(T).
 
+	/* ----- NOTIFICACIONES DE CONSUMO ----- */
+	// Cuando el dueño informa al robot que ha consumido un medicamento, el robot actualiza su inventario.
++medication_consumed(drug)[source(Ag)] : true <-
+    .println("Notificación recibida: ", Ag, " ha tomado ", drug);
+    .println("Stock actualizado para ", drug);
+    .send(Ag, tell, msg("He actualizado el inventario de medicamentos. Gracias por informarme.")).

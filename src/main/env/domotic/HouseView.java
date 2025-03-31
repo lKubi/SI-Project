@@ -33,7 +33,8 @@ public class HouseView extends GridWorldView {
         hmodel = model; 
         viewSize = model.GridSize; 
         setSize(viewSize, viewSize / 2); // Establece el tamaño de la ventana (ancho=viewSize, alto=viewSize/2)
-        defaultFont = new Font("Arial", Font.BOLD, 14);
+        defaultFont = new Font("Arial", Font.BOLD, 20);
+		
 
         currentDirectory = Paths.get("").toAbsolutePath().toString(); 
         //System.out.println("Directorio actual: " + currentDirectory);
@@ -153,7 +154,7 @@ public class HouseView extends GridWorldView {
             break;
         case HouseModel.FRIDGE:
             g.setColor(Color.lightGray); 
-			if (lRobot.isNeigbour(hmodel.lFridge)) { 
+			if (lRobot.isNeigbour(hmodel.lFridge) | lOwner.isNeigbour(hmodel.lFridge)) { 
 				objPath = "/doc/openNevera.png";//currentDirectory.concat("/doc/openNevera.png");
 				drawImage(g, x, y, objPath);
 				g.setColor(Color.yellow);
@@ -177,6 +178,8 @@ public class HouseView extends GridWorldView {
             		g.setColor(Color.blue);
 				}
             drawString(g, x, y, defaultFont, "Med("+hmodel.availableDrugs+")");
+			drawString(g, 12, 14, defaultFont, "MedCab: "+hmodel.contadorMedicamentos+"");
+
             break;
 		}
         //repaint(); //El timer se encarga
@@ -198,7 +201,7 @@ public class HouseView extends GridWorldView {
 		String objPath = currentDirectory;
 
 		if (id < 1) { 
-			if (!lRobot.equals(lOwner) && (!lRobot.equals(hmodel.lFridge) || !lRobot.equals(hmodel.lMedCab))) {
+			if (!lRobot.equals(lOwner) && (!lRobot.equals(hmodel.lFridge) || (!lRobot.equals(hmodel.lMedCab)))) {
 				c = Color.yellow;
 				if (hmodel.carryingDrug || hmodel.carryingBeer) {//c = Color.orange;
 					//super.drawAgent(g, x, y, c, -1);

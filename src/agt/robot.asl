@@ -76,7 +76,7 @@
 			-free[source(self)];      
 			!at(enfermera, medCab);
 			open(medCab); 
-			get(drug); 		
+			obtener_medicamento("Paracetamol 500mg");	
 			close(medCab);
 			!at(enfermera, Ag);
 			hand_in(drug);
@@ -287,3 +287,5 @@
     .println("Notificación recibida: ", Ag, " ha tomado ", drug);
     .println("Stock actualizado para ", drug);
     .send(Ag, tell, msg("He actualizado el inventario de medicamentos. Gracias por informarme.")).
+
+	
