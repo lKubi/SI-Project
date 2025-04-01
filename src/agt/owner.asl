@@ -163,10 +163,10 @@ medician(omeprazol, 23).
 	//.wait(2000);
 	!at(Ag, chair3);														
 	sit(chair3);															
-	.wait(5000);
+	.wait(8000);
 	!at(Ag, chair4);                                 //Comentado para que no dure tanto el programa, luego hay que descomentarlo
 	sit(chair4);
-	.wait(4000);
+	.wait(7000);
 	!at(Ag, chair2);
 	sit(chair2);
 	.wait(4000);
