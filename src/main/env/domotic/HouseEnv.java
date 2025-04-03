@@ -349,6 +349,18 @@ public class HouseEnv extends Environment {
 
         } else if (action.getFunctor().equals("obtener_medicamento")) {
             // *** CAMBIO PRINCIPAL AQUÍ ***
+
+             // 1. Determinar el ID del agente basado en su nombre
+             int agentId = -1; // Valor por defecto inválido
+             if (ag.equals("enfermera")) { // Reemplaza "robot" si tu agente se llama diferente
+                 agentId = HouseModel.ROBOT_AGENT_ID; // Usa la constante definida en HouseModel
+             } else if (ag.equals("owner")) { // Reemplaza "owner" si tu agente se llama diferente
+                 agentId = HouseModel.OWNER_AGENT_ID; // Usa la constante definida en HouseModel
+             } else {
+                 logger.warning("Action 'obtener_medicamento' called by unrecognized agent: " + agentId);
+                 // Decide si quieres fallar la acción o lanzar un error
+                 return false; // Fallar la acción si el agente es desconocido
+             }
             Term drugTerm = action.getTerm(0);
             String drugName = "";
             if (drugTerm instanceof StringTerm) {
@@ -357,15 +369,7 @@ public class HouseEnv extends Environment {
                 drugName = drugTerm.toString().replace("\"", ""); // Limpiar comillas si es atom
             }
 
-            // Comprobar qué agente ejecuta la acción
-            if (ag.equals("enfermera")) {
-                result = model.robotGetSpecificDrug(drugName); // Llamar método del robot
-            } else if (ag.equals("owner")) {
-                result = model.ownerGetSpecificDrug(drugName); // Llamar método del owner
-            } else {
-                 logger.warning("Unknown agent '" + ag + "' trying to execute obtener_medicamento.");
-                 result = false;
-            }
+            result = model.agenteGetSpecificDrug(agentId, drugName); // Llamar método del robot
   
         } else if (action.getFunctor().equals("deliverdrug")) {
              
