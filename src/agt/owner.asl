@@ -3,7 +3,6 @@
 // o como mucho a las creencias iniciales del robot si no hay Environment.
 // El owner no necesita definir las conexiones. El robot sí para planificar rutas.
 
-
 /* ----- OBJETIVOS INICIALES DEL DUEÑO (OWNER) ----- */
 // Acciones que puede realizar el dueño al inicio.
 // !take_medicine se activará cuando sea la hora o por otra lógica.
@@ -14,6 +13,7 @@
 !wakeup.
 !check_bored.
 !medical_guides_initial.
+!update_schedule_later.
 
 /* ----- PLAN PARA ENVIAR PAUTAS INICIALES (Nombres específicos) ----- */
 +!medical_guides_initial : not medical_guides_sent <- // Evita reenviar si ya lo hizo
@@ -26,13 +26,51 @@
     .send(enfermera, tell, medician("Omeprazol 20mg", 5));
     .send(enfermera, tell, medician("Loratadina 10mg", 3));
     .send(enfermera, tell, medician("Omeprazol 20mg", 18));
-    .send(enfermera, tell, medician("Paracetamol 500mg", 17));
-    .send(enfermera, tell, medician("Omeprazol 20mg", 22));
+    .send(enfermera, tell, medician("Paracetamol 500mg", 20));
+    .send(enfermera, tell, medician("Omeprazol 20mg", 21));
     +medical_guides_sent; // Añade creencia para marcar que ya se envió
     .println("Owner: Pautas iniciales enviadas.").
 // Si ya se enviaron, el objetivo se cumple sin hacer nada.
 +!medical_guides_initial : medical_guides_sent <- true.
 
+
+// Plan para esperar un tiempo definido y luego iniciar la actualización
+// Este plan se ejecutará una sola vez gracias al objetivo inicial !update_schedule_later
++!update_schedule_later : true <-
+    // Espera un tiempo en milisegundos (ej: 5 minutos = 300000 ms)
+    // Ajusta este valor según cuánto tiempo quieres esperar
+    .println("Owner: Esperando para actualizar pautas...");
+    .wait(300000); // Espera 5 minutos (ajusta el tiempo aquí)
+    .println("Owner: ¡Tiempo de actualizar pautas!");
+    // Lanza el objetivo que realmente hace la actualización
+    !do_schedule_update.
+
+// Plan principal para realizar la actualización
++!do_schedule_update : true <-
+    .println("Owner: Iniciando actualización de pautas...");
+    // 1. Pedir a la enfermera que borre las pautas antiguas
+    .println("Owner: Solicitando a enfermera borrar pautas antiguas.");
+    .send(enfermera, achieve, clear_schedule); // Le pide a la enfermera que logre borrar
+    // 2. Esperar un poco para asegurar que la enfermera procesó el borrado
+    //    (Una solución más robusta usaría confirmación, pero esto es más simple)
+    .wait(1500); // Espera 1.5 segundos
+    // 3. Enviar las nuevas pautas
+    !send_new_schedule.
+
+// Plan para enviar el NUEVO conjunto de pautas
++!send_new_schedule : true <-
+    .println("Owner: Enviando NUEVAS pautas a la enfermera...");
+    // *** DEFINE AQUÍ TUS NUEVAS PAUTAS ***
+    .send(enfermera, tell, medician("Ibuprofeno 600mg", 8)); // Nueva pauta/hora
+    .send(enfermera, tell, medician("Omeprazol 20mg", 14));  // Nueva pauta/hora
+    .send(enfermera, tell, medician("Aspirina 100mg", 19)); // Nueva pauta/hora (medicamento nuevo)
+    .send(enfermera, tell, medician("Paracetamol 500mg", 22)); // Paracetamol a otra hora
+    // .send(enfermera, tell, medician("Loratadina 10mg", 10)); // Ejemplo
+    // Añade o quita según la nueva pauta deseada
+
+    .println("Owner: NUEVAS pautas enviadas.").
+    // Opcional: Puedes añadir una creencia para saber que la actualización se hizo
+    // +schedule_updated.
 /* ----- OBJETIVO: Despertarse (wakeup) (Sin cambios lógicos) ----- */
 +!wakeup : .my_name(Ag) & not busy <-
     +busy;
@@ -215,13 +253,10 @@
 
 /* ----- OBJETIVO: Comprobar aburrimiento (Sin cambios lógicos) ----- */
 +!check_bored : true <-
-    .random(X);
-    WaitTime = math.round(X*20000 + 10000); // Espera entre 10 y 30 segundos
-    .println("Owner: Esperando ", WaitTime, " ms para aburrirse...");
-    .wait(WaitTime);
+    .wait(100);
     .println("Owner: Aburrido. Preguntando la hora y el tiempo.");
-    .send(enfermera, askOne, time(_), R); // Pregunta la hora
-    .print("Respuesta de hora: ", R);
+    .send(enfermera, askOne, time, R); // <<< PIDE LA CREENCIA 'time'
+    .print("Respuesta de hora: ", R);    // <<< Imprime lo que devuelve askOne en R
     .send(enfermera, tell, chat("¿Qué tiempo hace en Ourense?")); // Pregunta el tiempo
     !check_bored. // Vuelve a empezar el ciclo de aburrimiento
 
@@ -229,3 +264,5 @@
 +msg(M)[source(Ag)] : .my_name(Name) <-
     .print(Ag, " envió a ", Name, " el mensaje: '", M, "'").
     // -msg(M). // No eliminar la creencia, podría ser útil para historial
+
+    

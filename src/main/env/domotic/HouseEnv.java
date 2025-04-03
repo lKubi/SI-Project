@@ -5,6 +5,8 @@ import jason.environment.Environment;
 import jason.environment.grid.Location;
 import java.util.logging.Logger;
 
+import domotic.SimulatedClock;
+
 public class HouseEnv extends Environment {
 
     // common literals
@@ -43,10 +45,12 @@ public class HouseEnv extends Environment {
     static Logger logger = Logger.getLogger(HouseEnv.class.getName());
 
     HouseModel model; // the model of the grid
+    SimulatedClock clock;
 
     @Override
     public void init(String[] args) {
         model = new HouseModel();
+        clock = new SimulatedClock(this);
 
         if (args.length == 1 && args[0].equals("gui")) {
             HouseView view  = new HouseView(model);
@@ -222,6 +226,9 @@ public class HouseEnv extends Environment {
             addPercept("enfermera", hod);
             addPercept("owner", hod);
         }
+
+        addPercept("enfermera", Literal.parseLiteral("clock(" + clock.getTime() + ")"));
+        
     }
 
     @Override
@@ -347,6 +354,10 @@ public class HouseEnv extends Environment {
         } else if (action.equals(sb)) {
             result = model.sipBeer();
 
+        } else if (action.getFunctor().equals("watchClock")) {
+            result = true;
+            getClock();
+
         } else if (action.getFunctor().equals("obtener_medicamento")) {
             // *** CAMBIO PRINCIPAL AQUÍ ***
 
@@ -403,4 +414,10 @@ public class HouseEnv extends Environment {
         }
         return result;
     }
+
+    private void getClock () {
+        System.out.println("The watch show: " + clock.getTime());
+
+    }
 }
+

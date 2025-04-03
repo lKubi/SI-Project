@@ -111,7 +111,7 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
     } else {
         .println("No hay medicación pautada para la hora ", HH);
     };
-    .wait(20000); // Espera 1 minuto (60000 ms) antes de volver a revisar
+    .wait(1000); // Espera 1 minuto (60000 ms) antes de volver a revisar
     !check_schedule. // Llama recursivamente para seguir revisando
 
 // Si está ocupado, espera menos tiempo y vuelve a intentarlo
@@ -294,7 +294,7 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 	-!go(P) <- 
 		.println("¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿ WHAT A FUCK !!!!!!!!!!!!!!!!!!!!");
 		.println("..........SOMETHING GOES WRONG......").                                        
-																				
+																						
 	/* ----- MANEJO DE ENTREGA ----- */
 	// Cuando el repartidor realiza una entrega, el robot actualiza su estado y vuelve a intentar cumplir la tarea.
 	+delivered(drug, _Qtd, _OrderId)[source(repartidor)]
@@ -333,14 +333,14 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 
 	/* ----- ACTUALIZACIÓN DE LA HORA ----- */
 	// El robot puede verificar la hora actual.                  
-	+?time(T) : true
-	<-  time.check(T).
+    +?time(T) : true
+	<-  watchClock.
 
 
 /* ----- ##### NUEVO: GESTIÓN DE NOTIFICACIÓN DE CONSUMO ##### ----- */
 
 // Cuando el dueño informa que ha consumido un medicamento y el robot está libre:
-+medication_consumed(drug)[source(Ag)] : free[source(self)] & available(drug, medCab) <-
++medication_consumed(drug)[source(Ag)] : free[source(self)] <-
     .println("Notificación recibida: ", Ag, " dice haber tomado ", drug);
     -free[source(self)]; // Marca al robot como ocupado
     .println("Iniciando plan para verificar el consumo en medCab.");

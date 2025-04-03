@@ -150,11 +150,11 @@ public class HouseModel extends GridWorldModel {
                                // Intersecta con lDoorBath2(20,7)? No, la puerta está fuera de esta pared.
 
 	    // 2. Añadir 5 medicamentos diferentes con sus cantidades iniciales
-		contadorMedicamentos.put("Paracetamol 500mg", 1); // Añade Paracetamol 
-		contadorMedicamentos.put("Ibuprofeno 600mg", 1);   // Añade Ibuprofeno
-		contadorMedicamentos.put("Amoxicilina 500mg", 1);  // Añade Amoxicilina
-		contadorMedicamentos.put("Omeprazol 20mg", 1);   // Añade Omeprazol 
-		contadorMedicamentos.put("Loratadina 10mg", 1);   // Añade Loratadina
+		contadorMedicamentos.put("Paracetamol 500mg", 2); // Añade Paracetamol 
+		contadorMedicamentos.put("Ibuprofeno 600mg", 0);   // Añade Ibuprofeno
+		contadorMedicamentos.put("Amoxicilina 500mg", 0);  // Añade Amoxicilina
+		contadorMedicamentos.put("Omeprazol 20mg", 0);   // Añade Omeprazol 
+		contadorMedicamentos.put("Loratadina 10mg", 0);   // Añade Loratadina
 	 
 		this.availableDrugs  = calcularTotalMedicamentos(contadorMedicamentos); 					// numero de medicamentos disponibles
    }

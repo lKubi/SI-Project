@@ -3,7 +3,6 @@
 // o como mucho a las creencias iniciales del robot si no hay Environment.
 // El owner no necesita definir las conexiones. El robot sí para planificar rutas.
 
-
 /* ----- OBJETIVOS INICIALES DEL DUEÑO (OWNER) ----- */
 // Acciones que puede realizar el dueño al inicio.
 // !take_medicine se activará cuando sea la hora o por otra lógica.
@@ -26,8 +25,8 @@
     .send(enfermera, tell, medician("Omeprazol 20mg", 5));
     .send(enfermera, tell, medician("Loratadina 10mg", 3));
     .send(enfermera, tell, medician("Omeprazol 20mg", 18));
-    .send(enfermera, tell, medician("Paracetamol 500mg", 17));
-    .send(enfermera, tell, medician("Omeprazol 20mg", 22));
+    .send(enfermera, tell, medician("Paracetamol 500mg", 20));
+    .send(enfermera, tell, medician("Omeprazol 20mg", 21));
     +medical_guides_sent; // Añade creencia para marcar que ya se envió
     .println("Owner: Pautas iniciales enviadas.").
 // Si ya se enviaron, el objetivo se cumple sin hacer nada.
@@ -215,12 +214,9 @@
 
 /* ----- OBJETIVO: Comprobar aburrimiento (Sin cambios lógicos) ----- */
 +!check_bored : true <-
-    .random(X);
-    WaitTime = math.round(X*20000 + 10000); // Espera entre 10 y 30 segundos
-    .println("Owner: Esperando ", WaitTime, " ms para aburrirse...");
-    .wait(WaitTime);
+    .wait(1000);
     .println("Owner: Aburrido. Preguntando la hora y el tiempo.");
-    .send(enfermera, askOne, time(_), R); // Pregunta la hora
+    .send(enfermera, askOne, time, R); // Pregunta la hora
     .print("Respuesta de hora: ", R);
     .send(enfermera, tell, chat("¿Qué tiempo hace en Ourense?")); // Pregunta el tiempo
     !check_bored. // Vuelve a empezar el ciclo de aburrimiento
@@ -229,3 +225,5 @@
 +msg(M)[source(Ag)] : .my_name(Name) <-
     .print(Ag, " envió a ", Name, " el mensaje: '", M, "'").
     // -msg(M). // No eliminar la creencia, podría ser útil para historial
+
+    
