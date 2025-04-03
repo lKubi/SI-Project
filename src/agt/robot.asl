@@ -1,112 +1,165 @@
-	/* ----- CONEXIONES ENTRE HABITACIONES ----- */
-	//Definimos las conexiones entre las diferentes habitaciones y sus puertas
-	//Esto permite que al robot que pueda moverse de una habitación a otra a través de puertas específicas.
+/* ----- CONEXIONES ENTRE HABITACIONES ----- */
+// Definimos las conexiones entre las diferentes habitaciones y sus puertas
+// Esto permite que el robot pueda moverse de una habitación a otra a través de puertas específicas.
+connect(kitchen, hall, doorKit1).
+connect(kitchen, hallway, doorKit2).
+connect(hall, kitchen, doorKit1).
+connect(hallway, kitchen, doorKit2).
+connect(bath1, hallway, doorBath1).
+connect(bath2, bedroom1, doorBath2).
+connect(hallway, bath1, doorBath1).
+connect(bedroom1, bath2, doorBath2).
+connect(bedroom1, hallway, doorBed1).
+connect(hallway, bedroom1, doorBed1).
+connect(bedroom2, hallway, doorBed2).
+connect(hallway, bedroom2, doorBed2).
+connect(bedroom3, hallway, doorBed3).
+connect(hallway, bedroom3, doorBed3).
+connect(hall, livingroom, doorSal1).
+connect(livingroom, hall, doorSal1).
+connect(hallway, livingroom, doorSal2).
+connect(livingroom, hallway, doorSal2).
 
-	connect(kitchen, hall, doorKit1).
-	connect(kitchen, hallway, doorKit2).
-	connect(hall, kitchen, doorKit1).
-	connect(hallway, kitchen, doorKit2).
-	connect(bath1, hallway, doorBath1).
-	connect(bath2, bedroom1, doorBath2).
-	connect(hallway, bath1, doorBath1).
-	connect(bedroom1, bath2, doorBath2).
-	connect(bedroom1, hallway, doorBed1).
-	connect(hallway, bedroom1, doorBed1).
-	connect(bedroom2, hallway, doorBed2).
-	connect(hallway, bedroom2, doorBed2).
-	connect(bedroom3, hallway, doorBed3).
-	connect(hallway, bedroom3, doorBed3).
-	connect(hall, livingroom, doorSal1).        
-	connect(livingroom, hall, doorSal1).
-	connect(hallway, livingroom, doorSal2).       
-	connect(livingroom, hallway, doorSal2).     
+/* ----- ESTADO INICIAL DEL ROBOT ----- */
+// El robot comienza libre, es decir, no tiene ninguna tarea asignada al principio.
+free.
 
-	/* ----- ESTADO INICIAL DEL ROBOT ----- */
-	// El robot comienza libre, es decir, no tiene ninguna tarea asignada al principio.
-	free.
+/* ----- DISPONIBILIDAD INICIAL DE PRODUCTOS (Específica) ----- */
+// Estas creencias deben reflejar el estado inicial en HouseModel o ser actualizadas por percepciones.
+// Ejemplo: Si Paracetamol empieza con 1 unidad. Los demás con 0.
+available("Paracetamol 500mg", medCab).
+available("Ibuprofeno 600mg", medCab).
+available("Amoxicilina 500mg", medCab).
+available("Omeprazol 20mg", medCab).
+available("Loratadina 10mg", medCab).
 
-	/* ----- DISPONIBILIDAD DE PRODUCTOS ----- */
-	// Se establece que los medicamentos están disponibles en el estante de medicación
-	available(drug, medCab).
+// available("Ibuprofeno 600mg", medCab). // Comentado si empieza en 0
+// available("Amoxicilina 500mg", medCab). // Comentado si empieza en 0
+// ... añadir el resto según el estado inicial del HashMap en HouseModel ...
+available(beer, fridge). // Asumiendo que empieza con 1 cerveza
 
-	// También se establece que hay cervezas disponibles en la nevera
-	available(beer, fridge).
+/* ----- LÍMITES DE CONSUMO (Específicos) ----- */
+// Establecer límites para cada medicamento específico y cerveza.
+limit("Paracetamol 500mg", 1). // Ejemplo: Máximo 2 paracetamoles al día
+limit("Ibuprofeno 600mg", 1). // Ejemplo
+limit("Amoxicilina 500mg", 1). // Ejemplo
+limit("Omeprazol 20mg", 1).    // Ejemplo
+limit("Loratadina 10mg", 1).    // Ejemplo
+limit(beer, 5).
 
-	/* ----- LÍMITE DE CONSUMO DE MEDICAMENTOS ----- */
-	// El robot tiene la regla de no permitir que el dueño consuma más de 10 medicamentos al día.
-	limit(drug,2).  
-	limit(beer,5).  
+/* ----- OBJETIVOS INICIALES ----- */
+// Añadimos el objetivo para que el robot empiece a revisar la pauta de medicación
+!check_schedule.
 
+/* ----- REGLA DE CONSUMO EXCESIVO (Verifica droga específica 'B') ----- */
+// Esta regla verifica si el dueño ha consumido más de un tipo específico de medicamento ('B') de los permitidos en un día.
+too_much(B, Ag) :-
+    .date(YY, MM, DD) &
+    // Cuenta cuántas veces se ha consumido el item específico B hoy
+    .count(consumed(YY, MM, DD, _, _, _, B, Ag), QtdB) &
+    limit(B, Limit) & // Obtiene el límite para ese item específico B
+    .println(Ag," ha consumido ", QtdB, " unidades de ", B, ". Su límite es: ", Limit) &
+    QtdB >= Limit. // Si la cantidad consumida es MAYOR O IGUAL al límite
 
-	/* ----- REGLA DE CONSUMO EXCESIVO ----- */
-	// Esta regla verifica si el dueño ha consumido más medicamentos de los permitidos en un día.
-	// Si ha consumido más de lo permitido, el robot alerta sobre el exceso.                
-	too_much(B, Ag) :-
-	.date(YY, MM, DD) &
-	.count(consumed(YY, MM, DD, _, _, _, B, Ag), QtdB) &   
-	limit(B, Limit) &    
-	.println(Ag," has consumed ", QtdB, " ", B, " their limit is: ", Limit) &
-	QtdB > Limit-1. 
+/* ----- RESPUESTAS A MENSAJES (Sin cambios) ----- */
+answer(Request, "It will be nice to check the weather forecast, don't?.") :-
+    .substring("tiempo", Request).
+answer(Request, "I don't understand what are you talking about.").
 
-	/* ----- RESPUESTAS A MENSAJES ----- */
-	// Cuando se detecta que la solicitud contiene la palabra "tiempo", el robot responde sobre el clima.
-	answer(Request, "It will be nice to check the weather forecast, don't?.") :-
-		.substring("tiempo", Request).  
+/* ----- REGLAS PARA TRAER/PEDIR (Necesitan ser específicas) ----- */
+// Deberían verificar disponibilidad y límites del medicamento específico
 
-	// Para cualquier otra solicitud, el robot responde con un mensaje de no entendimiento.
-	answer(Request, "I don't understand what are you talking about.").
+// Verifica si un medicamento específico está disponible y no se ha superado el límite
+bringDrug(DrugName, Ag) :-
+    available(DrugName, medCab) & // Verifica disponibilidad específica
+    not too_much(DrugName, Ag). // Verifica límite específico
 
-	/* ----- TRAER MEDICAMENTO O CERVEZA ----- */
-	// Si el medicamento está disponible y no se ha excedido el límite de consumo, el robot puede traerlo.
-	bringDrug(Ag) :- available(drug, medCab) & not too_much(drug, Ag).
-	orderDrug(Ag) :- not available(drug, medCab) & not too_much(drug, Ag).  
+// Verifica si un medicamento específico NO está disponible y no se ha superado el límite
+orderDrug(DrugName, Ag) :-
+    not available(DrugName, medCab) & // Verifica disponibilidad específica
+    not too_much(DrugName, Ag). // Verifica límite específico
 
-	// Si la cerveza está disponible y no se ha excedido el límite de consumo, el robot puede traerla.
-	bringBeer(Ag) :- available(beer, fridge) & not too_much(beer, Ag).
-	orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag). 
+// Reglas para cerveza (sin cambios, asumiendo 'beer' es el único tipo)
+bringBeer(Ag) :- available(beer, fridge) & not too_much(beer, Ag).
+orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 
+/* ----- ##### NUEVO: PLANES PARA REVISIÓN PROACTIVA DE PAUTA ##### ----- */
 
+// Plan para revisar periódicamente la pauta de medicación
++!check_schedule : free[source(self)] <- // Solo revisa si está libre
+    .println("Revisando pauta de medicación...");
+    .time(HH, _, _); // Obtiene la hora actual
+    // Busca si hay alguna medicación pautada para esta hora (usando creencias recibidas del owner)
+    if (medician(DrugToDeliver, HH)[source(owner)]) {
+        .println("Pauta encontrada para la hora ", HH, ": Entregar ", DrugToDeliver, " a owner.");
+        // Verificar límite ANTES de intentar entregar
+        if (not too_much(DrugToDeliver, owner)) {
+             // Verificar disponibilidad ANTES de intentar entregar
+             if (available(DrugToDeliver, medCab)) {
+                  .println("Intentando entregar ", DrugToDeliver);
+                  // Intenta lograr el objetivo de que el owner tenga el medicamento específico
+                  // Esto activará los planes +!has(owner, DrugToDeliver)
+                  !has(owner, DrugToDeliver)[source(self)]; // El robot inicia la acción
+             } else {
+                  .println("No se puede entregar ", DrugToDeliver, ": No disponible en ", medCab);
+                  // Opcional: intentar pedirlo si no está disponible
+                  // if (orderDrug(DrugToDeliver, owner)) { !order_item(DrugToDeliver); }
+             }
+        } else {
+            .println("No se puede entregar ", DrugToDeliver, ": Límite diario alcanzado.");
+        }
+    } else {
+        .println("No hay medicación pautada para la hora ", HH);
+    };
+    .wait(20000); // Espera 1 minuto (60000 ms) antes de volver a revisar
+    !check_schedule. // Llama recursivamente para seguir revisando
 
-	/* ----- PLANES PARA TRAER EL MEDICAMENTO O LA CERVEZA ----- */
-	// El robot tiene la intención de traer el medicamento al dueño, siguiendo una serie de acciones.
-	// El proceso implica moverse hacia el estante, coger el medicamento, y entregárselo al dueño.
-	+!has(Ag, drug)[source(Ag)] : 
-		bringDrug(Ag) & free[source(self)] <- 
-			.println("FIRST RULE ====================================");
-			.wait(1000);
-			//!at(enfermera, owner); 
-			-free[source(self)];      
-			!at(enfermera, medCab);
-			open(medCab); 
-			obtener_medicamento("Paracetamol 500mg");	
-			close(medCab);
-			!at(enfermera, Ag);
-			hand_in(drug);
-			?has(Ag, drug);  
-							
-			.date(YY, MM, DD); .time(HH, NN, SS);
-			+consumed(YY, MM, DD, HH, NN, SS, drug, Ag);
-			+free[source(self)].  
+// Si está ocupado, espera menos tiempo y vuelve a intentarlo
++!check_schedule : not free[source(self)] <-
+    .println("Robot ocupado, posponiendo revisión de pauta.");
+    .wait(30000); // Espera 30 segundos si está ocupado
+    !check_schedule.
 
-	// El robot tiene la intención de traer la cerveza al dueño, siguiendo una serie de acciones.
-	// El proceso implica moverse hacia la nevera, coger la cerveza, y entregárselo al dueño.
-	+!has(Ag, beer)[source(Ag)] : 
-		bringBeer(Ag) & free[source(self)] <- 
-			.println("FIRST RULE ====================================");
-			.wait(1000);
-			//!at(enfermera, owner); 
-			-free[source(self)];      
-			!at(enfermera, fridge);	
-			open(fridge);
-			get(beer);   					
-			close(fridge);
-			!at(enfermera, Ag);
-			hand_in(beer);
-			?has(Ag, beer);  
-							
-			.date(YY, MM, DD); .time(HH, NN, SS);
-			+consumed(YY, MM, DD, HH, NN, SS, beer, Ag);
-			+free[source(self)].  
+/* ----- PLANES PARA TRAER MEDICAMENTO O CERVEZA (Modificados para ser específicos) ----- */
+
+// Plan para traer un MEDICAMENTO ESPECÍFICO cuando se solicita (o cuando lo inicia el propio robot)
+// Se activa con !has(AgenteDestino, NombreDelMedicamento)
++!has(Ag, DrugName)[source(Source)] : // Source puede ser Ag (owner) o self (robot)
+    bringDrug(DrugName, Ag) & free[source(self)] <-
+    .println("REGLA 1 (Traer Específico): Intentando llevar ", DrugName, " a ", Ag, " (solicitado por ", Source, ")");
+    -free[source(self)]; // Marcar como ocupado
+    !at(enfermera, medCab); // Ir al armario
+    open(medCab);
+    // *** USA EL PARÁMETRO DrugName ***
+    obtener_medicamento(DrugName); // Llama a la acción con el nombre específico
+    close(medCab);
+    !at(enfermera, Ag); // Ir hacia el agente
+    // hand_in sigue siendo genérico en el modelo, pero podría ser específico si fuera necesario
+    hand_in(drug); // Entregar (acción genérica en el modelo actual)
+    // ?has(Ag, DrugName); // Opcional: Verificar si el agente actualiza su creencia (puede que no sea inmediato)
+
+    // Registrar consumo específico DESPUÉS de entregar
+    .date(YY, MM, DD); .time(HH, NN, SS);
+    +consumed(YY, MM, DD, HH, NN, SS, DrugName, Ag); // Registrar consumo del medicamento específico
+    .println("Registrado consumo de ", DrugName, " por ", Ag);
+    +free[source(self)]; // Marcar como libre
+    .println("Robot libre después de entregar ", DrugName).
+
+// Plan para traer CERVEZA (sin cambios, asume 'beer' como tipo único)
++!has(Ag, beer)[source(Ag)] :
+    bringBeer(Ag) & free[source(self)] <-
+    .println("REGLA 1 (Traer Cerveza): Intentando llevar cerveza a ", Ag);
+    -free[source(self)];
+    !at(enfermera, fridge);
+    open(fridge);
+    get(beer); // Acción genérica para cerveza
+    close(fridge);
+    !at(enfermera, Ag);
+    hand_in(beer); // Acción genérica para cerveza
+    // ?has(Ag, beer);
+    .date(YY, MM, DD); .time(HH, NN, SS);
+    +consumed(YY, MM, DD, HH, NN, SS, beer, Ag); // Registrar consumo de cerveza
+    +free[source(self)].
 
 	/* ----- PLANES PARA PEDIR AL REPARTIDOR UN MEDICAMENTO O UNA CERVEZA ----- */
 	// Si el medicamento no está disponible, el robot lo pide al repartidor.

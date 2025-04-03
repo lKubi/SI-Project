@@ -66,14 +66,7 @@ public class HouseModel extends GridWorldModel {
     Location lBed2      = new Location(14, 0);
     Location lBed3      = new Location(21,0);
     Location lBed1      = new Location(13, 9);
-   // Define las ubicaciones válidas para los muros invisibles
-   Location linvisibleWall1 = new Location(7, 9);   // Válido
-   Location linvisibleWall2 = new Location(7, 10);  // Válido
-   Location linvisibleWall3 = new Location(14, 1);  // Válido (y=14 es el límite)
-   Location linvisibleWall4 = new Location(15, 1); // --> Coordenada Y inválida
-   Location linvisibleWall5 = new Location(22, 1); // --> Coordenada Y inválida
-   Location linvisibleWall6 = new Location(13, 10); // Válido
-   Location linvisibleWall7 = new Location(14, 10); // Válido (y=14 es el límite)
+
 
 
     // --- Ubicaciones de Puertas (sin cambios) ---
@@ -161,10 +154,10 @@ public class HouseModel extends GridWorldModel {
 
 	    // 2. Añadir 5 medicamentos diferentes con sus cantidades iniciales
 		contadorMedicamentos.put("Paracetamol 500mg", 1); // Añade Paracetamol 
-		contadorMedicamentos.put("Ibuprofeno 600mg", 0);   // Añade Ibuprofeno
-		contadorMedicamentos.put("Amoxicilina 500mg", 0);  // Añade Amoxicilina
-		contadorMedicamentos.put("Omeprazol 20mg", 0);   // Añade Omeprazol 
-		contadorMedicamentos.put("Loratadina 10mg", 0);   // Añade Loratadina
+		contadorMedicamentos.put("Ibuprofeno 600mg", 1);   // Añade Ibuprofeno
+		contadorMedicamentos.put("Amoxicilina 500mg", 1);  // Añade Amoxicilina
+		contadorMedicamentos.put("Omeprazol 20mg", 1);   // Añade Omeprazol 
+		contadorMedicamentos.put("Loratadina 10mg", 1);   // Añade Loratadina
 	 
 		this.availableDrugs  = calcularTotalMedicamentos(contadorMedicamentos); 					// numero de medicamentos disponibles
    }
@@ -310,10 +303,6 @@ public class HouseModel extends GridWorldModel {
                    !hasObject(SOFA, x, y) && !hasObject(CHAIR, x, y) &&
                    !hasObject(BED, x, y) && !hasObject(FRIDGE, x, y) &&
                    !hasObject(MEDCAB, x, y); 
-
-        } else if (Ag == OWNER_AGENT_ID) { // Agente 1 es el owner
-             // El owner solo está bloqueado por WASHER y TABLE.
-             return !hasObject(WASHER, x, y) && !hasObject(TABLE, x, y);
 
         } else {
              // Comportamiento para otros agentes
@@ -589,131 +578,106 @@ public class HouseModel extends GridWorldModel {
     }
 
 
-
-	  // --- Métodos Medicamentos ---
-
-    /**
-     * Acción para que el ROBOT (Ag 0) coja un medicamento ESPECÍFICO del MedCab.
+/**
+     * Acción para que un AGENTE ESPECÍFICO (Robot o Owner) coja un medicamento
+     * ESPECÍFICO del MedCab.
+     * Reemplaza a robotGetSpecificDrug y ownerGetSpecificDrug.
+     *
+     * @param agentId El ID del agente que intenta coger el medicamento (0 para Robot, 1 para Owner).
      * @param nombreMedicamento El nombre exacto del medicamento.
-     * @return true si el robot cogió el medicamento, false en caso contrario.
+     * @return true si el agente cogió el medicamento, false en caso contrario.
      */
-    boolean robotGetSpecificDrug(String nombreMedicamento) {
-        System.out.println("\nROBOT trying to get: " + nombreMedicamento);
+    boolean agenteGetSpecificDrug(int agentId, String nombreMedicamento) {
+        // Determinar el nombre del agente para los logs
+        String agentName = (agentId == ROBOT_AGENT_ID) ? "Robot" : (agentId == OWNER_AGENT_ID ? "Owner" : "Unknown Agent " + agentId);
 
-        // --- Precondiciones ---
+        System.out.println("\n" + agentName + " trying to get: " + nombreMedicamento);
+
+        // --- Precondiciones Comunes ---
         if (!medCabOpen) {
-            System.out.println("Error (Robot): MedCab is closed.");
+            System.out.println("Error (" + agentName + "): MedCab is closed.");
             return false;
         }
-        if (carryingDrug) {
-            System.out.println("Error (Robot): Already carrying a drug.");
-            return false;
-        }
-        // Verificar proximidad del ROBOT al MedCab
-        Location robotPos = getAgPos(0);
-        if (!robotPos.isNeigbour(lMedCab)) {
-             System.out.println("Error (Robot): Not near MedCab at " + lMedCab);
+
+        // Verificar proximidad del AGENTE al MedCab
+        Location agentPos = getAgPos(agentId);
+        if (agentPos == null) { // Comprobación extra por si el ID es inválido
+             System.out.println("Error (" + agentName + "): Invalid agent ID " + agentId);
              return false;
         }
+        if (!agentPos.isNeigbour(lMedCab)) {
+            System.out.println("Error (" + agentName + "): Not near MedCab at " + lMedCab + " (Agent at " + agentPos + ")");
+            return false;
+        }
 
-
-        // --- Comprobación del Medicamento ---
-        if (contadorMedicamentos.containsKey(nombreMedicamento)) {
-            int cantidadEspecifica = contadorMedicamentos.get(nombreMedicamento);
-
-            if (cantidadEspecifica > 0) {
-                // Priorizamos el HashMap. Si el HashMap dice que hay, y availableDrugs es > 0, todo OK.
-                // Si availableDrugs fuera 0 aquí, indicaría inconsistencia.
-                 if (availableDrugs > 0) {
-                     // --- Éxito ---
-                     contadorMedicamentos.put(nombreMedicamento, cantidadEspecifica - 1); // Decrementar stock específico
-                     availableDrugs--;           // Decrementar stock general
-                     carryingDrug = true;        // Robot ahora lleva el medicamento
-                     // drugsCount NO se toca aquí, se usa para el owner.
-                     System.out.println("Success (Robot): Got " + nombreMedicamento + ".");
-                     System.out.println("Specific units left: " + contadorMedicamentos.get(nombreMedicamento));
-                     System.out.println("Total units left: " + availableDrugs);
-                     // view?.update...
-                     return true;
-                 } else {
-                      // Inconsistencia: HashMap dice que hay, pero contador total es 0.
-                      System.out.println("Error/Inconsistency (Robot): Specific drug found, but availableDrugs is 0.");
-                      // Opcional: Recalcular availableDrugs para intentar corregir
-                      // this.availableDrugs = calcularTotalMedicamentos(contadorMedicamentos);
-                      // if(this.availableDrugs > 0) { ... reintentar lógica ... } else { return false; }
-                      return false;
-                 }
-            } else {
-                // --- Fallo: No quedan unidades específicas ---
-                System.out.println("Error (Robot): No units of " + nombreMedicamento + " left.");
+        // --- Precondiciones Específicas del Agente ---
+        if (agentId == ROBOT_AGENT_ID) {
+            if (carryingDrug) {
+                System.out.println("Error (" + agentName + "): Already carrying a drug.");
                 return false;
             }
+        } else if (agentId == OWNER_AGENT_ID) {
+            if (drugsCount > 0) {
+                // Cambiado a >= 1 para claridad, aunque > 0 es equivalente para int
+                System.out.println("Error (" + agentName + "): Already has a drug ready (drugsCount=" + drugsCount + "). Must take it first.");
+                return false;
+            }
+             // No necesitamos comprobar carryingDrug para el owner
         } else {
-            // --- Fallo: Medicamento no encontrado ---
-            System.out.println("Error (Robot): Drug '" + nombreMedicamento + "' not found in inventory.");
-            return false;
+            System.out.println("Error (" + agentName + "): Unhandled agent ID for preconditions.");
+            return false; // Agente no soportado por esta acción específica
         }
-    }
 
-    /**
-     * Acción para que el OWNER (Ag 1) coja un medicamento ESPECÍFICO del MedCab.
-     * @param nombreMedicamento El nombre exacto del medicamento.
-     * @return true si el owner cogió el medicamento, false en caso contrario.
-     */
-    boolean ownerGetSpecificDrug(String nombreMedicamento) {
-        System.out.println("\nOWNER trying to get: " + nombreMedicamento);
 
-        // --- Precondiciones ---
-        if (!medCabOpen) {
-            System.out.println("Error (Owner): MedCab is closed.");
-            return false;
-        }
-        // Verificar si el owner ya tiene un medicamento listo para tomar
-        if (drugsCount > 0) {
-            System.out.println("Error (Owner): Already has a drug ready (drugsCount=" + drugsCount + "). Must take it first.");
-            return false;
-        }
-        // Verificar proximidad del OWNER al MedCab
-        Location ownerPos = getAgPos(1);
-        if (!ownerPos.isNeigbour(lMedCab)) {
-             System.out.println("Error (Owner): Not near MedCab at " + lMedCab);
-             return false;
-        }
-        // carryingDrug (del robot) NO se comprueba aquí.
-
-        // --- Comprobación del Medicamento ---
+        // --- Comprobación del Medicamento (Común) ---
         if (contadorMedicamentos.containsKey(nombreMedicamento)) {
             int cantidadEspecifica = contadorMedicamentos.get(nombreMedicamento);
 
             if (cantidadEspecifica > 0) {
-                if (availableDrugs > 0) { // Comprobar consistencia con contador general
-                     // --- Éxito ---
-                     contadorMedicamentos.put(nombreMedicamento, cantidadEspecifica - 1); // Decrementar stock específico
-                     availableDrugs--;           // Decrementar stock general
-                     drugsCount = 1;             // Owner ahora tiene 1 unidad/dosis lista para tomar
-                     // carryingDrug NO se toca
-                     System.out.println("Success (Owner): Got " + nombreMedicamento + ".");
-                     System.out.println("Specific units left: " + contadorMedicamentos.get(nombreMedicamento));
-                     System.out.println("Total units left: " + availableDrugs);
-                     // view?.update...
-                     return true;
+                // Comprobación de consistencia (Común)
+                if (availableDrugs > 0) {
+                    // --- Éxito ---
+                    // Actualizaciones comunes
+                    contadorMedicamentos.put(nombreMedicamento, cantidadEspecifica - 1); // Decrementar stock específico
+                    availableDrugs--;                                                    // Decrementar stock general
+
+                    // Actualizaciones específicas del agente tras éxito
+                    if (agentId == ROBOT_AGENT_ID) {
+                        carryingDrug = true; // Robot ahora lleva el medicamento
+                    } else if (agentId == OWNER_AGENT_ID) {
+                        drugsCount = 1;      // Owner ahora tiene 1 unidad/dosis lista para tomar
+                                             // (Podría ser > 1 si una "toma" consume más de una unidad del stock)
+                    }
+
+                    // Mensajes de éxito (Común con detalle del agente)
+                    System.out.println("Success (" + agentName + "): Got " + nombreMedicamento + ".");
+                    System.out.println("  Specific units left: " + contadorMedicamentos.get(nombreMedicamento));
+                    System.out.println("  Total units left: " + availableDrugs);
+
+                    // view?.update... (Si se necesita actualizar la vista)
+
+                    return true; // Éxito al coger el medicamento
+
                 } else {
-                    System.out.println("Error/Inconsistency (Owner): Specific drug found, but availableDrugs is 0.");
+                    // Inconsistencia: HashMap dice que hay, pero contador total es 0. (Común)
+                    System.out.println("Error/Inconsistency (" + agentName + "): Specific drug found ('" + nombreMedicamento +"'=" + cantidadEspecifica + "), but availableDrugs is 0.");
+                    // Opcional: Recalcular para intentar corregir
+                    // int realTotal = calcularTotalMedicamentos(contadorMedicamentos);
+                    // System.out.println("Recalculated total: " + realTotal);
+                    // if (realTotal > 0) { this.availableDrugs = realTotal; /* reintentar? */ }
                     return false;
                 }
-
             } else {
-                // --- Fallo: No quedan unidades específicas ---
-                System.out.println("Error (Owner): No units of " + nombreMedicamento + " left.");
+                // --- Fallo: No quedan unidades específicas --- (Común)
+                System.out.println("Error (" + agentName + "): No units of " + nombreMedicamento + " left.");
                 return false;
             }
         } else {
-            // --- Fallo: Medicamento no encontrado ---
-            System.out.println("Error (Owner): Drug '" + nombreMedicamento + "' not found in inventory.");
+            // --- Fallo: Medicamento no encontrado --- (Común)
+            System.out.println("Error (" + agentName + "): Drug '" + nombreMedicamento + "' not found in inventory.");
             return false;
         }
     }
-
      /** (Opcional) Método genérico para añadir medicamentos (podría usarse para reponer stock) */
      boolean addSpecificDrug(String nombreMedicamento, int cantidad) {
         if (cantidad <= 0) return false;
