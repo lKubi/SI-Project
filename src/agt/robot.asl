@@ -350,13 +350,8 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 
 	/* ----- ACTUALIZACIÓN DE LA HORA ----- */
 	// El robot puede verificar la hora actual.                  
-<<<<<<< HEAD
     +?time : true
 	<-  watchClock.
-=======
-	+?time : true
-	<-  wacthClock.
->>>>>>> 8c1763acc831b8971e14c667803ae08f255c9718
 
 
 /* ----- ##### NUEVO: GESTIÓN DE NOTIFICACIÓN DE CONSUMO ##### ----- */

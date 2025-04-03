@@ -86,40 +86,57 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 /* ----- ##### NUEVO: PLANES PARA REVISIÓN PROACTIVA DE PAUTA ##### ----- */
 
 // Plan para revisar periódicamente la pauta de medicación
-+!check_schedule : free[source(self)] <- // Solo revisa si está libre
-    .println("Revisando pauta de medicación...");
-    .time(HH, _, _); // Obtiene la hora actual
-    // Busca si hay alguna medicación pautada para esta hora (usando creencias recibidas del owner)
-    if (medician(DrugToDeliver, HH)[source(owner)]) {
-        .println("Pauta encontrada para la hora ", HH, ": Entregar ", DrugToDeliver, " a owner.");
-        // Verificar límite ANTES de intentar entregar
-        if (not too_much(DrugToDeliver, owner)) {
-             // Verificar disponibilidad ANTES de intentar entregar
-             if (available(DrugToDeliver, medCab)) {
-                  .println("Intentando entregar ", DrugToDeliver);
-                  // Intenta lograr el objetivo de que el owner tenga el medicamento específico
-                  // Esto activará los planes +!has(owner, DrugToDeliver)
-                  !has(owner, DrugToDeliver)[source(self)]; // El robot inicia la acción
-             } else {
-                  .println("No se puede entregar ", DrugToDeliver, ": No disponible en ", medCab);
-                  // Opcional: intentar pedirlo si no está disponible
-                  // if (orderDrug(DrugToDeliver, owner)) { !order_item(DrugToDeliver); }
-             }
-        } else {
-            .println("No se puede entregar ", DrugToDeliver, ": Límite diario alcanzado.");
-        }
-    } else {
-        .println("No hay medicación pautada para la hora ", HH);
-    };
-    .wait(1000); // Espera 1 minuto (60000 ms) antes de volver a revisar
-    !check_schedule. // Llama recursivamente para seguir revisando
+/* ----- ##### NUEVO: PLANES PARA REVISIÓN PROACTIVA DE PAUTA ##### ----- */
 
-// Si está ocupado, espera menos tiempo y vuelve a intentarlo
-+!check_schedule : not free[source(self)] <-
-    .println("Robot ocupado, posponiendo revisión de pauta.");
-    .wait(30000); // Espera 30 segundos si está ocupado
+// Plan para revisar periódicamente la pauta de medicación (USA HORA SIMULADA) - CON LOGGING ADICIONAL
++!check_schedule : free[source(self)] <-
+    .println("--- Check Schedule Cycle ---"); // Marca inicio del ciclo
+    .println("Checking if free: YES");
+    // Primero, verifica que la creencia 'clock' exista antes de intentar usarla
+    if (clock(SimulatedHour)) {
+        .println("Hora simulada actual percibida: ", SimulatedHour);
+
+        // *** PASO DE DEPURACIÓN: Listar todas las creencias 'medician' existentes ***
+        .findall(medician(Drug, Hour), medician(Drug, Hour), MedList);
+        .println("Creencias 'medician' actuales en la base de creencias: ", MedList);
+        // *** FIN PASO DE DEPURACIÓN ***
+
+        // Busca si hay alguna medicación pautada para ESTA HORA SIMULADA
+        // (Busca sin anotación de fuente, como discutimos)
+        if (medician(DrugToDeliver, SimulatedHour)) {
+             // Si entra aquí, encontró una coincidencia
+            .println("Pauta encontrada para la hora SIMULADA ", SimulatedHour, ": Entregar ", DrugToDeliver, " a owner.");
+            // Verificar límite ANTES de intentar entregar
+            if (not too_much(DrugToDeliver, owner)) {
+                // Verificar disponibilidad ANTES de intentar entregar
+                if (available(DrugToDeliver, medCab)) {
+                    .println("Intentando entregar ", DrugToDeliver);
+                    !has(owner, DrugToDeliver)[source(self)]; // El robot inicia la acción
+                } else {
+                    .println("No se puede entregar ", DrugToDeliver, ": No disponible en ", medCab);
+                    // Opcional: intentar pedirlo si no está disponible
+                }
+            } else {
+                .println("No se puede entregar ", DrugToDeliver, ": Límite diario alcanzado.");
+            }
+        } else {
+            // Si entra aquí, NO encontró coincidencia para la hora actual
+            .println("No hay medicación pautada para la hora SIMULADA ", SimulatedHour);
+        };
+
+    } else {
+         // Si entra aquí, la creencia 'clock(Hora)' no existe en este momento
+    }
+    .wait(1000); // Espera 1 segundo real (ajusta si es necesario para tu simulación)
     !check_schedule.
 
+// Plan alternativo si no está libre (también con logging para claridad)
++!check_schedule : not free[source(self)] <-
+    .println("--- Check Schedule Cycle ---");
+    .println("Checking if free: NO (Robot ocupado)");
+    .println("--- End Check Schedule Cycle ---");
+    .wait(5000); // Espera 5 segundos si está ocupado (ajusta si es necesario)
+    !check_schedule.
 /* ----- PLANES PARA TRAER MEDICAMENTO O CERVEZA (Modificados para ser específicos) ----- */
 
 // Plan para traer un MEDICAMENTO ESPECÍFICO cuando se solicita (o cuando lo inicia el propio robot)
@@ -333,7 +350,7 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 
 	/* ----- ACTUALIZACIÓN DE LA HORA ----- */
 	// El robot puede verificar la hora actual.                  
-    +?time(T) : true
+    +?time : true
 	<-  watchClock.
 
 

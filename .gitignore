@@ -90,5 +90,3 @@ build/*
 !build/tmp/compileJava/compileTransaction/stash-dir/HouseModel.class.uniqueId0
 !build/tmp/compileJava/compileTransaction/stash-dir/HouseView.class.uniqueId2
 !build/tmp/compileJava/previous-compilation-data.bin
-.gradle/
-build/
