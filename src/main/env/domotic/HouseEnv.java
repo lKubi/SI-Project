@@ -225,7 +225,9 @@ public class HouseEnv extends Environment {
             addPercept("owner", hod);
         }
 
-        addPercept("enfermera", Literal.parseLiteral("clock(\""+clock.getTime()+"\")"));
+        addPercept("enfermera", Literal.parseLiteral("clock(\"" + clock.getTime() + "\")"));
+    
+
     }
 
     @Override
