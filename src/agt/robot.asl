@@ -278,8 +278,8 @@
 
 	/* ----- ACTUALIZACIÓN DE LA HORA ----- */
 	// El robot puede verificar la hora actual.                  
-	+?time(T) : true
-	<-  time.check(T).
+	+?time : true
+	<-  wacthClock.
 
 
 /* ----- ##### NUEVO: GESTIÓN DE NOTIFICACIÓN DE CONSUMO ##### ----- */

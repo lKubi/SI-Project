@@ -296,9 +296,8 @@ medician(omeprazol, 23).
 
 /* ----- OBJETIVO: Comprobar aburrimiento ----- */
 +!check_bored : true
-   <- .random(X); .wait(X*5000+2000);  // Owner get bored randomly
-      .send(enfermera, askOne, time(_), R); // when bored, owner ask the robot about the time
-      .print(R);
+   <- .wait(1000);  // Owner get bored randomly
+      .send(enfermera, askOne, time, R); // when bored, owner ask the robot about the time
 	  .send(enfermera, tell, chat("What's the weather in Ourense?"));
       !check_bored.
 
