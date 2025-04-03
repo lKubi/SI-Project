@@ -21,15 +21,45 @@ connect(livingroom, hall, doorSal1).
 connect(hallway,livingroom, doorSal2).
 connect(livingroom, hallway, doorSal2).
 
+/* ---- PAUTAS DE MEDICAMENTOS ----*/
+
+medician(paracetamol, 1).
+medician(paracetamol, 9).
+medician(ibuprofeno, 11).
+medician(amoxicilina, 15).
+medician(omeprazol, 5).
+medician(loratadina, 3).
+medician(omeprazol, 18).
+medician(paracetamol, 20).
+medician(omeprazol, 23).
+
 /* ----- OBJETIVOS INICIALES DEL DUEÑO (OWNER) ----- */
 //Acciones que puede realizar el dueño
 
 !sit.
-!open.
 !take_medicine.
+!open.
 !walk.
 !wakeup.
 !check_bored.
+!medical_guides_initial.
+
+
+
+
++!medical_guides_initial <-
+	.println("The guidelines are being provided to the enfermera");
+	.send(enfermera, tell, medician(paracetamol, 1));
+	.send(enfermera, tell, medician(paracetamol, 9));
+	.send(enfermera, tell, medician(ibuprofeno, 11));
+	.send(enfermera, tell, medician(amoxicilina, 15));
+	.send(enfermera, tell, medician(omeprazol, 5));
+	.send(enfermera, tell, medician(loratadina, 3));
+	.send(enfermera, tell, medician(omeprazol, 18));
+	.send(enfermera, tell, medician(paracetamol, 20));
+	.send(enfermera, tell, medician(omeprazol, 23));
+	.println("The guidelines has been trasmited!!!!!!");
+	-medical_guides_initial.
 
 
 //+!init <- !sit ||| !open ||| !walk ||| !wakeup ||| !check_bored.
@@ -68,71 +98,6 @@ connect(livingroom, hallway, doorSal2).
 	.wait(6000);
 	!walk.
 
-/* ----- OBJETIVO: Abrir la puerta (open) ----- */
-//Si el dueño NO está ocupado, va hacia la puerta y la abre
-+!open : .my_name(Ag) & not busy <-
-	+busy;   
-	.println("Owner goes to the home door");
-	.wait(200);
-	!at(Ag, delivery);
-	.println("Owner is opening the door"); 
-	.random(X); .wait(X*7351+2000); //Toma un tiempo aleatorio en abrir
-	!at(Ag, sofa);
-	sit(sofa);
-	.wait(5000);
-	!at(Ag, medCab);
-	.wait(10000);
-	!at(Ag, chair3);
-	sit(chair3);
-	-busy.
-
-//Si el dueño está ocupado, espera y vuelve a intentarlo
-+!open : .my_name(Ag) & busy <-
-	.println("Owner is doing something now and could not open the door");
-	.wait(8000);
-	!open.
- 
-/* ----- OBJETIVO: Sentarse (sit) ----- */
-//Si el dueño NO está ocupado, va a la estantería de medicamentos o la nevera y toma algo
-+!sit : .my_name(Ag) & not busy <- 												
-	+busy; 																		
-	.println("Owner goes to the medicine shelf to get a drug.");               
-	//.println("Owner goes to the fridge to get a beer.");
-	.wait(1000);
-	!at(Ag, medCab);                                   //Elegir si se quiere ir a la estanteria de medicacion o a la nevera
-	//!at(Ag, fridge);															
-	.println("Owner is hungry and is at the medicine shelf getting something"); 
-	//.println("He llegado al frigorifico");
-	.wait(2000);
-	!at(Ag, chair3);														
-	sit(chair3);															
-	.wait(1000);
-	/*!at(Ag, chair4);                                 //Comentado para que no dure tanto el programa, luego hay que descomentarlo
-	sit(chair4);
-	.wait(4000);
-	!at(Ag, chair2);
-	sit(chair2);
-	.wait(4000);
-	!at(Ag, chair1);
-	sit(chair1);
-	.wait(4000);
-	!at(Ag, sofa);
-	sit(sofa);
-	.wait(10000);*/
-	!get(drug);                                         //Elegir si se necesita una medicina o una cerveza
-	//!get(beer); 
-	.wait(50000);
-	-busy.	
-
-	
-
-//Si el dueño está ocupado, espera y vuelve a intentarlo
-+!sit : .my_name(Ag) & busy <-													
-	.println("Owner is doing something now and could not go to fridge");
-	.wait(30000);
-	!sit.
-
-
 
 /* ----- ENTREGA PARTE 1 ----- */
 /* ----- OBJETIVO: Ir al almacén de medicamentos y tomar la medicación ----- */
@@ -143,7 +108,7 @@ connect(livingroom, hallway, doorSal2).
       .println("Owner is at the medicine shelf.");
       
       open(medCab); 
-      get(drug); 
+      obtener_medicamento("Paracetamol 500mg"); 
       close(medCab);
       
 	  .println("Owner is taking the drug.");
@@ -159,6 +124,71 @@ connect(livingroom, hallway, doorSal2).
       .println("Owner is doing something else and cannot take medicine now.");
       .wait(5000);
       !take_medicine.
+
+/* ----- OBJETIVO: Abrir la puerta (open) ----- */
+//Si el dueño NO está ocupado, va hacia la puerta y la abre
++!open : .my_name(Ag) & not busy <-
+	+busy;   
+	.println("Owner goes to the home door");
+	.wait(200);
+	!at(Ag, delivery);
+	.println("Owner is opening the door"); 
+	.random(X); .wait(X*7351+2000); //Toma un tiempo aleatorio en abrir
+	!at(Ag, sofa);
+	sit(sofa);
+	.wait(5000);
+	!at(Ag, chair3);
+	sit(chair3);
+	-busy.
+
+//Si el dueño está ocupado, espera y vuelve a intentarlo
++!open : .my_name(Ag) & busy <-
+	.println("Owner is doing something now and could not open the door");
+	.wait(8000);
+	!open.
+ 
+/* ----- OBJETIVO: Sentarse (sit) ----- */
+//Si el dueño NO está ocupado, va a la estantería de medicamentos o la nevera y toma algo
++!sit : .my_name(Ag) & not busy <- 												
+	+busy; 	
+	!get(drug);                                         //Elegir si se necesita una medicina o una cerveza
+	//!get(beer); 																	
+	//.println("Owner goes to the medicine shelf to get a drug.");               
+	//.println("Owner goes to the fridge to get a beer.");
+	//.wait(1000);
+	//!at(Ag, medCab);                                   //Elegir si se quiere ir a la estanteria de medicacion o a la nevera
+	//!at(Ag, fridge);															
+	//.println("Owner is hungry and is at the medicine shelf getting something"); 
+	//.println("He llegado al frigorifico");
+	//.wait(2000);
+	!at(Ag, chair3);														
+	sit(chair3);															
+	.wait(8000);
+	!at(Ag, chair4);                                 //Comentado para que no dure tanto el programa, luego hay que descomentarlo
+	sit(chair4);
+	.wait(7000);
+	!at(Ag, chair2);
+	sit(chair2);
+	.wait(4000);
+	!at(Ag, chair1);
+	sit(chair1);
+	.wait(4000);
+	!at(Ag, sofa);
+	sit(sofa);
+	.wait(10000);
+	-busy;
+   !take_medicine.
+
+	
+
+//Si el dueño está ocupado, espera y vuelve a intentarlo
++!sit : .my_name(Ag) & busy <-													
+	.println("Owner is doing something now and could not go to fridge");
+	.wait(30000);
+	!sit.
+
+
+
 
 
 // ----- OBJETIVO: Verificar si el owner está en un lugar y si no esta, moverse hacia allí -----
@@ -266,9 +296,8 @@ connect(livingroom, hallway, doorSal2).
 
 /* ----- OBJETIVO: Comprobar aburrimiento ----- */
 +!check_bored : true
-   <- .random(X); .wait(X*5000+2000);  // Owner get bored randomly
-      .send(enfermera, askOne, time(_), R); // when bored, owner ask the robot about the time
-      .print(R);
+   <- .wait(1000);  // Owner get bored randomly
+      .send(enfermera, askOne, time, R); // when bored, owner ask the robot about the time
 	  .send(enfermera, tell, chat("What's the weather in Ourense?"));
       !check_bored.
 
@@ -276,5 +305,3 @@ connect(livingroom, hallway, doorSal2).
 +msg(M)[source(Ag)] : .my_name(Name)
    <- .print(Ag, " send ", Name, " the message: ", M);
       -msg(M).
-
-	  

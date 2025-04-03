@@ -1,7 +1,7 @@
-/* ----- CONEXIONES ENTRE HABITACIONES ----- */
-//Definimos las conexiones entre las diferentes habitaciones y sus puertas
-//Esto permite que el dueño pueda moverse de una habitación a otra a través de puertas específicas.
+/* owner.asl - Corregido para secuencia Wakeup -> Llamar Robot (Beer) -> Sit -> Take Medicine */
 
+/* ----- CONEXIONES ENTRE HABITACIONES ----- */
+// (Sin cambios)
 connect(kitchen, hall, doorKit1).
 connect(kitchen, hallway, doorKit2).
 connect(hall, kitchen, doorKit1).
@@ -16,40 +16,132 @@ connect(bedroom2, hallway, doorBed2).
 connect(hallway, bedroom2, doorBed2).
 connect(bedroom3, hallway, doorBed3).
 connect(hallway, bedroom3, doorBed3).
-connect(hall,livingroom, doorSal1).                       
+connect(hall,livingroom, doorSal1).
 connect(livingroom, hall, doorSal1).
 connect(hallway,livingroom, doorSal2).
 connect(livingroom, hallway, doorSal2).
 
 /* ----- OBJETIVOS INICIALES DEL DUEÑO (OWNER) ----- */
-//Acciones que puede realizar el dueño
-
+// Definimos los objetivos principales que pueden iniciar ciclos de comportamiento.
+!wakeup.        // Inicia la secuencia matutina.
 !sit.
 !open.
-!take_medicine.
 !walk.
-!wakeup.
 !check_bored.
 
 
-//+!init <- !sit ||| !open ||| !walk ||| !wakeup ||| !check_bored.
+// Los demás (!sit, !open, !walk, !take_medicine) serán lanzados por otros planes.
+
 
 /* ----- OBJETIVO: Despertarse (wakeup) ----- */
-//Si el dueño NO está ocupado, se despierta, informa y toma medicamentos
-+!wakeup : .my_name(Ag) & not busy <-								
-	+busy;																
-	!check_bored;													
-	.println("Owner just woke up and needs to go to the medicine shelf"); 
-	.wait(3000);
-	-busy;																
-	!sit.
+// Al despertar, lo primero es llamar al robot (para pedir algo).
++!wakeup : .my_name(Ag) & not busy <-
+    +busy;
+    .println("Owner just woke up.");
+    .wait(2000); // Simula despertar
+    -busy;
+    !llamar_robot. // Lanza el siguiente paso: llamar al robot
 
-//Si el dueño ya está ocupado, espera e intenta despertarse de nuevo															
-+!wakeup : .my_name(Ag) & busy <-										
-	.println("Owner is doing something now, is not asleep");
++!wakeup : .my_name(Ag) & busy <-
+    .println("Owner is doing something now, cannot process wakeup again yet.");
+    .wait(10000);
+    !wakeup.
+
+
+/* ----- OBJETIVO: Llamar al Robot (para pedir cerveza) ----- */
+// Este plan ahora simplemente lanza el objetivo !get(beer)
++!llamar_robot : .my_name(Ag) & not busy <-
+    +busy;
+    .println("Owner decided to call the robot for a beer.");
+    // Este plan ahora dispara la petición real
+    !get(beer);
+    // El plan !get(beer) se encargará de enviar el mensaje y luego lanzar !sit
+    // No necesitamos marcar -busy aquí, lo hará el plan !get(beer) o el !sit
+    -busy. // Eliminado
+
++!llamar_robot : .my_name(Ag) & busy <-
+    .println("Owner is busy, cannot call robot now.");
+    .wait(5000); // Espera menos si estaba ocupado
+    !llamar_robot.
+
+
+
+/* ----- OBJETIVO: Sentarse (sit) ----- */
+// Se sienta en un lugar específico (chair3) y LUEGO toma la medicina.
++!sit : .my_name(Ag) & not busy <-
+    +busy;
+    .println("Owner is going to sit down (chair3).");
+    !at(Ag, chair3);														
+	sit(chair3);															
+	.wait(1000);
+	!at(Ag, chair4);                                 //Comentado para que no dure tanto el programa, luego hay que descomentarlo
+	sit(chair4);
+	.wait(4000);
+	!at(Ag, chair2);
+	sit(chair2);
+	.wait(4000);
+	!at(Ag, chair1);
+	sit(chair1);
+	.wait(4000);
+	!at(Ag, sofa);
+	sit(sofa);
 	.wait(10000);
-	!wakeup.
-	
+    -busy;           // Termina la acción de sentarse
+    !take_medicine. // <--- Después de sentarse, lanza el objetivo de tomar medicina
+
++!sit : .my_name(Ag) & busy <-
+    .println("Owner is busy, cannot sit now.");
+    .wait(10000);
+    !sit.
+
+
+/* ----- OBJETIVO: Tomar la medicina ----- */
+// Va al armario, coge medicina específica y notifica. Fin de esta secuencia específica.
++!take_medicine : .my_name(Ag) & not busy <- // Usamos Ag consistentemente
+    +busy;
+    !at(Ag, medCab); // Asegura estar en el armario
+    .println("Owner is at the medicine shelf.");
+    open(medCab);
+    obtener_medicamento("Paracetamol 500mg"); // Acción específica
+    close(medCab);
+	wait(1000);
+    .println("Owner has taken the drug.");
+    // Notificar al robot
+    .send(enfermera, tell, medication_consumed(drug));
+    -busy; // Termina la tarea
+    // Ya no lanza !sit aquí, porque !sit fue el paso *anterior*.
+    // Podría lanzar !check_bored o nada para esperar nuevos eventos.
+    .println("Medicine taken. Owner is now waiting/idle.").
+
++!take_medicine : .my_name(Ag) & busy <- // Usamos Ag consistentemente
+    .println("Owner is busy, cannot take medicine now.");
+    .wait(5000);
+    !take_medicine.
+
+/* ----- OBJETIVO: Abrir la puerta (open) ----- */
+//Si el dueño NO está ocupado, va hacia la puerta y la abre
++!open : .my_name(Ag) & not busy <-
+	+busy;   
+	.println("Owner goes to the home door");
+	.wait(200);
+	!at(Ag, delivery);
+	.println("Owner is opening the door"); 
+	.random(X); .wait(X*7351+2000); //Toma un tiempo aleatorio en abrir
+	!at(Ag, sofa);
+	sit(sofa);
+	.wait(5000);
+	!at(Ag, bed1);
+	.wait(10000);
+	!at(Ag, chair3);
+	sit(chair3);
+	-busy.
+
+//Si el dueño está ocupado, espera y vuelve a intentarlo
++!open : .my_name(Ag) & busy <-
+	.println("Owner is doing something now and could not open the door");
+	.wait(8000);
+	!open.
+
 /* ----- OBJETIVO: Caminar (walk) ----- */
 //Si el dueño NO está ocupado, se levanta y se mueve aleatoriamente
 +!walk : .my_name(Ag) & not busy <- 
@@ -68,98 +160,6 @@ connect(livingroom, hallway, doorSal2).
 	.wait(6000);
 	!walk.
 
-/* ----- OBJETIVO: Abrir la puerta (open) ----- */
-//Si el dueño NO está ocupado, va hacia la puerta y la abre
-+!open : .my_name(Ag) & not busy <-
-	+busy;   
-	.println("Owner goes to the home door");
-	.wait(200);
-	!at(Ag, delivery);
-	.println("Owner is opening the door"); 
-	.random(X); .wait(X*7351+2000); //Toma un tiempo aleatorio en abrir
-	!at(Ag, sofa);
-	sit(sofa);
-	.wait(5000);
-	!at(Ag, medCab);
-	.wait(10000);
-	!at(Ag, chair3);
-	sit(chair3);
-	-busy.
-
-//Si el dueño está ocupado, espera y vuelve a intentarlo
-+!open : .my_name(Ag) & busy <-
-	.println("Owner is doing something now and could not open the door");
-	.wait(8000);
-	!open.
- 
-/* ----- OBJETIVO: Sentarse (sit) ----- */
-//Si el dueño NO está ocupado, va a la estantería de medicamentos o la nevera y toma algo
-+!sit : .my_name(Ag) & not busy <- 												
-	+busy; 																		
-	.println("Owner goes to the medicine shelf to get a drug.");               
-	//.println("Owner goes to the fridge to get a beer.");
-	.wait(1000);
-	!at(Ag, medCab);                                   //Elegir si se quiere ir a la estanteria de medicacion o a la nevera
-	//!at(Ag, fridge);															
-	.println("Owner is hungry and is at the medicine shelf getting something"); 
-	//.println("He llegado al frigorifico");
-	.wait(2000);
-	!at(Ag, chair3);														
-	sit(chair3);															
-	.wait(1000);
-	/*!at(Ag, chair4);                                 //Comentado para que no dure tanto el programa, luego hay que descomentarlo
-	sit(chair4);
-	.wait(4000);
-	!at(Ag, chair2);
-	sit(chair2);
-	.wait(4000);
-	!at(Ag, chair1);
-	sit(chair1);
-	.wait(4000);
-	!at(Ag, sofa);
-	sit(sofa);
-	.wait(10000);*/
-	!get(drug);                                         //Elegir si se necesita una medicina o una cerveza
-	//!get(beer); 
-	.wait(50000);
-	-busy.	
-
-	
-
-//Si el dueño está ocupado, espera y vuelve a intentarlo
-+!sit : .my_name(Ag) & busy <-													
-	.println("Owner is doing something now and could not go to fridge");
-	.wait(30000);
-	!sit.
-
-
-
-/* ----- ENTREGA PARTE 1 ----- */
-/* ----- OBJETIVO: Ir al almacén de medicamentos y tomar la medicación ----- */
-+!take_medicine : .my_name(Name) & not busy 
-   <- 
-      +busy;
-	  !at(Ag, medCab);
-      .println("Owner is at the medicine shelf.");
-      
-	  open(medCab); 
-	  //Coger con la mano y obtener el medicamento
-	  get(drug); 		
-	  close(medCab);
-	  
-	  //Notificar al robot que el Owner ha tomado la medicación.
-	  .send(enfermera, tell, chat("I have taken the drug."));
-      .println("Owner is taking the drug.");
-	  !at(Ag, sofa);
-	  .wait(5000);
-	  -busy.
- 
-+!take_medicine : .my_name(Name) & busy
-   <- 
-      .println("Owner is doing something else and cannot take medicine now.");
-      .wait(5000);
-      !take_medicine.
-	  
 // ----- OBJETIVO: Verificar si el owner está en un lugar y si no esta, moverse hacia allí -----
 +!at(Ag, P) : at(Ag, P) <- 														
 	.println("Owner is at ",P);													

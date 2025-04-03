@@ -34,7 +34,7 @@
 
 	/* ----- LÍMITE DE CONSUMO DE MEDICAMENTOS ----- */
 	// El robot tiene la regla de no permitir que el dueño consuma más de 10 medicamentos al día.
-	limit(drug,5).  
+	limit(drug,2).  
 	limit(beer,5).  
 
 
@@ -76,7 +76,7 @@
 			-free[source(self)];      
 			!at(enfermera, medCab);
 			open(medCab); 
-			get(drug); 		
+			obtener_medicamento("Paracetamol 500mg");	
 			close(medCab);
 			!at(enfermera, Ag);
 			hand_in(drug);
@@ -278,12 +278,64 @@
 
 	/* ----- ACTUALIZACIÓN DE LA HORA ----- */
 	// El robot puede verificar la hora actual.                  
-	+?time(T) : true
-	<-  time.check(T).
+	+?time : true
+	<-  wacthClock.
 
-	/* ----- NOTIFICACIONES DE CONSUMO ----- */
-	// Cuando el dueño informa al robot que ha consumido un medicamento, el robot actualiza su inventario.
-+medication_consumed(drug)[source(Ag)] : true <-
-    .println("Notificación recibida: ", Ag, " ha tomado ", drug);
-    .println("Stock actualizado para ", drug);
-    .send(Ag, tell, msg("He actualizado el inventario de medicamentos. Gracias por informarme.")).
+
+/* ----- ##### NUEVO: GESTIÓN DE NOTIFICACIÓN DE CONSUMO ##### ----- */
+
+// Cuando el dueño informa que ha consumido un medicamento y el robot está libre:
++medication_consumed(drug)[source(Ag)] : free[source(self)] & available(drug, medCab) <-
+    .println("Notificación recibida: ", Ag, " dice haber tomado ", drug);
+    -free[source(self)]; // Marca al robot como ocupado
+    .println("Iniciando plan para verificar el consumo en medCab.");
+    !verify_consumption(Ag, drug). // Inicia el objetivo de verificación
+
+// Si el robot está ocupado cuando recibe la notificación:
++medication_consumed(drug)[source(Ag)] : not free[source(self)] <-
+    .println("Recibí notificación de consumo de ", drug, " por ", Ag, ", pero estoy ocupado. Lo verificaré más tarde.");
+    // Opcional: Enviar mensaje al Ag indicando que está ocupado
+    .send(Ag, tell, msg("Recibí tu notificación sobre ", drug, ", pero estoy ocupado. Lo verificaré en cuanto pueda.")).
+    // Opcional: Añadir a una cola de tareas pendientes
+    // +pending_verification(Ag, drug, medCab).
+
+/* ----- ##### NUEVO: PLAN PARA VERIFICAR EL CONSUMO ##### ----- */
+
++!verify_consumption(Ag, drug) <-
+    .println("Verificando consumo de ", drug, " en ", medCab, " solicitado por ", Ag);
+    !at(enfermera, medCab); // Paso 1: Ir a la ubicación del drug
+    .println("Llegué a ", medCab, ". Realizando verificación de stock de ", drug);
+
+    // --- Inicio: Simulación/Acción de Verificación ---
+    // Aquí iría la lógica real para verificar el stock.
+    // Podría ser consultar un sensor, interactuar con el entorno, etc.
+    // Por ahora, simulamos que la verificación toma tiempo y es exitosa.
+    .wait(3000); // Simula el tiempo de verificación
+    .println("Verificación de stock para ", drug, " completada (simulada).");
+
+    // Aquí podrías actualizar la creencia del stock si usaras un contador.
+    // Ejemplo: Si tuvieras stock(drug, 10)
+    // ?stock(drug, N);
+    // -stock(drug, N);
+    // +stock(drug, N-1).
+    // También deberías manejar el caso N=0 -> -available(drug, medCab).
+
+    // --- Fin: Simulación/Acción de Verificación ---
+
+    .println("Verificación finalizada. Enviando confirmación a ", Ag);
+    .send(Ag, tell, msg("He verificado en el estante de medicacion que has tomado ", drug, ". ¡Gracias por informarme!")); // Mensaje de confirmación final
+    +free[source(self)]; // Libera robot *tras* disparar chequeo
+    .println("Robot libre después de verificar consumo.").
+
+// Plan de fallo para la verificación
+-!verify_consumption(Ag, drug)[error(E)] <-
+    .println("¡ERROR al verificar el consumo de ", drug, " para ", Ag, "! Error: ", E);
+    .send(Ag, tell, msg("Tuve un problema al intentar verificar el consumo de ", drug, ". Por favor, revisa manualmente."));
+    +free[source(self)]. // Asegura liberar al robot incluso si falla
+
+
+/* ----- RECEPCIÓN DE PAUTAS DE MEDICACIÓN ----- */
+// Al recibir una pauta del owner, la añade a sus creencias.
++medician(M, H)[source(owner)] <-
+    +medician(M, H);
+    .println("Pauta recibida y almacenada: Tomar ", M, " a las ", H, "h.").

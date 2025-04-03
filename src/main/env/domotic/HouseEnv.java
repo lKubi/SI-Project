@@ -33,15 +33,22 @@ public class HouseEnv extends Environment {
     public static final Literal oac3 = Literal.parseLiteral("at(owner,chair3)");
     public static final Literal oac4 = Literal.parseLiteral("at(owner,chair4)");
     public static final Literal oasf = Literal.parseLiteral("at(owner,sofa)");
+    public static final Literal aob1 = Literal.parseLiteral("at(owner,bed1)");
+    public static final Literal aob2 = Literal.parseLiteral("at(owner,bed2)");
+    public static final Literal aob3 = Literal.parseLiteral("at(owner,bed3)");
     public static final Literal oad  = Literal.parseLiteral("at(owner,delivery)");
+
+
 
     static Logger logger = Logger.getLogger(HouseEnv.class.getName());
 
     HouseModel model; // the model of the grid
+    SimulatedClock clock;
 
     @Override
     public void init(String[] args) {
         model = new HouseModel();
+        clock = new SimulatedClock(this);
 
         if (args.length == 1 && args[0].equals("gui")) {
             HouseView view  = new HouseView(model);
@@ -179,6 +186,23 @@ public class HouseEnv extends Environment {
             System.out.println("[owner] is at Sofa.");
         }
 
+        if (lOwner.distance(model.lBed1) == 0) {
+            addPercept("owner", aob1);
+            System.out.println("[owner] is at Bed 1.");
+        }
+
+        if (lOwner.distance(model.lBed2) == 0) {
+            addPercept("owner", aob2);
+            System.out.println("[owner] is at Bed 2.");
+        }
+
+        if (lOwner.distance(model.lBed3) == 0) {
+            addPercept("owner", aob3);
+            System.out.println("[owner] is at Bed 3.");
+        }
+
+        
+
         if (lOwner.distance(model.lDeliver) == 0) {
             addPercept("owner", oad);
         }
@@ -200,6 +224,8 @@ public class HouseEnv extends Environment {
             addPercept("enfermera", hod);
             addPercept("owner", hod);
         }
+
+        addPercept("enfermera", Literal.parseLiteral("clock(\""+clock.getTime()+"\")"));
     }
 
     @Override
@@ -268,6 +294,12 @@ public class HouseEnv extends Environment {
                 break;
                 case "sofa": dest = model.lSofa; 
                 break;
+                case "bed1": dest = model.lBed1; 
+                break;
+                case "bed2": dest = model.lBed2; 
+                break;
+                case "bed3": dest = model.lBed3; 
+                break;
                 case "washer": dest = model.lWasher; 
                 break;
                 case "table": dest = model.lTable; 
@@ -319,33 +351,26 @@ public class HouseEnv extends Environment {
         } else if (action.equals(sb)) {
             result = model.sipBeer();
 
-        }else if (action.getFunctor().equals("obtener_medicamento")) {
-            try {
-                // Extract the drug name (which is the first term, index 0)
-                Term drugTerm = action.getTerm(0);
-                String drugName = "";
-
-                // Correctly get the string value depending on whether it's an Atom or a StringTerm
-                if (drugTerm instanceof StringTerm) {
-                    // If the action was like obtener_medicamento("Paracetamol 500mg")
-                    drugName = ((StringTerm) drugTerm).getString();
-                } else {
-                    // If the action was like obtener_medicamento(paracetamol)
-                    // Atom.toString() or Term.toString() usually works
-                    drugName = drugTerm.toString();
-                    // You might need to remove quotes if toString() adds them unexpectedly
-                    // drugName = drugTerm.toString().replace("\"", "");
-                }
-
-                // Call the model's method with the specific drug name
-                // Optionally, you could add a check here: if (ag.equals("enfermera")) { ... }
-                result = model.obtener_medicamento(drugName);
-
-            } catch (Exception e) {
-                logger.log(java.util.logging.Level.SEVERE, "Error executing action " + action + " for agent " + ag, e);
-                result = false; // Ensure result is false on error
+        } else if (action.getFunctor().equals("obtener_medicamento")) {
+            // *** CAMBIO PRINCIPAL AQUÍ ***
+            Term drugTerm = action.getTerm(0);
+            String drugName = "";
+            if (drugTerm instanceof StringTerm) {
+                drugName = ((StringTerm) drugTerm).getString();
+            } else {
+                drugName = drugTerm.toString().replace("\"", ""); // Limpiar comillas si es atom
             }
-            
+
+            // Comprobar qué agente ejecuta la acción
+            if (ag.equals("enfermera")) {
+                result = model.robotGetSpecificDrug(drugName); // Llamar método del robot
+            } else if (ag.equals("owner")) {
+                result = model.ownerGetSpecificDrug(drugName); // Llamar método del owner
+            } else {
+                 logger.warning("Unknown agent '" + ag + "' trying to execute obtener_medicamento.");
+                 result = false;
+            }
+  
         } else if (action.getFunctor().equals("deliverdrug")) {
              
             // wait 4 seconds to finish "deliver"
@@ -365,7 +390,9 @@ public class HouseEnv extends Environment {
             } catch (Exception e) {
                 logger.info("Failed to execute action deliver!" + e);
             }
-
+        } else if (action.getFunctor().equals("wacthClock")) {
+            result = true;
+            getClock();
         } else {
             logger.info("Failed to execute action " + action);
         }
@@ -377,5 +404,10 @@ public class HouseEnv extends Environment {
             } catch (Exception e) {}
         }
         return result;
+    }
+
+    private void getClock () {
+        System.out.println("The watch show: " + clock.getTime());
+
     }
 }
