@@ -227,8 +227,14 @@ public class HouseEnv extends Environment {
             addPercept("owner", hod);
         }
 
+<<<<<<< HEAD
         addPercept("enfermera", Literal.parseLiteral("clock(" + clock.getTime() + ")"));
         
+=======
+        addPercept("enfermera", Literal.parseLiteral("clock(\"" + clock.getTime() + "\")"));
+    
+
+>>>>>>> 8c1763acc831b8971e14c667803ae08f255c9718
     }
 
     @Override
@@ -401,7 +407,9 @@ public class HouseEnv extends Environment {
             } catch (Exception e) {
                 logger.info("Failed to execute action deliver!" + e);
             }
-
+        } else if (action.getFunctor().equals("wacthClock")) {
+            result = true;
+            getClock();
         } else {
             logger.info("Failed to execute action " + action);
         }
@@ -420,4 +428,7 @@ public class HouseEnv extends Environment {
 
     }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 8c1763acc831b8971e14c667803ae08f255c9718
