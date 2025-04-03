@@ -233,7 +233,7 @@ public class HouseView extends GridWorldView {
 				drawScaledImage(g, x, y, objPath, 75, 100);
 				drawMan(g, x, y, "down");
 			} else {
-				drawMan(g, x, y, hmodel.getLastDirection(1)); 
+				drawMan(g, x, y, "walkr");         
 			};
 			if (lRobot.isNeigbour(lOwner)) {	
 				String o = "S";
@@ -442,35 +442,30 @@ public class HouseView extends GridWorldView {
      * @param y Coordenada Y de la celda.
      * @param how Cadena que indica el estado ("right", "left", "up", "down", "stand", "walkr").
      */
-	public void drawMan(Graphics g, int x, int y, String how) { 
-		String resource = "/doc/sitd.png"; // valor por defecto
-
+    public void drawMan(Graphics g, int x, int y, String how) { 
+		String resource = "/doc/sitd.png";//currentDirectory.concat("/doc/sitd.png");
 		switch (how) {
-			case "right":      resource = "/doc/sitr.png"; break;
-			case "left":       resource = "/doc/sitl.png"; break;
-			case "up":         resource = "/doc/situ.png"; break;
-			case "down":       resource = "/doc/sitd.png"; break;
-			case "stand":      resource = "/doc/sits.png"; break;
-			case "walkr":      resource = "/doc/walklr.png"; break; // respaldo si llega como antes
-
-			case "walk_up":    resource = "/doc/walklu.png"; break;
-			case "walk_down":  resource = "/doc/walkld.png"; break;
-			case "walk_left":  resource = "/doc/walkll.png"; break;
-			case "walk_right": resource = "/doc/walklr.png"; break;
-		}
-
+			case "right": resource = "/doc/sitr.png";//currentDirectory.concat("/doc/sitr.png"); 
+			break;
+			case "left": resource = "/doc/sitl.png";//currentDirectory.concat("/doc/sitl.png");  
+			break;     
+			case "up": resource = "/doc/situ.png";//currentDirectory.concat("/doc/situ.png");  
+			break;     
+			case "down": resource = "/doc/sitd.png";//currentDirectory.concat("/doc/sitd.png"); 
+			break;
+			case "stand": resource = "/doc/sits.png";//currentDirectory.concat("/doc/sits.png"); 
+			break;
+			case "walkr": resource = "/doc/walklr.png";//currentDirectory.concat("/doc/walklr.png"); 
+			break;
+        }
 		URL url = getClass().getResource(resource);
 		ImageIcon Img = new ImageIcon();
-		
-		if (url == null) {
-			System.out.println("Could not find image! " + resource);
-		} else {
-			Img = new ImageIcon(url);
-		}
-
+		if (url == null)
+    		System.out.println( "Could not find image! "+resource);
+		else Img = new ImageIcon(getClass().getResource(resource)); 
+		//ImageIcon Img = new ImageIcon(getClass().getResource(resource));
 		g.drawImage(Img.getImage(), x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 3, cellSizeH - 3, null);
-	}
-
+    }
 
     /**
      * Dibuja específicamente a la persona sentada mirando a la derecha.

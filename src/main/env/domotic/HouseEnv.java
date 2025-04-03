@@ -5,6 +5,8 @@ import jason.environment.Environment;
 import jason.environment.grid.Location;
 import java.util.logging.Logger;
 
+import domotic.SimulatedClock;
+
 public class HouseEnv extends Environment {
 
     // common literals
@@ -225,9 +227,8 @@ public class HouseEnv extends Environment {
             addPercept("owner", hod);
         }
 
-        addPercept("enfermera", Literal.parseLiteral("clock(\"" + clock.getTime() + "\")"));
-    
-
+        addPercept("enfermera", Literal.parseLiteral("clock(" + clock.getTime() + ")"));
+        
     }
 
     @Override
@@ -353,6 +354,10 @@ public class HouseEnv extends Environment {
         } else if (action.equals(sb)) {
             result = model.sipBeer();
 
+        } else if (action.getFunctor().equals("watchClock")) {
+            result = true;
+            getClock();
+
         } else if (action.getFunctor().equals("obtener_medicamento")) {
             // *** CAMBIO PRINCIPAL AQUÍ ***
 
@@ -396,9 +401,7 @@ public class HouseEnv extends Environment {
             } catch (Exception e) {
                 logger.info("Failed to execute action deliver!" + e);
             }
-        } else if (action.getFunctor().equals("wacthClock")) {
-            result = true;
-            getClock();
+
         } else {
             logger.info("Failed to execute action " + action);
         }
@@ -417,3 +420,4 @@ public class HouseEnv extends Environment {
 
     }
 }
+
