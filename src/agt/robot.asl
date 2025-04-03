@@ -65,6 +65,8 @@
 	bringBeer(Ag) :- available(beer, fridge) & not too_much(beer, Ag).
 	orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag). 
 
+
+
 	/* ----- PLANES PARA TRAER EL MEDICAMENTO O LA CERVEZA ----- */
 	// El robot tiene la intención de traer el medicamento al dueño, siguiendo una serie de acciones.
 	// El proceso implica moverse hacia el estante, coger el medicamento, y entregárselo al dueño.
