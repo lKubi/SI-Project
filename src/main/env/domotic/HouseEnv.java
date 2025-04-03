@@ -43,10 +43,12 @@ public class HouseEnv extends Environment {
     static Logger logger = Logger.getLogger(HouseEnv.class.getName());
 
     HouseModel model; // the model of the grid
+    SimulatedClock clock;
 
     @Override
     public void init(String[] args) {
         model = new HouseModel();
+        clock = new SimulatedClock(this);
 
         if (args.length == 1 && args[0].equals("gui")) {
             HouseView view  = new HouseView(model);
@@ -222,6 +224,8 @@ public class HouseEnv extends Environment {
             addPercept("enfermera", hod);
             addPercept("owner", hod);
         }
+
+        addPercept("enfermera", Literal.parseLiteral("clock(\""+clock.getTime()+"\")"));
     }
 
     @Override
@@ -390,7 +394,9 @@ public class HouseEnv extends Environment {
             } catch (Exception e) {
                 logger.info("Failed to execute action deliver!" + e);
             }
-
+        } else if (action.getFunctor().equals("wacthClock")) {
+            result = true;
+            getClock();
         } else {
             logger.info("Failed to execute action " + action);
         }
@@ -402,5 +408,10 @@ public class HouseEnv extends Environment {
             } catch (Exception e) {}
         }
         return result;
+    }
+
+    private void getClock () {
+        System.out.println("The watch show: " + clock.getTime());
+
     }
 }

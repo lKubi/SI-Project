@@ -225,7 +225,52 @@
     .send(enfermera, tell, chat("¿Qué tiempo hace en Ourense?")); // Pregunta el tiempo
     !check_bored. // Vuelve a empezar el ciclo de aburrimiento
 
+<<<<<<< HEAD
 /* ----- OBJETIVO: Recibir y mostrar mensajes (Sin cambios lógicos) ----- */
 +msg(M)[source(Ag)] : .my_name(Name) <-
     .print(Ag, " envió a ", Name, " el mensaje: '", M, "'").
     // -msg(M). // No eliminar la creencia, podría ser útil para historial
+=======
++has(owner,beer) : true <-
+   .println("Owner take the beer.");
+   !take(beer).
+
+/* ----- OBJETIVO: El owner solicita el medicamento o la cerveza ----- */
+//Si el owner no tiene el medicamento o la cerveza, solicita que el robot enfermera se lo traiga.
+-has(owner,drug) : true <-
+   .println("Owner ask for drug. It is time to take it.");
+   !get(drug).
+
+-has(owner,beer) : true <-
+   .println("Owner ask for beer. It is time to take it.");
+   !get(beer).
+
+/* ----- OBJETIVO: Tomar medicamento o cerveza ----- */
++!take(drug) : has(owner, drug) <-
+   sip(drug);
+   .println("Owner is siping the drug.");
+   !take(drug).
++!take(drug) : not has(owner, drug) <-                         //Finaliza de tomar el medicamento
+   .println("Owner has finished to take the drug.").//;
+   //-asked(drug).
+
++!take(beer) : has(owner, beer) <-
+   sip(beer);
+   .println("Owner is siping the beer.");
+   !take(beer).
++!take(beer) : not has(owner, beer) <-                          //Finaliza de tomar la cerveza
+   .println("Owner has finished to take the beer.").//;
+   //-asked(beer)
+
+/* ----- OBJETIVO: Comprobar aburrimiento ----- */
++!check_bored : true
+   <- .wait(1000);  // Owner get bored randomly
+      .send(enfermera, askOne, time, R); // when bored, owner ask the robot about the time
+	  .send(enfermera, tell, chat("What's the weather in Ourense?"));
+      !check_bored.
+
+/* ----- OBJETIVO: Recibir y mostrar mensajes ----- */
++msg(M)[source(Ag)] : .my_name(Name)
+   <- .print(Ag, " send ", Name, " the message: ", M);
+      -msg(M).
+>>>>>>> 6c46197 (Reloj añadido)
