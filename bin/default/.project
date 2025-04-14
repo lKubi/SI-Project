@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>SI-Project-arreglar_entorno</name>
-	<comment>Project SI-Project-arreglar_entorno created by Buildship.</comment>
+	<name>SI_31</name>
+	<comment>Project SI_31 created by Buildship.</comment>
 	<projects>
 	</projects>
 	<buildSpec>
@@ -22,7 +22,7 @@
 	</natures>
 	<filteredResources>
 		<filter>
-			<id>1743457162876</id>
+			<id>1744026164228</id>
 			<name></name>
 			<type>30</type>
 			<matcher>

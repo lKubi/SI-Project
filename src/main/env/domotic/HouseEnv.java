@@ -44,7 +44,7 @@ public class HouseEnv extends Environment {
 
     static Logger logger = Logger.getLogger(HouseEnv.class.getName());
 
-    HouseModel model; // the model of the grid
+    HouseModel model;
     SimulatedClock clock;
 
     @Override
@@ -60,20 +60,21 @@ public class HouseEnv extends Environment {
         updatePercepts();
     }
     
+    /**
+     * Actualiza las percepciones de los agentes sobre su ubicación actual dentro de la casa.
+     * Asigna percepciones de la habitación en la que están y si se encuentran en una puerta.
+     */
     void updateAgentsPlace() {
-        // get the robot location
         Location lRobot = model.getAgPos(0);
-        // get the robot room location
         String RobotPlace = model.getRoom(lRobot);
         addPercept("enfermera", Literal.parseLiteral("atRoom("+RobotPlace+")"));
         addPercept("owner", Literal.parseLiteral("atRoom(enfermera,"+RobotPlace+")"));
-        // get the owner location
+
         Location lOwner = model.getAgPos(1);
-        // get the owner room location
         String OwnerPlace = model.getRoom(lOwner);
         addPercept("owner", Literal.parseLiteral("atRoom("+OwnerPlace+")"));  
         addPercept("enfermera", Literal.parseLiteral("atRoom(owner,"+OwnerPlace+")"));
-        
+
         if (lRobot.distance(model.lDoorHome) == 0 ||
             lRobot.distance(model.lDoorKit1) == 0 ||
             lRobot.distance(model.lDoorKit2) == 0 ||
@@ -100,49 +101,66 @@ public class HouseEnv extends Environment {
             addPercept("owner", Literal.parseLiteral("atDoor"));
         };         
     }
-    
+
+    /**
+     * Actualiza las percepciones de la localización de los objetos fijos del entorno
+     * como el botiquín, la nevera, el sofá, sillas, camas y punto de entrega.
+     */
     void updateThingsPlace() {
-        // get the medical cabinet location
         String medCabPlace = model.getRoom(model.lMedCab);
         addPercept(Literal.parseLiteral("atRoom(medCab, "+medCabPlace+")"));
-        // get the fridge location
+
         String fridgePlace = model.getRoom(model.lFridge);
         addPercept(Literal.parseLiteral("atRoom(fridge, "+fridgePlace+")"));
+
         String sofaPlace = model.getRoom(model.lSofa);
         addPercept(Literal.parseLiteral("atRoom(sofa, "+sofaPlace+")")); 
+
         String chair1Place = model.getRoom(model.lChair1);
         addPercept(Literal.parseLiteral("atRoom(chair1, "+chair1Place+")"));
+
         String chair2Place = model.getRoom(model.lChair2);
         addPercept(Literal.parseLiteral("atRoom(chair2, "+chair2Place+")"));
+
         String chair3Place = model.getRoom(model.lChair3);
         addPercept(Literal.parseLiteral("atRoom(chair3, "+chair3Place+")"));
+
         String chair4Place = model.getRoom(model.lChair4);
         addPercept(Literal.parseLiteral("atRoom(chair4, "+chair4Place+")"));
+
         String deliveryPlace = model.getRoom(model.lDeliver);
         addPercept(Literal.parseLiteral("atRoom(delivery, "+deliveryPlace+")"));
+
         String bed1Place = model.getRoom(model.lBed1);
         addPercept(Literal.parseLiteral("atRoom(bed1, "+bed1Place+")"));
+
         String bed2Place = model.getRoom(model.lBed2);
         addPercept(Literal.parseLiteral("atRoom(bed2, "+bed2Place+")"));
+
         String bed3Place = model.getRoom(model.lBed3);
         addPercept(Literal.parseLiteral("atRoom(bed3, "+bed3Place+")"));
     }
-    
+
+
+    /**
+     * Actualiza todas las percepciones relevantes para los agentes, incluyendo posiciones,
+     * proximidad a objetos, estado de recursos (cervezas, medicamentos), y ubicación en muebles.
+     * También actualiza el reloj interno del entorno.
+     */
     void updatePercepts() {
-        // clear the percepts of the agents
         clearPercepts("enfermera");
         clearPercepts("owner");
-        
+
         updateAgentsPlace();
         updateThingsPlace(); 
-        
+
         Location lRobot = model.getAgPos(0);
         Location lOwner = model.getAgPos(1);
 
         if (lRobot.distance(model.lMedCab) < 2) {
             addPercept("enfermera", amc);
         }
-        
+
         if (lOwner.distance(model.lMedCab) < 2) {
             addPercept("owner", oamc);
         }
@@ -150,11 +168,11 @@ public class HouseEnv extends Environment {
         if (lRobot.distance(model.lFridge) < 2) {
             addPercept("enfermera", af);
         } 
-        
+
         if (lOwner.distance(model.lFridge) < 2) {
             addPercept("owner", oaf);
         } 
-        
+
         if (lRobot.distance(lOwner) == 1) {                                                     
             addPercept("enfermera", ao);
         }
@@ -182,7 +200,7 @@ public class HouseEnv extends Environment {
             addPercept("owner", oac4);
             System.out.println("[owner] is at Chair4.");
         }
-                                                                        
+
         if (lOwner.distance(model.lSofa) == 0) {
             addPercept("owner", oasf);
             System.out.println("[owner] is at Sofa.");
@@ -203,54 +221,61 @@ public class HouseEnv extends Environment {
             System.out.println("[owner] is at Bed 3.");
         }
 
-        
-
         if (lOwner.distance(model.lDeliver) == 0) {
             addPercept("owner", oad);
         }
 
-        // add beer "status" the percepts
         if (model.fridgeOpen) {
             addPercept("enfermera", Literal.parseLiteral("stock(beer," + model.availableBeers + ")"));
         }
+
         if (model.sipCount > 0) {
             addPercept("enfermera", hob);
             addPercept("owner", hob);
         }
 
-        // add drug "status" the percepts
         if (model.medCabOpen) {
             addPercept("enfermera", Literal.parseLiteral("stock(drug," + model.availableDrugs + ")"));
         }
+
         if (model.drugsCount > 0) {
             addPercept("enfermera", hod);
             addPercept("owner", hod);
         }
 
         addPercept("enfermera", Literal.parseLiteral("clock(" + clock.getTime() + ")"));
+<<<<<<< Updated upstream
         
+=======
+>>>>>>> Stashed changes
     }
 
+
+    /**
+     * Ejecuta la acción especificada por un agente sobre el entorno.
+     * Incluye acciones como moverse, sentarse, abrir/cerrar objetos, obtener y entregar
+     * recursos (cerveza o medicamentos), mirar el reloj, entre otros.
+     *
+     * @param ag Nombre del agente que realiza la acción.
+     * @param action Acción a ejecutar (estructura).
+     * @return true si la acción fue ejecutada con éxito, false en caso contrario.
+     */
     @Override
     public boolean executeAction(String ag, Structure action) {
-        
+
         System.out.println("[" + ag + "] doing: " + action); 
-        
+
         boolean result = false;
+
         if (action.getFunctor().equals("sit")) {
             String l = action.getTerm(0).toString();
             Location dest = null;
             switch (l) {
-                case "chair1": dest = model.lChair1; 
-                break;
-                case "chair2": dest = model.lChair2;  
-                break;     
-                case "chair3": dest = model.lChair3; 
-                break;
-                case "chair4": dest = model.lChair4; 
-                break;
-                case "sofa": dest = model.lSofa; 
-                break;
+                case "chair1": dest = model.lChair1; break;
+                case "chair2": dest = model.lChair2; break;     
+                case "chair3": dest = model.lChair3; break;
+                case "chair4": dest = model.lChair4; break;
+                case "sofa": dest = model.lSofa; break;
             };
             try {
                 if (ag.equals("enfermera")) {
@@ -263,68 +288,46 @@ public class HouseEnv extends Environment {
             } catch (Exception e) {
                 e.printStackTrace();
             }     
-        } else if (action.equals(omc)) { // omc = open(medCab)
+
+        } else if (action.equals(omc)) {
             result = model.openMedCab();
 
-        } else if (action.equals(cmc)) { // cmc = close(medCab)
+        } else if (action.equals(cmc)) {
             result = model.closeMedCab();
-                                                                     
-        } else if (action.equals(of)) { // of = open(fridge)
+
+        } else if (action.equals(of)) {
             result = model.openFridge();
 
-        } else if (action.equals(clf)) { // clf = close(fridge)
+        } else if (action.equals(clf)) {
             result = model.closeFridge();
 
         } else if (action.getFunctor().equals("move_towards")) {
             String l = action.getTerm(0).toString();
             Location dest = null;
             switch (l) {
-                case "medCab": dest = model.lMedCab;
-                break;
-                case "fridge": dest = model.lFridge; 
-                break;
-                case "owner": dest = model.getAgPos(1);  
-                break;     
-                case "delivery": dest = model.lDeliver;  
-                break;     
-                case "chair1": dest = model.lChair1; 
-                break;
-                case "chair2": dest = model.lChair2; 
-                break;
-                case "chair3": dest = model.lChair3; 
-                break;
-                case "chair4": dest = model.lChair4; 
-                break;
-                case "sofa": dest = model.lSofa; 
-                break;
-                case "bed1": dest = model.lBed1; 
-                break;
-                case "bed2": dest = model.lBed2; 
-                break;
-                case "bed3": dest = model.lBed3; 
-                break;
-                case "washer": dest = model.lWasher; 
-                break;
-                case "table": dest = model.lTable; 
-                break;
-                case "doorBed1": dest = model.lDoorBed1; 
-                break;            
-                case "doorBed2": dest = model.lDoorBed2; 
-                break;
-                case "doorBed3": dest = model.lDoorBed3; 
-                break;
-                case "doorKit1": dest = model.lDoorKit1; 
-                break;
-                case "doorKit2": dest = model.lDoorKit2; 
-                break;
-                case "doorSal1": dest = model.lDoorSal1; 
-                break;
-                case "doorSal2": dest = model.lDoorSal2; 
-                break;
-                case "doorBath1": dest = model.lDoorBath1; 
-                break;
-                case "doorBath2": dest = model.lDoorBath2;                  
-                break; 
+                case "medCab": dest = model.lMedCab; break;
+                case "fridge": dest = model.lFridge; break;
+                case "owner": dest = model.getAgPos(1); break;     
+                case "delivery": dest = model.lDeliver; break;     
+                case "chair1": dest = model.lChair1; break;
+                case "chair2": dest = model.lChair2; break;
+                case "chair3": dest = model.lChair3; break;
+                case "chair4": dest = model.lChair4; break;
+                case "sofa": dest = model.lSofa; break;
+                case "bed1": dest = model.lBed1; break;
+                case "bed2": dest = model.lBed2; break;
+                case "bed3": dest = model.lBed3; break;
+                case "washer": dest = model.lWasher; break;
+                case "table": dest = model.lTable; break;
+                case "doorBed1": dest = model.lDoorBed1; break;            
+                case "doorBed2": dest = model.lDoorBed2; break;
+                case "doorBed3": dest = model.lDoorBed3; break;
+                case "doorKit1": dest = model.lDoorKit1; break;
+                case "doorKit2": dest = model.lDoorKit2; break;
+                case "doorSal1": dest = model.lDoorSal1; break;
+                case "doorSal2": dest = model.lDoorSal2; break;
+                case "doorBath1": dest = model.lDoorBath1; break;
+                case "doorBath2": dest = model.lDoorBath2; break; 
             }
             try {
                 if (ag.equals("enfermera")) {
@@ -359,32 +362,27 @@ public class HouseEnv extends Environment {
             getClock();
 
         } else if (action.getFunctor().equals("obtener_medicamento")) {
-            // *** CAMBIO PRINCIPAL AQUÍ ***
+            int agentId = -1;
+            if (ag.equals("enfermera")) {
+                agentId = HouseModel.ROBOT_AGENT_ID;
+            } else if (ag.equals("owner")) {
+                agentId = HouseModel.OWNER_AGENT_ID;
+            } else {
+                logger.warning("Action 'obtener_medicamento' called by unrecognized agent: " + agentId);
+                return false;
+            }
 
-             // 1. Determinar el ID del agente basado en su nombre
-             int agentId = -1; // Valor por defecto inválido
-             if (ag.equals("enfermera")) { // Reemplaza "robot" si tu agente se llama diferente
-                 agentId = HouseModel.ROBOT_AGENT_ID; // Usa la constante definida en HouseModel
-             } else if (ag.equals("owner")) { // Reemplaza "owner" si tu agente se llama diferente
-                 agentId = HouseModel.OWNER_AGENT_ID; // Usa la constante definida en HouseModel
-             } else {
-                 logger.warning("Action 'obtener_medicamento' called by unrecognized agent: " + agentId);
-                 // Decide si quieres fallar la acción o lanzar un error
-                 return false; // Fallar la acción si el agente es desconocido
-             }
             Term drugTerm = action.getTerm(0);
             String drugName = "";
             if (drugTerm instanceof StringTerm) {
                 drugName = ((StringTerm) drugTerm).getString();
             } else {
-                drugName = drugTerm.toString().replace("\"", ""); // Limpiar comillas si es atom
+                drugName = drugTerm.toString().replace("\"", "");
             }
 
-            result = model.agenteGetSpecificDrug(agentId, drugName); // Llamar método del robot
-  
+            result = model.agenteGetSpecificDrug(agentId, drugName);
+
         } else if (action.getFunctor().equals("deliverdrug")) {
-             
-            // wait 4 seconds to finish "deliver"
             try {
                 result = model.addDrug((int)((NumberTerm)action.getTerm(1)).solve());
                 Thread.sleep(4000);
@@ -393,8 +391,6 @@ public class HouseEnv extends Environment {
             }
 
         } else if (action.getFunctor().equals("deliverbeer")) {
-             
-            // wait 4 seconds to finish "deliver"
             try {
                 result = model.addBeer((int)((NumberTerm)action.getTerm(1)).solve());
                 Thread.sleep(4000);
@@ -412,12 +408,20 @@ public class HouseEnv extends Environment {
                 Thread.sleep(200);
             } catch (Exception e) {}
         }
+
         return result;
     }
 
+    /**
+     * Imprime en consola la hora actual del reloj del entorno.
+     */
     private void getClock () {
         System.out.println("The watch show: " + clock.getTime());
-
     }
+<<<<<<< Updated upstream
 }
 
+=======
+
+}
+>>>>>>> Stashed changes
