@@ -1,11 +1,14 @@
 package domotic;
 
 import jason.asSyntax.*;
-import jason.environment.Environment;
+import jason.environment.Environment; // Ensure this base class is imported
 import jason.environment.grid.Location;
 import java.util.logging.Logger;
 
 import domotic.SimulatedClock;
+import domotic.HouseModel;
+import domotic.HouseView;
+
 
 public class HouseEnv extends Environment {
 
@@ -27,7 +30,7 @@ public class HouseEnv extends Environment {
     public static final Literal af   = Literal.parseLiteral("at(enfermera,fridge)");
     public static final Literal ao   = Literal.parseLiteral("at(enfermera,owner)");
     public static final Literal ad   = Literal.parseLiteral("at(enfermera,delivery)");
-    
+
     public static final Literal oamc = Literal.parseLiteral("at(owner, medCab)");
     public static final Literal oaf  = Literal.parseLiteral("at(owner,fridge)");
     public static final Literal oac1 = Literal.parseLiteral("at(owner,chair1)");
@@ -40,26 +43,25 @@ public class HouseEnv extends Environment {
     public static final Literal aob3 = Literal.parseLiteral("at(owner,bed3)");
     public static final Literal oad  = Literal.parseLiteral("at(owner,delivery)");
 
-
-
     static Logger logger = Logger.getLogger(HouseEnv.class.getName());
 
     HouseModel model;
     SimulatedClock clock;
+    HouseView view; // Keep a reference if needed for view's timer
 
     @Override
     public void init(String[] args) {
         model = new HouseModel();
-        clock = new SimulatedClock(this);
+        clock = new SimulatedClock(this); // Pass 'this' HouseEnv instance
 
         if (args.length == 1 && args[0].equals("gui")) {
-            HouseView view  = new HouseView(model);
-            model.setView(view);
+             view = new HouseView(model); // Assign to the field
+             model.setView(view);
         }
 
         updatePercepts();
     }
-    
+
     /**
      * Actualiza las percepciones de los agentes sobre su ubicación actual dentro de la casa.
      * Asigna percepciones de la habitación en la que están y si se encuentran en una puerta.
@@ -72,7 +74,7 @@ public class HouseEnv extends Environment {
 
         Location lOwner = model.getAgPos(1);
         String OwnerPlace = model.getRoom(lOwner);
-        addPercept("owner", Literal.parseLiteral("atRoom("+OwnerPlace+")"));  
+        addPercept("owner", Literal.parseLiteral("atRoom("+OwnerPlace+")"));
         addPercept("enfermera", Literal.parseLiteral("atRoom(owner,"+OwnerPlace+")"));
 
         if (lRobot.distance(model.lDoorHome) == 0 ||
@@ -86,8 +88,8 @@ public class HouseEnv extends Environment {
             lRobot.distance(model.lDoorBed2) == 0 ||
             lRobot.distance(model.lDoorBed3) == 0) {
             addPercept("enfermera", Literal.parseLiteral("atDoor"));
-        }; 
-        
+        };
+
         if (lOwner.distance(model.lDoorHome) == 0 ||
             lOwner.distance(model.lDoorKit1) == 0 ||
             lOwner.distance(model.lDoorKit2) == 0 ||
@@ -99,7 +101,7 @@ public class HouseEnv extends Environment {
             lOwner.distance(model.lDoorBed2) == 0 ||
             lOwner.distance(model.lDoorBed3) == 0) {
             addPercept("owner", Literal.parseLiteral("atDoor"));
-        };         
+        };
     }
 
     /**
@@ -114,7 +116,7 @@ public class HouseEnv extends Environment {
         addPercept(Literal.parseLiteral("atRoom(fridge, "+fridgePlace+")"));
 
         String sofaPlace = model.getRoom(model.lSofa);
-        addPercept(Literal.parseLiteral("atRoom(sofa, "+sofaPlace+")")); 
+        addPercept(Literal.parseLiteral("atRoom(sofa, "+sofaPlace+")"));
 
         String chair1Place = model.getRoom(model.lChair1);
         addPercept(Literal.parseLiteral("atRoom(chair1, "+chair1Place+")"));
@@ -152,7 +154,7 @@ public class HouseEnv extends Environment {
         clearPercepts("owner");
 
         updateAgentsPlace();
-        updateThingsPlace(); 
+        updateThingsPlace();
 
         Location lRobot = model.getAgPos(0);
         Location lOwner = model.getAgPos(1);
@@ -167,13 +169,13 @@ public class HouseEnv extends Environment {
 
         if (lRobot.distance(model.lFridge) < 2) {
             addPercept("enfermera", af);
-        } 
+        }
 
         if (lOwner.distance(model.lFridge) < 2) {
             addPercept("owner", oaf);
-        } 
+        }
 
-        if (lRobot.distance(lOwner) == 1) {                                                     
+        if (lRobot.distance(lOwner) == 1) {
             addPercept("enfermera", ao);
         }
 
@@ -183,42 +185,34 @@ public class HouseEnv extends Environment {
 
         if (lOwner.distance(model.lChair1) == 0) {
             addPercept("owner", oac1);
-            System.out.println("[owner] is at Chair1.");
         }
 
         if (lOwner.distance(model.lChair2) == 0) {
             addPercept("owner", oac2);
-            System.out.println("[owner] is at Chair2.");
         }
 
         if (lOwner.distance(model.lChair3) == 0) {
             addPercept("owner", oac3);
-            System.out.println("[owner] is at Chair3.");
         }
 
-        if (lOwner.distance(model.lChair4) == 0) {                            
+        if (lOwner.distance(model.lChair4) == 0) {
             addPercept("owner", oac4);
-            System.out.println("[owner] is at Chair4.");
         }
 
         if (lOwner.distance(model.lSofa) == 0) {
             addPercept("owner", oasf);
-            System.out.println("[owner] is at Sofa.");
         }
 
         if (lOwner.distance(model.lBed1) == 0) {
             addPercept("owner", aob1);
-            System.out.println("[owner] is at Bed 1.");
         }
 
         if (lOwner.distance(model.lBed2) == 0) {
             addPercept("owner", aob2);
-            System.out.println("[owner] is at Bed 2.");
         }
 
         if (lOwner.distance(model.lBed3) == 0) {
             addPercept("owner", aob3);
-            System.out.println("[owner] is at Bed 3.");
         }
 
         if (lOwner.distance(model.lDeliver) == 0) {
@@ -243,11 +237,11 @@ public class HouseEnv extends Environment {
             addPercept("owner", hod);
         }
 
-        addPercept("enfermera", Literal.parseLiteral("clock(" + clock.getTime() + ")"));
-<<<<<<< Updated upstream
-        
-=======
->>>>>>> Stashed changes
+        // Only add clock percept if clock is available
+        if (clock != null) {
+           addPercept("enfermera", Literal.parseLiteral("clock(" + clock.getTime() + ")"));
+           addPercept("owner", Literal.parseLiteral("clock(" + clock.getTime() + ")"));
+        }
     }
 
 
@@ -263,8 +257,6 @@ public class HouseEnv extends Environment {
     @Override
     public boolean executeAction(String ag, Structure action) {
 
-        System.out.println("[" + ag + "] doing: " + action); 
-
         boolean result = false;
 
         if (action.getFunctor().equals("sit")) {
@@ -272,7 +264,7 @@ public class HouseEnv extends Environment {
             Location dest = null;
             switch (l) {
                 case "chair1": dest = model.lChair1; break;
-                case "chair2": dest = model.lChair2; break;     
+                case "chair2": dest = model.lChair2; break;
                 case "chair3": dest = model.lChair3; break;
                 case "chair4": dest = model.lChair4; break;
                 case "sofa": dest = model.lSofa; break;
@@ -287,7 +279,7 @@ public class HouseEnv extends Environment {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-            }     
+            }
 
         } else if (action.equals(omc)) {
             result = model.openMedCab();
@@ -307,8 +299,8 @@ public class HouseEnv extends Environment {
             switch (l) {
                 case "medCab": dest = model.lMedCab; break;
                 case "fridge": dest = model.lFridge; break;
-                case "owner": dest = model.getAgPos(1); break;     
-                case "delivery": dest = model.lDeliver; break;     
+                case "owner": dest = model.getAgPos(1); break;
+                case "delivery": dest = model.lDeliver; break;
                 case "chair1": dest = model.lChair1; break;
                 case "chair2": dest = model.lChair2; break;
                 case "chair3": dest = model.lChair3; break;
@@ -319,7 +311,7 @@ public class HouseEnv extends Environment {
                 case "bed3": dest = model.lBed3; break;
                 case "washer": dest = model.lWasher; break;
                 case "table": dest = model.lTable; break;
-                case "doorBed1": dest = model.lDoorBed1; break;            
+                case "doorBed1": dest = model.lDoorBed1; break;
                 case "doorBed2": dest = model.lDoorBed2; break;
                 case "doorBed3": dest = model.lDoorBed3; break;
                 case "doorKit1": dest = model.lDoorKit1; break;
@@ -327,7 +319,7 @@ public class HouseEnv extends Environment {
                 case "doorSal1": dest = model.lDoorSal1; break;
                 case "doorSal2": dest = model.lDoorSal2; break;
                 case "doorBath1": dest = model.lDoorBath1; break;
-                case "doorBath2": dest = model.lDoorBath2; break; 
+                case "doorBath2": dest = model.lDoorBath2; break;
             }
             try {
                 if (ag.equals("enfermera")) {
@@ -337,7 +329,7 @@ public class HouseEnv extends Environment {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-            }     
+            }
 
         } else if (action.equals(gd)) {
             result = model.getDrug();
@@ -359,7 +351,7 @@ public class HouseEnv extends Environment {
 
         } else if (action.getFunctor().equals("watchClock")) {
             result = true;
-            getClock();
+            getClock(); // Prints the time, doesn't change state
 
         } else if (action.getFunctor().equals("obtener_medicamento")) {
             int agentId = -1;
@@ -368,7 +360,7 @@ public class HouseEnv extends Environment {
             } else if (ag.equals("owner")) {
                 agentId = HouseModel.OWNER_AGENT_ID;
             } else {
-                logger.warning("Action 'obtener_medicamento' called by unrecognized agent: " + agentId);
+                logger.warning("Action 'obtener_medicamento' called by unrecognized agent: " + ag); // Log agent name
                 return false;
             }
 
@@ -377,6 +369,7 @@ public class HouseEnv extends Environment {
             if (drugTerm instanceof StringTerm) {
                 drugName = ((StringTerm) drugTerm).getString();
             } else {
+                // Remove quotes if it's parsed as an atom containing quotes
                 drugName = drugTerm.toString().replace("\"", "");
             }
 
@@ -387,7 +380,7 @@ public class HouseEnv extends Environment {
                 result = model.addDrug((int)((NumberTerm)action.getTerm(1)).solve());
                 Thread.sleep(4000);
             } catch (Exception e) {
-                logger.info("Failed to execute action deliver!" + e);
+                logger.info("Failed to execute action deliverdrug!" + e);
             }
 
         } else if (action.getFunctor().equals("deliverbeer")) {
@@ -395,11 +388,11 @@ public class HouseEnv extends Environment {
                 result = model.addBeer((int)((NumberTerm)action.getTerm(1)).solve());
                 Thread.sleep(4000);
             } catch (Exception e) {
-                logger.info("Failed to execute action deliver!" + e);
+                logger.info("Failed to execute action deliverbeer!" + e);
             }
 
         } else {
-            logger.info("Failed to execute action " + action);
+            logger.info("Agent " + ag + " tried to execute unknown or failed action: " + action);
         }
 
         if (result) {
@@ -416,12 +409,9 @@ public class HouseEnv extends Environment {
      * Imprime en consola la hora actual del reloj del entorno.
      */
     private void getClock () {
-        System.out.println("The watch show: " + clock.getTime());
+        if (clock != null) {
+            clock.getTime();
+        } else {
+        }
     }
-<<<<<<< Updated upstream
 }
-
-=======
-
-}
->>>>>>> Stashed changes

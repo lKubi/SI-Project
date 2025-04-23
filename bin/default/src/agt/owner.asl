@@ -253,7 +253,7 @@ connect(livingroom, hallway, doorSal2).
 
 /* ----- OBJETIVO: Tomar/Consumir medicamento o cerveza ----- */
 +!take(ItemName) : has(owner, ItemName) <- 
-    sip(drug); 
+    sip(ItemName); 
     .println("Owner: Consumiendo ", ItemName, "...");
     .wait(1000); // Simular tiempo de consumo
     !take(ItemName). 
@@ -266,17 +266,10 @@ connect(livingroom, hallway, doorSal2).
 +!check_bored : true <-
     .wait(100);
     .println("Owner: Aburrido. Preguntando la hora y el tiempo.");
-<<<<<<< Updated upstream
-    .send(enfermera, askOne, time, R); // <<< PIDE LA CREENCIA 'time'
-    .print("Respuesta de hora: ", R);    // <<< Imprime lo que devuelve askOne en R
-    .send(enfermera, tell, chat("¿Qué tiempo hace en Ourense?")); // Pregunta el tiempo
-    !check_bored. // Vuelve a empezar el ciclo de aburrimiento
-=======
     .send(enfermera, askOne, time, R);
     .print("Respuesta de hora: ", R);    
     .send(enfermera, tell, chat("¿Qué tiempo hace en Ourense?")); 
     !check_bored. 
->>>>>>> Stashed changes
 
 /* ----- OBJETIVO: Recibir y mostrar mensajes (Sin cambios lógicos) ----- */
 +msg(M)[source(Ag)] : .my_name(Name) <-

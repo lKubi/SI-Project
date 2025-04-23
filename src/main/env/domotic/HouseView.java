@@ -70,7 +70,6 @@ public class HouseView extends GridWorldView {
         String objPath = currentDirectory;
 
         g.setColor(Color.white);
-        super.drawEmpty(g, x, y);
 
         switch (object) {
             case HouseModel.BED:
@@ -161,6 +160,9 @@ public class HouseView extends GridWorldView {
                 drawString(g, 12, 14, defaultFont, "MedCab: " + hmodel.contadorMedicamentos + "");
                 break;
         }
+
+        super.drawString(g, 11, 15, defaultFont, "The watch shows: ");
+    
     }
 
 
@@ -184,7 +186,7 @@ public class HouseView extends GridWorldView {
         if (id < 1) {
             if (!lRobot.equals(lOwner) && (!lRobot.equals(hmodel.lFridge) || (!lRobot.equals(hmodel.lMedCab)))) {
                 c = Color.yellow;
-                if (hmodel.carryingDrug || hmodel.carryingBeer) {
+                if (hmodel.carryingDrug) {
                     objPath = "/doc/beerBot.png";
                     drawImage(g, x, y, objPath);
                 } else {
@@ -230,105 +232,7 @@ public class HouseView extends GridWorldView {
         }
     }
 
-<<<<<<< Updated upstream
-		if (id < 1) { 
-			if (!lRobot.equals(lOwner) && (!lRobot.equals(hmodel.lFridge) || (!lRobot.equals(hmodel.lMedCab)))) {
-				c = Color.yellow;
-				if (hmodel.carryingDrug || hmodel.carryingBeer) {//c = Color.orange;
-					//super.drawAgent(g, x, y, c, -1);
-					objPath = "/doc/beerBot.png";//currentDirectory.concat("/doc/beerBot.png");
-					drawImage(g,x,y,objPath);
-				} else {
-					objPath = "/doc/bot.png";//currentDirectory.concat("/doc/bot.png");
-					drawImage(g,x,y,objPath);
-				};
-				g.setColor(Color.black);
-				super.drawString(g, x, y, defaultFont, "Rob");
-			}
-		} else if (id > 1) {  
-		    drawMan(g, x, y, "down"); 
-		} else { 
-			if (lOwner.equals(hmodel.lChair1)) {
-				drawMan(g, hmodel.lChair1.x, hmodel.lChair1.y, "left"); 
-			} else if (lOwner.equals(hmodel.lChair2)) {
-				drawMan(g, hmodel.lChair2.x, hmodel.lChair2.y, "down");
-			} else if (lOwner.equals(hmodel.lChair4)) {
-				drawMan(g, hmodel.lChair4.x, hmodel.lChair4.y, "down");
-			} else if (lOwner.equals(hmodel.lChair3)) {      
-				drawMan(g, hmodel.lChair3.x, hmodel.lChair3.y, "right");    
-			} else if (lOwner.equals(hmodel.lSofa)) {
-				drawMan(g, hmodel.lSofa.x, hmodel.lSofa.y, "up");    
-			} else if (lOwner.equals(hmodel.lDeliver)) {
-				g.setColor(Color.lightGray); 
-				objPath = "/doc/openDoor2.png";//currentDirectory.concat("/doc/openDoor2.png");
-				drawScaledImage(g, x, y, objPath, 75, 100);
-				drawMan(g, x, y, "down");
-			} else {
-				drawMan(g, x, y, "walkr");         
-			};
-			if (lRobot.isNeigbour(lOwner)) {	
-				String o = "S";
-				if (hmodel.sipCount > 0) {
-					o +=  " ("+hmodel.sipCount+")";
-				}
-				if (hmodel.drugsCount > 0) {
-					o +=  " ("+hmodel.drugsCount+")";
-				}
-				g.setColor(Color.yellow);
-				drawString(g, x, y, defaultFont, o);
-			}                                                           
-		}			        
-    } 
-=======
->>>>>>> Stashed changes
 
-    /**
-     * Dibuja una línea horizontal de obstáculos a partir de la posición (x, y).
-     *
-     * @param g       Contexto gráfico para el dibujo.
-     * @param x       Coordenada X inicial.
-     * @param y       Coordenada Y fija.
-     * @param NCells  Número de celdas consecutivas con obstáculos a dibujar.
-     */
-    public void drawMultipleObstacleH(Graphics g, int x, int y, int NCells) {
-        for (int i = x; i < x + NCells; i++) {
-            drawObstacle(g, i, y);
-        }
-    }
-
-
-    /**
-     * Dibuja una línea vertical de NCells obstáculos empezando en (x, y).
-     * @param g El contexto gráfico.
-     * @param x Coordenada X.
-     * @param y Coordenada Y inicial.
-     * @param NCells Número de celdas de obstáculo a dibujar.
-     */
-    public void drawMultipleObstacleV(Graphics g, int x, int y, int NCells) {
-		for (int j = y; j < y+NCells; j++) {
-                drawObstacle(g,x,j);
-            }    
-    }
-
-    /**
-     * Dibuja una imagen que ocupa NW x NH celdas, empezando en (x, y), sin escalar.
-     * @param g El contexto gráfico.
-     * @param x Coordenada X de la celda superior izquierda.
-     * @param y Coordenada Y de la celda superior izquierda.
-     * @param imageAddress Ruta del recurso de la imagen.
-     * @param NW Número de celdas de ancho.
-     * @param NH Número de celdas de alto.
-     */
-    public void drawMultipleImage(Graphics g, int x, int y, String imageAddress, int NW, int NH) {
-		URL url = getClass().getResource(imageAddress);
-		ImageIcon Img = new ImageIcon();
-		if (url == null)
-    		System.out.println( "Could not find image! "+imageAddress);
-		else 
-			Img = new ImageIcon(getClass().getResource(imageAddress)); 
-		g.setColor(Color.lightGray);
-		g.drawImage(Img.getImage(), x * cellSizeW + 2, y * cellSizeH + 2, NW*cellSizeW - 4, NH*cellSizeH - 4, null);
-    }
 
     /**
      * Dibuja una imagen que ocupa NW x NH celdas, escalada a un porcentaje.
@@ -370,61 +274,7 @@ public class HouseView extends GridWorldView {
 		g.drawImage(Img.getImage(), x * cellSizeW + cellSizeW*(100-scaleW)/200, y * cellSizeH + cellSizeH*(100-scaleH)/100, cellSizeW*scaleW/100, scaleH*cellSizeH/100, null);
     }
 
-    /**
-     * Dibuja una imagen escalada alineada a la parte superior de la celda.
-     * @param g El contexto gráfico.
-     * @param x Coordenada X de la celda.
-     * @param y Coordenada Y de la celda.
-     * @param imageAddress Ruta del recurso de la imagen.
-     * @param scaleW Porcentaje de escalado horizontal.
-     * @param scaleH Porcentaje de escalado vertical.
-     */
-    public void drawScaledImageUp(Graphics g, int x, int y, String imageAddress, int scaleW, int scaleH) {
-		URL url = getClass().getResource(imageAddress);
-		ImageIcon Img = new ImageIcon();
-		if (url == null)
-    		System.out.println( "Could not find image! "+imageAddress);
-		else Img = new ImageIcon(getClass().getResource(imageAddress)); 
-		g.setColor(Color.lightGray);
-		g.drawImage(Img.getImage(), x * cellSizeW + cellSizeW*(100-scaleW)/200, y * cellSizeH + 2, cellSizeW*scaleW/100, scaleH*cellSizeH/100, null);
-    }
 
-    /**
-     * Dibuja una imagen escalada alineada a la izquierda de la celda.
-     * @param g El contexto gráfico.
-     * @param x Coordenada X de la celda.
-     * @param y Coordenada Y de la celda.
-     * @param imageAddress Ruta del recurso de la imagen.
-     * @param scaleW Porcentaje de escalado horizontal.
-     * @param scaleH Porcentaje de escalado vertical.
-     */
-	public void drawScaledImageLf(Graphics g, int x, int y, String imageAddress, int scaleW, int scaleH) {
-		URL url = getClass().getResource(imageAddress);
-		ImageIcon Img = new ImageIcon();
-		if (url == null)
-    		System.out.println( "Could not find image! "+imageAddress);
-		else Img = new ImageIcon(getClass().getResource(imageAddress)); 
-		g.setColor(Color.lightGray);
-		g.drawImage(Img.getImage(), x * cellSizeW, y * cellSizeH + cellSizeH*(100-scaleH)/200 + 1, cellSizeW*scaleW/100, scaleH*cellSizeH/100, null);
-    }
-    /**
-     * Dibuja una imagen escalada alineada a la derecha de la celda.
-     * @param g El contexto gráfico.
-     * @param x Coordenada X de la celda.
-     * @param y Coordenada Y de la celda.
-     * @param imageAddress Ruta del recurso de la imagen.
-     * @param scaleW Porcentaje de escalado horizontal.
-     * @param scaleH Porcentaje de escalado vertical.
-     */
-    public void drawScaledImageRt(Graphics g, int x, int y, String imageAddress, int scaleW, int scaleH) {
-		URL url = getClass().getResource(imageAddress);
-		ImageIcon Img = new ImageIcon();
-		if (url == null)
-    		System.out.println( "Could not find image! "+imageAddress);
-		else Img = new ImageIcon(getClass().getResource(imageAddress)); 
-		g.setColor(Color.lightGray);
-		g.drawImage(Img.getImage(), x * cellSizeW + cellSizeW*(100-scaleW)/100, y * cellSizeH + cellSizeH*(100-scaleH)/200 + 1, cellSizeW*scaleW/100, scaleH*cellSizeH/100, null);
-    }
 
     /**
      * Dibuja una imagen escalada centrada (Middle/Md) en la celda.
@@ -469,32 +319,6 @@ public class HouseView extends GridWorldView {
      * @param y Coordenada Y de la celda.
      * @param how Cadena que indica el estado ("right", "left", "up", "down", "stand", "walkr").
      */
-<<<<<<< Updated upstream
-    public void drawMan(Graphics g, int x, int y, String how) { 
-		String resource = "/doc/sitd.png";//currentDirectory.concat("/doc/sitd.png");
-		switch (how) {
-			case "right": resource = "/doc/sitr.png";//currentDirectory.concat("/doc/sitr.png"); 
-			break;
-			case "left": resource = "/doc/sitl.png";//currentDirectory.concat("/doc/sitl.png");  
-			break;     
-			case "up": resource = "/doc/situ.png";//currentDirectory.concat("/doc/situ.png");  
-			break;     
-			case "down": resource = "/doc/sitd.png";//currentDirectory.concat("/doc/sitd.png"); 
-			break;
-			case "stand": resource = "/doc/sits.png";//currentDirectory.concat("/doc/sits.png"); 
-			break;
-			case "walkr": resource = "/doc/walklr.png";//currentDirectory.concat("/doc/walklr.png"); 
-			break;
-        }
-		URL url = getClass().getResource(resource);
-		ImageIcon Img = new ImageIcon();
-		if (url == null)
-    		System.out.println( "Could not find image! "+resource);
-		else Img = new ImageIcon(getClass().getResource(resource)); 
-		//ImageIcon Img = new ImageIcon(getClass().getResource(resource));
-		g.drawImage(Img.getImage(), x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 3, cellSizeH - 3, null);
-    }
-=======
 		public void drawMan(Graphics g, int x, int y, String how) { 
 			String resource = "/doc/sitd.png"; // valor por defecto
 
@@ -522,37 +346,8 @@ public class HouseView extends GridWorldView {
 
 			g.drawImage(Img.getImage(), x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 3, cellSizeH - 3, null);
 		}
->>>>>>> Stashed changes
 
-    /**
-     * Dibuja específicamente a la persona sentada mirando a la derecha.
-     * (Posiblemente redundante si drawMan("right", ...) funciona).
-     * @param g El contexto gráfico.
-     * @param x Coordenada X de la celda.
-     * @param y Coordenada Y de la celda.
-     */
-    public void drawManSittingRight(Graphics g, int x, int y) {
-		String objPath = "/doc/sitr.png";//currentDirectory.concat("/doc/sitr.png");
-		URL url = getClass().getResource(objPath);
-		ImageIcon Img = new ImageIcon();
-		if (url == null)
-    		System.out.println( "Could not find image! "+objPath);
-		else Img = new ImageIcon(getClass().getResource(objPath)); 
-		g.drawImage(Img.getImage(), x * cellSizeW - 4, y * cellSizeH + 1, cellSizeW + 2, cellSizeH - 2, null);
-    }
 
-    /**
-     * Dibuja un cuadrado decorativo con doble borde dentro de una celda.
-     * @param g El contexto gráfico.
-     * @param x Coordenada X de la celda.
-     * @param y Coordenada Y de la celda.
-     */
-    public void drawSquare(Graphics g, int x, int y) {
-        g.setColor(Color.blue);
-        g.drawRect(x * cellSizeW + 2, y * cellSizeH + 2, cellSizeW - 4, cellSizeH - 4);
-        g.setColor(Color.cyan);
-        g.drawRect(x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 3, cellSizeH - 3);   
-    }   
 
     /**
      * Detiene el temporizador de redibujado si se encuentra en ejecución.
@@ -563,5 +358,6 @@ public class HouseView extends GridWorldView {
             timer.stop();
         }
     }
-}
 
+    
+}

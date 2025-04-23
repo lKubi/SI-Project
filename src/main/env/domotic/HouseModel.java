@@ -123,12 +123,9 @@ public class HouseModel extends GridWorldModel {
     Area hall       = new Area(0, 7, 3, 12);
     Area hallway    = new Area(8, 5, 23, 6);
 
-<<<<<<< Updated upstream
-=======
     /** Mapa de direcciones de movimiento por agente */
     private Map<Integer, String> directionMap = new HashMap<>();
 
->>>>>>> Stashed changes
     /**
      * Constructor del modelo del entorno. Inicializa el grid,
      * las posiciones de los agentes, los objetos fijos (muebles, puertas),
@@ -353,20 +350,9 @@ public class HouseModel extends GridWorldModel {
             return true;
         }
 
-<<<<<<< Updated upstream
-        // --- Implementación de A* ---
-
-        // 1. Inicialización
-        Map<Location, Location> cameFrom = new HashMap<>(); // Para reconstruir el camino
-        Map<Location, Integer> gScore = new HashMap<>(); // Costo desde el inicio hasta el nodo
-        Map<Location, Integer> fScore = new HashMap<>(); // Costo total estimado (gScore + heurística)
-
-        // Usamos Manhattan distance como heurística (admisible para movimientos ortogonales)
-=======
         Map<Location, Location> cameFrom = new HashMap<>();
         Map<Location, Integer> gScore = new HashMap<>();
         Map<Location, Integer> fScore = new HashMap<>();
->>>>>>> Stashed changes
         Comparator<Location> fScoreComparator = Comparator.comparingInt(loc -> fScore.getOrDefault(loc, Integer.MAX_VALUE));
         PriorityQueue<Location> openSet = new PriorityQueue<>(fScoreComparator); // Nodos por evaluar
 
@@ -385,12 +371,6 @@ public class HouseModel extends GridWorldModel {
             if (current.equals(dest)) {
                 // Reconstruir el camino y mover un paso
                 List<Location> path = reconstructPath(cameFrom, current);
-<<<<<<< Updated upstream
-                if (path.size() > 1) { // El camino incluye el inicio, necesitamos al menos 2 nodos para movernos
-                    Location nextStep = path.get(1); // El siguiente paso después del inicio
-                    setAgPos(Ag, nextStep); // Mover el agente
-                    return true; // Movimiento realizado
-=======
                 if (path.size() > 1) {
                     Location nextStep = path.get(1);
 
@@ -407,7 +387,6 @@ public class HouseModel extends GridWorldModel {
                     directionMap.put(Ag, dir);
                     setAgPos(Ag, nextStep);
                     return true;
->>>>>>> Stashed changes
                 } else {
                     // El camino solo tiene el nodo inicial (o está vacío), ¿quizás start == dest?
                     // Ya se manejó al principio. Si llegamos aquí, es un caso raro.
@@ -483,8 +462,6 @@ public class HouseModel extends GridWorldModel {
                      // Podría devolverse false si se quiere indicar fallo en encontrar ruta.
     }
 
-<<<<<<< Updated upstream
-=======
     /**
      * Devuelve la última dirección registrada en la que se movió el agente.
      * Si no hay dirección registrada, retorna "walkr" por defecto.
@@ -496,7 +473,6 @@ public class HouseModel extends GridWorldModel {
         return directionMap.getOrDefault(ag, "walkr");
     }
 
->>>>>>> Stashed changes
     /**
      * Calcula la distancia de Manhattan entre dos ubicaciones del grid.
      * 

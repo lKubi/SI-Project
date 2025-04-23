@@ -36,11 +36,7 @@ available(beer, fridge).
 
 /* ----- LÍMITES DE CONSUMO (Específicos) ----- */
 // Establecer límites para cada medicamento específico y cerveza.
-limit("Paracetamol 500mg", 1). // Ejemplo: Máximo 2 paracetamoles al día
-limit("Ibuprofeno 600mg", 1). // Ejemplo
-limit("Amoxicilina 500mg", 1). // Ejemplo
-limit("Omeprazol 20mg", 1).    // Ejemplo
-limit("Loratadina 10mg", 1).    // Ejemplo
+
 limit(beer, 5).
 
 /* ----- OBJETIVOS INICIALES ----- */
