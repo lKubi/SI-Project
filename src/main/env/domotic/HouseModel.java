@@ -183,7 +183,11 @@ public class HouseModel extends GridWorldModel {
         contadorMedicamentos.put("Ibuprofeno 600mg", 4);
         contadorMedicamentos.put("Amoxicilina 500mg", 8);
         contadorMedicamentos.put("Omeprazol 20mg", 1);
+<<<<<<< Updated upstream
         contadorMedicamentos.put("Loratadina 10mg", 0);
+=======
+        contadorMedicamentos.put("Loratadina 10mg", 4);
+>>>>>>> Stashed changes
 
         this.availableDrugs = calcularTotalMedicamentos(contadorMedicamentos);
     }
@@ -607,16 +611,36 @@ public class HouseModel extends GridWorldModel {
      *
      * @return true si la entrega fue exitosa, false si no se cumple alguna condición.
      */
-    boolean handInDrug() {
+    /**
+     * Entrega un medicamento específico al dueño si el robot lo está cargando y se encuentra cerca.
+     * Actualiza el estado del dueño y libera la carga del robot.
+     *
+     * @param drugName El nombre del medicamento que se está entregando. // <--- Parámetro añadido
+     * @return true si la entrega fue exitosa, false si no se cumple alguna condición.
+     */
+    boolean handInDrug(String drugName) { // <--- Firma cambiada para aceptar String
         Location robotPos = getAgPos(0);
         Location ownerPos = getAgPos(1);
 
+        // Opcional: verificar si drugName es válido si es necesario
+        // if (drugName == null || drugName.isEmpty()) {
+        //     System.out.println("Failed to hand in drug: drugName parameter is missing.");
+        //     return false;
+        // }
+
         if (carryingDrug && robotPos.isNeigbour(ownerPos)) {
-            drugsCount = 10;
+            // Establece el contador del dueño a 1 (asumiendo que recibe una dosis)
+            // Cambiado de 10 que parecía incorrecto. ¡Verifica si esto es lo que quieres!
+            drugsCount = 1;
+
+            // ¡Importante! Libera la carga del robot
             carryingDrug = false;
-            System.out.println("Robot handed drug to owner.");
+
+            // Mensaje de log ahora incluye el nombre de la droga
+            System.out.println("Robot handed '" + drugName + "' to owner.");
             return true;
         } else {
+            // Mensajes de error sin cambios
             if (!carryingDrug) System.out.println("Failed to hand in drug: Robot not carrying one.");
             if (!robotPos.isNeigbour(ownerPos)) System.out.println("Failed to hand in drug: Robot not near owner.");
             return false;

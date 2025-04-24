@@ -334,8 +334,23 @@ public class HouseEnv extends Environment {
         } else if (action.equals(gd)) {
             result = model.getDrug();
 
+<<<<<<< Updated upstream
         } else if (action.equals(hd)) {
             result = model.handInDrug();
+=======
+        } else if (action.getFunctor().equals("hand_in")) { // Compara el nombre/functor de la acción
+
+            Term drugTerm = action.getTerm(0);
+            String drugName = "";
+            if (drugTerm instanceof StringTerm) {
+                drugName = ((StringTerm) drugTerm).getString();
+            } else {
+                // Remove quotes if it's parsed as an atom containing quotes
+                drugName = drugTerm.toString().replace("\"", "");
+            }
+
+            result = model.handInDrug(drugName);
+>>>>>>> Stashed changes
 
         } else if (action.equals(sd)) {
             result = model.sipDrug();
