@@ -35,21 +35,11 @@ available("Loratadina 10mg", medCab).
 available(beer, fridge).
 
 /* ----- LÍMITES DE CONSUMO (Específicos) ----- */
-<<<<<<< Updated upstream
-// Establecer límites para cada medicamento específico y cerveza.
-
-limit(beer, 5).
-
-/* ----- OBJETIVOS INICIALES ----- */
-// Añadimos el objetivo para que el robot empiece a revisar la pauta de medicación
-!check_schedule.
-
-=======
 // Establecer límites para cada cerveza.
 
 limit(beer, 5).
 
->>>>>>> Stashed changes
+//LO QUITAMOS O NO LO QUITAMOS
 /* ----- REGLA DE CONSUMO EXCESIVO (Verifica droga específica 'B') ----- */
 // Esta regla verifica si el dueño ha consumido más de un tipo específico de medicamento ('B') de los permitidos en un día.
 too_much(B, Ag) :-
@@ -81,195 +71,115 @@ orderDrug(DrugName, Ag) :-
 bringBeer(Ag) :- available(beer, fridge) & not too_much(beer, Ag).
 orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 
-<<<<<<< Updated upstream
-/* ----- ##### NUEVO: PLANES PARA REVISIÓN PROACTIVA DE PAUTA ##### ----- */
-
-<<<<<<< Updated upstream
-// Plan para revisar periódicamente la pauta de medicación
-/* ----- ##### NUEVO: PLANES PARA REVISIÓN PROACTIVA DE PAUTA ##### ----- */
-
-// Plan para revisar periódicamente la pauta de medicación (USA HORA SIMULADA) - CON LOGGING ADICIONAL
-+!check_schedule : free[source(self)] <-
-    .println("--- Check Schedule Cycle ---"); // Marca inicio del ciclo
-    .println("Checking if free: YES");
-=======
-// Plan para revisar periódicamente la pauta de medicación (USA HORA SIMULADA)
-+!check_schedule : free[source(self)] <-
-
->>>>>>> Stashed changes
-    // Primero, verifica que la creencia 'clock' exista antes de intentar usarla
-    if (clock(SimulatedHour)) {
-        .println("Hora simulada actual percibida: ", SimulatedHour);
-
-<<<<<<< Updated upstream
-        // *** PASO DE DEPURACIÓN: Listar todas las creencias 'medician' existentes ***
-        .findall(medician(Drug, Hour), medician(Drug, Hour), MedList);
-        .println("Creencias 'medician' actuales en la base de creencias: ", MedList);
-        // *** FIN PASO DE DEPURACIÓN ***
-
-        // Busca si hay alguna medicación pautada para ESTA HORA SIMULADA
-        // (Busca sin anotación de fuente, como discutimos)
-=======
-        .findall(medician(Drug, Hour), medician(Drug, Hour), MedList);
-
-        // Busca si hay alguna medicación pautada para ESTA HORA SIMULADA
->>>>>>> Stashed changes
-        if (medician(DrugToDeliver, SimulatedHour)) {
-             // Si entra aquí, encontró una coincidencia
-            .println("Pauta encontrada para la hora SIMULADA ", SimulatedHour, ": Entregar ", DrugToDeliver, " a owner.");
-            // Verificar límite ANTES de intentar entregar
-            if (not too_much(DrugToDeliver, owner)) {
-                // Verificar disponibilidad ANTES de intentar entregar
-                if (available(DrugToDeliver, medCab)) {
-                    .println("Intentando entregar ", DrugToDeliver);
-<<<<<<< Updated upstream
-                    !has(owner, DrugToDeliver)[source(self)]; // El robot inicia la acción
-=======
-                    !has(owner, DrugToDeliver)[source(self)]; 
->>>>>>> Stashed changes
-                } else {
-                    .println("No se puede entregar ", DrugToDeliver, ": No disponible en ", medCab);
-                    // Opcional: intentar pedirlo si no está disponible
-                }
-            } else {
-                .println("No se puede entregar ", DrugToDeliver, ": Límite diario alcanzado.");
-            }
-        } else {
-            // Si entra aquí, NO encontró coincidencia para la hora actual
-            .println("No hay medicación pautada para la hora SIMULADA ", SimulatedHour);
-        };
-
-    } else {
-         // Si entra aquí, la creencia 'clock(Hora)' no existe en este momento
-    }
-<<<<<<< Updated upstream
-    .wait(1000); // Espera 1 segundo real (ajusta si es necesario para tu simulación)
-=======
-    .wait(1000); // Espera 1 segundo real 
-    !check_schedule.
-
-// Plan alternativo si no está libre 
-+!check_schedule : not free[source(self)] <-
-    .wait(5000); // Espera 5 segundos si está ocupado 
->>>>>>> Stashed changes
-    !check_schedule.
-
-// Plan alternativo si no está libre (también con logging para claridad)
-+!check_schedule : not free[source(self)] <-
-    .println("--- Check Schedule Cycle ---");
-    .println("Checking if free: NO (Robot ocupado)");
-    .println("--- End Check Schedule Cycle ---");
-    .wait(5000); // Espera 5 segundos si está ocupado (ajusta si es necesario)
-    !check_schedule.
-/* ----- PLANES PARA TRAER MEDICAMENTO O CERVEZA (Modificados para ser específicos) ----- */
-
-// Plan para traer un MEDICAMENTO ESPECÍFICO cuando se solicita (o cuando lo inicia el propio robot)
-// Se activa con !has(AgenteDestino, NombreDelMedicamento)
-+!has(Ag, DrugName)[source(Source)] : // Source puede ser Ag (owner) o self (robot)
-    bringDrug(DrugName, Ag) & free[source(self)] <-
-    .println("REGLA 1 (Traer Específico): Intentando llevar ", DrugName, " a ", Ag, " (solicitado por ", Source, ")");
-    -free[source(self)]; 
-    !at(enfermera, medCab); 
-    open(medCab);
-    obtener_medicamento(DrugName);
-    close(medCab);
-    !at(enfermera, Ag);
-    hand_in(drug); 
-
-=======
 /* ----- ##### NUEVO: PLANES PARA REVISIÓN PROACTIVA DE PAUTA (MODIFICADO) ##### ----- */
 
 // Plan para revisar periódicamente la pauta de medicación (USA HORA y MINUTO SIMULADOS)
-+clock(SimulatedHour)[source(Source)] : free[source(self)] <- // Solo actúa si está libre
-    .println("PLAN REACTIVO: Hora simulada actualizada a ", SimulatedHour, ". Revisando pauta...");
-
-    // --- Lógica de comprobación (la misma que tenías dentro de !check_schedule) ---
-    // Busca si hay alguna medicación pautada para ESTA HORA SIMULADA
+// Plan para revisar periódicamente la pauta de medicación (USA HORA SIMULADA)
++clock(SimulatedHour)[source(Source)] : free[source(self)] <-
+    .println("PLAN REACTIVO (Clock ", SimulatedHour, "): Revisando pauta...");
     if (medician(DrugToDeliver, SimulatedHour)) {
-        // Si entra aquí, encontró una coincidencia
-       .println("PLAN REACTIVO: Pauta encontrada para la hora ", SimulatedHour, ": Entregar ", DrugToDeliver, " a owner.");
-       // Verificar límite ANTES de intentar entregar
-       if (not too_much(DrugToDeliver, owner)) {
-           // Verificar disponibilidad ANTES de intentar entregar
-           if (available(DrugToDeliver, medCab)) {
-               .println("PLAN REACTIVO: Intentando entregar ", DrugToDeliver);
-               !has(owner, DrugToDeliver)[source(self)]; // Lanza el objetivo de entrega
-               .abolish(medician(DrugToDeliver, SimulatedHour)); // Elimina la pauta procesada
-            .send(owner, achieve, remove_my_medician(DrugToDeliver, SimulatedHour));
-               .println("PLAN REACTIVO: Pauta para ", DrugToDeliver, " a las ", SimulatedHour, "h eliminada del horario.");
-           } else {
-               .println("PLAN REACTIVO: No se puede entregar ", DrugToDeliver, ": No disponible en ", medCab);
-               // Opcional: intentar pedirlo si no está disponible
-           }
-       } else {
-           .println("PLAN REACTIVO: No se puede entregar ", DrugToDeliver, ": Límite diario alcanzado.");
-       }
+        .println("PLAN REACTIVO (Clock ", SimulatedHour, "): Pauta encontrada: Entregar ", DrugToDeliver, " a owner.");
+        if (not too_much(DrugToDeliver, owner)) {
+            if (available(DrugToDeliver, medCab)) {
+                .println("PLAN REACTIVO (Clock ", SimulatedHour, "): Intentando iniciar entrega de ", DrugToDeliver);
+                // *** NUEVO: Añadir creencia temporal ANTES de lanzar !has ***
+                // Esta creencia marca que la siguiente ejecución de !has es para una entrega programada.
+                +is_scheduled_delivery(DrugToDeliver, owner, SimulatedHour);
+                // Lanzar el objetivo de entrega estándar. Los planes +!has / -!has se encargarán del resto.
+                !has(owner, DrugToDeliver)[source(self)];
+                // <<< YA NO SE ABOLISH NI SEND DESDE AQUÍ >>>
+            } else {
+                .println("PLAN REACTIVO (Clock ", SimulatedHour, "): No se puede entregar ", DrugToDeliver, ": No disponible en ", medCab);
+                // Opcional: intentar pedirlo si no está disponible? !orderDrug(...) ?
+            }
+        } else {
+            .println("PLAN REACTIVO (Clock ", SimulatedHour, "): No se puede entregar ", DrugToDeliver, ": Límite diario alcanzado.");
+        }
     } else {
-        // Si entra aquí, NO encontró coincidencia para la hora actual
-        .println("PLAN REACTIVO: No hay medicación pautada para la hora SIMULADA ", SimulatedHour);
+        .println("PLAN REACTIVO (Clock ", SimulatedHour, "): No hay medicación pautada para esta hora.");
     }.
-// Plan alternativo si no está libre (sin cambios necesarios aquí)
-+!check_schedule : not free[source(self)] <-
-    .wait(5000); // Espera 5 segundos si está ocupado
-    !check_schedule.
+
+// Plan alternativo si no está libre (SIN CAMBIOS)
++clock(SimulatedHour)[source(Source)] : not free[source(self)] <-
+     .wait(1000); // Espera un poco si está ocupado
+     +clock(SimulatedHour)[source(Source)]. // Reintenta revisar el reloj (o +!check_schedule si usas ese patrón)
+
 
 /* ----- PLANES PARA TRAER MEDICAMENTO O CERVEZA (Modificados para ser específicos) ----- */
 
 // Plan para traer un MEDICAMENTO ESPECÍFICO cuando se solicita (o cuando lo inicia el propio robot)
 // Se activa con !has(AgenteDestino, NombreDelMedicamento)
-+!has(Ag, DrugName)[source(Source)] : // Source puede ser Ag (owner) o self (robot)
++!has(Ag, DrugName)[source(Source)] :
     bringDrug(DrugName, Ag) & free[source(self)] <-
     .println("REGLA 1 (Traer Específico): Intentando llevar ", DrugName, " a ", Ag, " (solicitado por ", Source, ")");
-    -free[source(self)]; 
-    !at(enfermera, medCab); 
+    -free[source(self)];
+    if (Ag == owner) { .send(owner, tell, nurse_is_delivering) };
+    !at(enfermera, medCab);
     open(medCab);
-    obtener_medicamento(DrugName);
+    obtener_medicamento(DrugName); // Acción que puede fallar
     close(medCab);
     !at(enfermera, Ag);
-    hand_in(drug); 
+    hand_in(DrugName);
 
->>>>>>> Stashed changes
-    // Registrar consumo específico DESPUÉS de entregar
+    // Registrar consumo
     .date(YY, MM, DD); .time(HH, NN, SS);
-    +consumed(YY, MM, DD, HH, NN, SS, DrugName, Ag); 
+    +consumed(YY, MM, DD, HH, NN, SS, DrugName, Ag);
     .println("Registrado consumo de ", DrugName, " por ", Ag);
-    +free[source(self)]; // Marcar como libre
+
+    // *** NUEVO: Limpieza de pauta SOLO SI era programada Y tuvo éxito ***
+    if (is_scheduled_delivery(DrugName, Ag, Hour)) {
+        .println("ENTREGA PROGRAMADA ÉXITO: Eliminando pauta para ", DrugName, " a las ", Hour, "h.");
+        .abolish(medician(DrugName, Hour)); // Elimina creencia local de la enfermera
+        .send(Ag, achieve, remove_my_medician(DrugName, Hour)); // Pide al owner eliminar la suya
+        // Eliminar la creencia temporal de la enfermera
+        -is_scheduled_delivery(DrugName, Ag, Hour);
+    };
+
+    if (Ag == owner) { .send(owner, tell, nurse_finished_delivering) };
+    +free[source(self)];
     .println("Robot libre después de entregar ", DrugName).
 
 // Plan para traer CERVEZA de la nevera
-+!has(Ag, beer)[source(Ag)] :
++!has(Ag, beer)[source(Source)] : // <-- Añadido Source para consistencia si lo pide el robot
     bringBeer(Ag) & free[source(self)] <-
     .println("REGLA 1 (Traer Cerveza): Intentando llevar cerveza a ", Ag);
     -free[source(self)];
+    // <<< ===== NUEVO: AVISO INICIO ENTREGA ===== >>>
+    if (Ag == owner) { .send(owner, tell, nurse_is_delivering) };
+    // <<< ====================================== >>>
     !at(enfermera, fridge);
     open(fridge);
-    get(beer);
+    get(beer); // Asume que 'get' añade 'beer' al inventario de la enfermera
     close(fridge);
     !at(enfermera, Ag);
-    hand_in(beer); 
-    // ?has(Ag, beer);
+    hand_in(beer);
+    // ?has(Ag, beer); // Esta línea parece ser una consulta interna, puede ser innecesaria aquí
     .date(YY, MM, DD); .time(HH, NN, SS);
-    +consumed(YY, MM, DD, HH, NN, SS, beer, Ag); 
+    +consumed(YY, MM, DD, HH, NN, SS, beer, Ag);
+
+    // <<< ===== NUEVO: AVISO FIN ENTREGA ===== >>>
+    if (Ag == owner) { .send(owner, tell, nurse_finished_delivering) };
+    // <<< ==================================== >>>
     +free[source(self)].
 
 /* ----- PLANES PARA PEDIR AL REPARTIDOR UN MEDICAMENTO O UNA CERVEZA ----- */
 // Si el medicamento no está disponible, el robot lo pide al repartidor.
 // Después de que el reparto se realice, el robot recoge el medicamento y lo pone en el estante.
-+!has(Ag, drug)[source(Ag)] :
++!has(Ag, DrugName)[source(Ag)] :
 	orderDrug(Ag) & free[source(self)] <- 
 		.println("SECOND RULE ====================================");
 		.wait(1000);
 		-free[source(self)]; 
 		!at(enfermera, medCab);
-		.send(repartidor, achieve, order(drug, 5)); 
+		.send(repartidor, achieve, order(DrugName, 5)); 
 		!at(enfermera, delivery);   
 		.wait(delivered);
 		!at(enfermera, medCab);     
 		deliverdrug(Product,5); 	
-		+available(drug, medCab); 
+		+available(DrugName, medCab); 
 		+free[source(self)];
 		.println("Trying to bring drug after order it");
-		!has(Ag, drug)[source(Ag)]. 
+		!has(Ag, DrugName)[source(Ag)]. 
 
 // Si la cerveza no está disponible, el robot lo pide al repartidor.
 // Después de que el reparto se realice, el robot recoge la cerveza y lo pone en la nevera.
@@ -291,12 +201,12 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 
 /* ----- MANEJO DE CONFLICTOS DE PEDIDOS ----- */
 // Si el robot está ocupado y no puede atender la solicitud, informa al dueño.
-+!has(Ag, drug)[source(Ag)] :
++!has(Ag, DrugName)[source(Ag)] :
 	not free[source(self)] <- 
 		.println("THIRD RULE ====================================");
 		.println("The robot is busy and cann't attend the order now."); 
 		.wait(4000);
-		!has(Ag, drug).   
+		!has(Ag, DrugName).   
 
 +!has(Ag, beer)[source(Ag)] :
 	not free[source(self)] <- 
@@ -307,8 +217,8 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 
 /* ----- CONTROL DE LÍMITE DE PRODUCTOS ----- */
 // Si el dueño ha alcanzado el límite de medicamentos diarios, el robot informa que no puede dar más.
-+!has(Ag, drug)[source(Ag)] 
-:  too_much(drug, Ag) & limit(drug, L) <-
++!has(Ag, DrugName)[source(Ag)] 
+:  too_much(DrugName, Ag) & limit(DrugName, L) <-
 		.println("FOURTH RULE ====================================");
 		.wait(1000);
 		.concat("The Department of Health does not allow me to give you more than ", L,
@@ -326,13 +236,25 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 
 /* ----- GESTIÓN DE FALLOS EN OBJETIVOS ----- */
 // Si alguna intención falla, se informa del error y de la intención actual.
--!has(Name, P) <-
-	//: true
-	.println("FIFTH RULE ====================================");
-	.wait(1000);
-	.current_intention(I);
-	.println("Failed to achieve goal: !has(", Name, " , ", P, ").");
-	.println("Current intention is: ", I).
+-!has(Name, P)[error(E)] <-
+    .println("FIFTH RULE ====================================");
+    // .wait(1000); // Espera opcional
+    .current_intention(I);
+    .println("Failed to achieve goal: !has(", Name, " , ", P, "). Error: ", E);
+    .println("Current intention is: ", I);
+
+    // *** NUEVO: Limpieza de creencia temporal SI era programada Y falló ***
+    // Crucial: NO eliminar la pauta 'medician' si la entrega falló.
+    if (is_scheduled_delivery(P, Name, Hour)) {
+         .println("ENTREGA PROGRAMADA FALLO: NO se elimina pauta para ", P, " a las ", Hour, "h.");
+         // Solo eliminar la creencia temporal
+         -is_scheduled_delivery(P, Name, Hour);
+    };
+
+    // Asegurarse de notificar al owner que la enfermera ya no está ocupada (si lo estaba)
+    if (Name == owner) { .send(owner, tell, nurse_finished_delivering) };
+    +free[source(self)]. // Asegurarse de que la enfermera queda libre
+
 
 /* ----- ACTUALIZACIÓN DE LA LOCALIZACIÓN DEL ROBOT ----- */
 // El robot actualiza su ubicación y se mueve entre habitaciones o hacia puertas dependiendo de su situación.
@@ -386,7 +308,7 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 																						
 /* ----- MANEJO DE ENTREGA ----- */
 // Cuando el repartidor realiza una entrega, el robot actualiza su estado y vuelve a intentar cumplir la tarea.
-+delivered(drug, _Qtd, _OrderId)[source(repartidor)]
++delivered(DrugName, _Qtd, _OrderId)[source(repartidor)]
 :  true
 <- +delivered;
 	.wait(2000). 
@@ -398,13 +320,13 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 
 /* ----- ACTUALIZACIÓN DE DISPONIBILIDAD DE PRODUCTOS ----- */
 // Cuando el stock de medicamentos cambia, el robot actualiza su disponibilidad.
-+stock(drug, 0)
-:  available(drug, medCab)
-<- -available(drug, medCab). 
++stock(DrugName, 0)
+:  available(DrugName, medCab)
+<- -available(DrugName, medCab). 
 	
-+stock(drug, N)
-:  N > 0 & not available(drug, medCab)
-<- +available(drug, medCab).     
++stock(DrugName, N)
+:  N > 0 & not available(DrugName, medCab)
+<- +available(DrugName, medCab).     
 	
 +stock(beer, 0)
 :  available(beer, fridge)
@@ -420,56 +342,6 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 	.println("El agente ", Ag, " me ha chateado: ", Msg);
 	.send(Ag, tell, msg(Answ)). 
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-	/* ----- ACTUALIZACIÓN DE LA HORA ----- */
-	// El robot puede verificar la hora actual.                  
-    +?time : true
-=======
-/* ----- ACTUALIZACIÓN DE LA HORA ----- */
-// El robot puede verificar la hora actual.                  
-+?time : true
->>>>>>> Stashed changes
-	<-  watchClock.
-
-/* ----- ##### GESTIÓN DE NOTIFICACIÓN DE CONSUMO ##### ----- */
-
-// Cuando el dueño informa que ha consumido un medicamento y el robot está libre:
-+medication_consumed(drug)[source(Ag)] : free[source(self)] <-
-    .println("Notificación recibida: ", Ag, " dice haber tomado ", drug);
-    -free[source(self)]; // Marca al robot como ocupado
-    .println("Iniciando plan para verificar el consumo en medCab.");
-    !verify_consumption(Ag, drug). // Inicia el objetivo de verificación
-
-// Si el robot está ocupado cuando recibe la notificación:
-+medication_consumed(drug)[source(Ag)] : not free[source(self)] <-
-    .println("Recibí notificación de consumo de ", drug, " por ", Ag, ", pero estoy ocupado. Lo verificaré más tarde.");
-    .send(Ag, tell, msg("Recibí tu notificación sobre ", drug, ", pero estoy ocupado. Lo verificaré en cuanto pueda.")).
-
-/* ----- ##### PLAN PARA VERIFICAR EL CONSUMO ##### ----- */
-+!verify_consumption(Ag, drug) <-
-    .println("Verificando consumo de ", drug, " en ", medCab, " solicitado por ", Ag);
-    !at(enfermera, medCab); // Paso 1: Ir a la ubicación del drug
-    .println("Llegué a ", medCab, ". Realizando verificación de stock de ", drug);
-
-    // --- Inicio: Simulación/Acción de Verificación ---
-	
-    .wait(3000); 
-    .println("Verificación de stock para ", drug, " completada (simulada).");
-
-    // --- Fin: Simulación/Acción de Verificación ---
-
-    .println("Verificación finalizada. Enviando confirmación a ", Ag);
-    .send(Ag, tell, msg("He verificado en el estante de medicacion que has tomado ", drug, ". ¡Gracias por informarme!")); // Mensaje de confirmación final
-    +free[source(self)]; // Libera robot *tras* disparar chequeo
-    .println("Robot libre después de verificar consumo.").
-
-// Plan de fallo para la verificación
--!verify_consumption(Ag, drug)[error(E)] <-
-    .println("¡ERROR al verificar el consumo de ", drug, " para ", Ag, "! Error: ", E);
-    .send(Ag, tell, msg("Tuve un problema al intentar verificar el consumo de ", drug, ". Por favor, revisa manualmente."));
-    +free[source(self)].
-=======
 /* ----- ACTUALIZACIÓN DE LA HORA ----- */
 // El robot puede verificar la hora actual.                  
 +?time : true
@@ -528,15 +400,11 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
     .send(Ag, tell, msg("Tuve un problema al intentar verificar el consumo de ", DrugName, ". Por favor, revisa manualmente.")); // <-- Mensaje actualizado
     +free[source(self)]. // <-- Asegura liberar robot en caso de error
 
->>>>>>> Stashed changes
 
 /* ----- RECEPCIÓN DE PAUTAS DE MEDICACIÓN ----- */
 // Al recibir una pauta del owner, la añade a sus creencias.
 +medician(M, H)[source(owner)] <-
     +medician(M, H);
-<<<<<<< Updated upstream
-    .println("Pauta recibida y almacenada: Tomar ", M, " a las ", H, "h.").
-=======
     .println("Pauta recibida y almacenada: Tomar ", M, " a las ", H, "h.").
 
 +!clear_schedule // Forma más simple si no necesitas saber quién lo envió
@@ -547,4 +415,4 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
     .abolish(medician(_, _));
 
     .println("Enfermera: Todas las pautas de medicación (creencias 'medician') han sido eliminadas.").
->>>>>>> Stashed changes
+

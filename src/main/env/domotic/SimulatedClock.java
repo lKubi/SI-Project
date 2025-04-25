@@ -71,7 +71,7 @@ public class SimulatedClock {
         String initialTime = String.format("%02d:%02d", hours, minutes);
         timeLabel = new JLabel(initialTime, SwingConstants.CENTER);
         timeLabel.setFont(new Font("Monospaced", Font.BOLD, 60));
-        timeLabel.setForeground(Color.CYAN);
+        timeLabel.setForeground(Color.BLUE);
         timeLabel.setOpaque(true);
         timeLabel.setBackground(Color.BLACK);
 

@@ -15,7 +15,7 @@ MAS assistantHome {
     environment: domotic.HouseEnv(gui) // use "nogui" as parameter to not show the GUI
     
     agents: enfermera robot.asl;
-			//auxiliar;
+			auxiliar;
             owner; 
 			//guest owner.asl;
             repartidor supermarket.asl;

@@ -26,10 +26,15 @@ public class HouseEnv extends Environment {
     public static final Literal sb   = Literal.parseLiteral("sip(beer)");
     public static final Literal hob  = Literal.parseLiteral("has(owner,beer)");
 
-    public static final Literal amc  = Literal.parseLiteral("at(enfermera, medCab)");
-    public static final Literal af   = Literal.parseLiteral("at(enfermera,fridge)");
-    public static final Literal ao   = Literal.parseLiteral("at(enfermera,owner)");
-    public static final Literal ad   = Literal.parseLiteral("at(enfermera,delivery)");
+    public static final Literal emc  = Literal.parseLiteral("at(enfermera, medCab)");
+    public static final Literal ef   = Literal.parseLiteral("at(enfermera,fridge)");
+    public static final Literal eo   = Literal.parseLiteral("at(enfermera,owner)");
+    public static final Literal ed   = Literal.parseLiteral("at(enfermera,delivery)");
+
+    public static final Literal amc  = Literal.parseLiteral("at(auxiliar, medCab)");
+    public static final Literal af   = Literal.parseLiteral("at(auxiliar,fridge)");
+    public static final Literal ao   = Literal.parseLiteral("at(auxiliar,owner)");
+    public static final Literal ad   = Literal.parseLiteral("at(auxiliar,delivery)");
 
     public static final Literal oamc = Literal.parseLiteral("at(owner, medCab)");
     public static final Literal oaf  = Literal.parseLiteral("at(owner,fridge)");
@@ -70,12 +75,15 @@ public class HouseEnv extends Environment {
         Location lRobot = model.getAgPos(0);
         String RobotPlace = model.getRoom(lRobot);
         addPercept("enfermera", Literal.parseLiteral("atRoom("+RobotPlace+")"));
+        addPercept("auxiliar", Literal.parseLiteral("atRoom("+RobotPlace+")"));
         addPercept("owner", Literal.parseLiteral("atRoom(enfermera,"+RobotPlace+")"));
 
         Location lOwner = model.getAgPos(1);
         String OwnerPlace = model.getRoom(lOwner);
         addPercept("owner", Literal.parseLiteral("atRoom("+OwnerPlace+")"));
         addPercept("enfermera", Literal.parseLiteral("atRoom(owner,"+OwnerPlace+")"));
+        addPercept("auxiliar", Literal.parseLiteral("atRoom(owner,"+OwnerPlace+")"));
+
 
         if (lRobot.distance(model.lDoorHome) == 0 ||
             lRobot.distance(model.lDoorKit1) == 0 ||
@@ -102,6 +110,30 @@ public class HouseEnv extends Environment {
             lOwner.distance(model.lDoorBed3) == 0) {
             addPercept("owner", Literal.parseLiteral("atDoor"));
         };
+
+        Location lAuxiliar = model.getAgPos(2);
+        if (lAuxiliar != null) { // Comprobar que la posición existe
+             String AuxiliarPlace = model.getRoom(lAuxiliar);
+             // Percepción para el propio auxiliar sobre su habitación
+             addPercept("auxiliar", Literal.parseLiteral("atRoom("+AuxiliarPlace+")"));
+             // Opcional: Percepciones para otros agentes sobre la habitación del auxiliar
+             addPercept("enfermera", Literal.parseLiteral("atRoom(auxiliar,"+AuxiliarPlace+")"));
+             addPercept("owner", Literal.parseLiteral("atRoom(auxiliar,"+AuxiliarPlace+")"));
+    
+             // Comprobar si el auxiliar está en una puerta
+             if (lAuxiliar.distance(model.lDoorHome) == 0 ||
+                 lAuxiliar.distance(model.lDoorKit1) == 0 ||
+                 lAuxiliar.distance(model.lDoorKit2) == 0 ||
+                 lAuxiliar.distance(model.lDoorSal1) == 0 ||
+                 lAuxiliar.distance(model.lDoorSal2) == 0 ||
+                 lAuxiliar.distance(model.lDoorBath1) == 0 ||
+                 lAuxiliar.distance(model.lDoorBath2) == 0 ||
+                 lAuxiliar.distance(model.lDoorBed1) == 0 ||
+                 lAuxiliar.distance(model.lDoorBed2) == 0 ||
+                 lAuxiliar.distance(model.lDoorBed3) == 0) {
+                 addPercept("auxiliar", Literal.parseLiteral("atDoor"));
+             }
+        }
     }
 
     /**
@@ -152,35 +184,54 @@ public class HouseEnv extends Environment {
     void updatePercepts() {
         clearPercepts("enfermera");
         clearPercepts("owner");
+        clearPercepts("auxiliar"); 
 
         updateAgentsPlace();
         updateThingsPlace();
 
         Location lRobot = model.getAgPos(0);
         Location lOwner = model.getAgPos(1);
+        Location lAuxiliar = model.getAgPos(2);
+
 
         if (lRobot.distance(model.lMedCab) < 2) {
-            addPercept("enfermera", amc);
+            addPercept("enfermera", emc);
         }
 
         if (lOwner.distance(model.lMedCab) < 2) {
             addPercept("owner", oamc);
         }
 
+        if (lAuxiliar.distance(model.lMedCab) < 2) {
+            addPercept("auxiliar", amc);
+        }
+
         if (lRobot.distance(model.lFridge) < 2) {
-            addPercept("enfermera", af);
+            addPercept("enfermera", ef);
         }
 
         if (lOwner.distance(model.lFridge) < 2) {
             addPercept("owner", oaf);
         }
 
+        if (lAuxiliar.distance(model.lFridge) < 2) {
+            addPercept("auxiliar", af);
+        }
+
         if (lRobot.distance(lOwner) == 1) {
-            addPercept("enfermera", ao);
+            addPercept("enfermera", eo);
+        }
+
+        if (lAuxiliar.distance(lOwner) == 1) {
+            addPercept("auxiliar", ao);
         }
 
         if (lRobot.distance(model.lDeliver) == 1) {
-            addPercept("enfermera", ad);
+            addPercept("enfermera", ed);
+        }
+
+        if (lAuxiliar.distance(model.lDeliver) == 1) {
+            addPercept("auxiliar", ad); 
         }
 
         if (lOwner.distance(model.lChair1) == 0) {
@@ -239,9 +290,16 @@ public class HouseEnv extends Environment {
 
         // Only add clock percept if clock is available
         if (clock != null) {
-           addPercept("enfermera", Literal.parseLiteral("clock(" + clock.getTime() + ")"));
-           addPercept("owner", Literal.parseLiteral("clock(" + clock.getTime() + ")"));
+            addPercept("enfermera", Literal.parseLiteral("clock(" + clock.getTime() + ")"));
+            addPercept("owner", Literal.parseLiteral("clock(" + clock.getTime() + ")"));
+            addPercept("auxiliar", Literal.parseLiteral("clock(" + clock.getTime() + ")")); // <-- AÑADIDO
         }
+
+        if (model.carryingBox) { // Asumiendo que esta variable es del auxiliar
+            addPercept("auxiliar", Literal.parseLiteral("has(auxiliar, box)"));
+            // Opcional: Informar a otros agentes
+            // addPercept("enfermera", Literal.parseLiteral("has(auxiliar, box)"));
+         }
     }
 
 
@@ -258,6 +316,19 @@ public class HouseEnv extends Environment {
     public boolean executeAction(String ag, Structure action) {
 
         boolean result = false;
+
+        int agentId = -1; // Determinar el ID basado en el nombre
+
+        if (ag.equals("enfermera")) {
+            agentId = HouseModel.ROBOT_AGENT_ID; // 0
+        } else if (ag.equals("owner")) {
+            agentId = HouseModel.OWNER_AGENT_ID; // 1
+        } else if (ag.equals("auxiliar")) { // <-- AÑADIDO
+            agentId = HouseModel.AUXILIAR_AGENT_ID; // 2
+        } else {
+            logger.warning("Action executed by unrecognized agent: " + ag);
+            return false; // Agente desconocido
+        }
 
         if (action.getFunctor().equals("sit")) {
             String l = action.getTerm(0).toString();
@@ -324,7 +395,11 @@ public class HouseEnv extends Environment {
             try {
                 if (ag.equals("enfermera")) {
                     result = model.moveTowards(0, dest);
+                } else if(ag.equals("auxiliar")) { // <-- AÑADIDO
+                    result = model.moveTowards(2, dest);
                 } else {
+                    // Asumiendo que el agente es el owner
+                    // Si el agente no es enfermera ni auxiliar, asumimos que es el owner   
                     result = model.moveTowards(1, dest);
                 }
             } catch (Exception e) {
@@ -334,11 +409,8 @@ public class HouseEnv extends Environment {
         } else if (action.equals(gd)) {
             result = model.getDrug();
 
-<<<<<<< Updated upstream
-        } else if (action.equals(hd)) {
-            result = model.handInDrug();
-=======
         } else if (action.getFunctor().equals("hand_in")) { // Compara el nombre/functor de la acción
+
 
             Term drugTerm = action.getTerm(0);
             String drugName = "";
@@ -349,8 +421,7 @@ public class HouseEnv extends Environment {
                 drugName = drugTerm.toString().replace("\"", "");
             }
 
-            result = model.handInDrug(drugName);
->>>>>>> Stashed changes
+            result = model.handInDrug(agentId, drugName);
 
         } else if (action.equals(sd)) {
             result = model.sipDrug();
@@ -369,15 +440,6 @@ public class HouseEnv extends Environment {
             getClock(); // Prints the time, doesn't change state
 
         } else if (action.getFunctor().equals("obtener_medicamento")) {
-            int agentId = -1;
-            if (ag.equals("enfermera")) {
-                agentId = HouseModel.ROBOT_AGENT_ID;
-            } else if (ag.equals("owner")) {
-                agentId = HouseModel.OWNER_AGENT_ID;
-            } else {
-                logger.warning("Action 'obtener_medicamento' called by unrecognized agent: " + ag); // Log agent name
-                return false;
-            }
 
             Term drugTerm = action.getTerm(0);
             String drugName = "";

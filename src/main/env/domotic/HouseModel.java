@@ -58,8 +58,11 @@ public class HouseModel extends GridWorldModel {
     public static final int ROBOT_AGENT_ID = 0;
     /** ID del agente dueño (owner) */
     public static final int OWNER_AGENT_ID = 1;
+
+    public static final int AUXILIAR_AGENT_ID = 2;
+
     /** Número total de agentes definidos */
-    private static final int nAgents = 2;
+    private static final int nAgents = 3;
 
     // --- Estado del Modelo ---
 
@@ -68,7 +71,13 @@ public class HouseModel extends GridWorldModel {
     /** Estado de apertura del botiquín */
     boolean medCabOpen = false;
     /** Si el robot lleva medicamentos */
-    boolean carryingDrug = false;
+    boolean robotCarryingDrug = false; // Estado del ROBOT llevando medicamento
+    boolean robotCarryingBeer = false;// Estado del ROBOT llevando cerveza
+
+
+
+    boolean carryingBox= false;
+
     /** Si el robot lleva cerveza */
     boolean carryingBeer = false;
     /** Número de sorbos de cerveza tomados */
@@ -97,6 +106,7 @@ public class HouseModel extends GridWorldModel {
     Location lBed2    = new Location(14, 0);
     Location lBed3    = new Location(21, 0);
     Location lBed1    = new Location(13, 9);
+    Location lCharger = new Location(2,7);
 
     // --- Ubicaciones de Puertas ---
 
@@ -137,6 +147,8 @@ public class HouseModel extends GridWorldModel {
         // Posiciones iniciales de los agentes
         setAgPos(0, 19, 10);   // enfermera
         setAgPos(1, 13, 9);    // owner
+        setAgPos(2, 1, 10); // auxiliar
+
 
         // Objetos fijos en el entorno
         add(MEDCAB, lMedCab);
@@ -152,6 +164,7 @@ public class HouseModel extends GridWorldModel {
         add(BED,    lBed1);
         add(BED,    lBed2);
         add(BED,    lBed3);
+        add(CHARGER, lCharger);
 
         // Puertas
         add(DOOR, lDoorKit2);
@@ -183,13 +196,12 @@ public class HouseModel extends GridWorldModel {
         contadorMedicamentos.put("Ibuprofeno 600mg", 4);
         contadorMedicamentos.put("Amoxicilina 500mg", 8);
         contadorMedicamentos.put("Omeprazol 20mg", 1);
-<<<<<<< Updated upstream
-        contadorMedicamentos.put("Loratadina 10mg", 0);
-=======
         contadorMedicamentos.put("Loratadina 10mg", 4);
->>>>>>> Stashed changes
 
         this.availableDrugs = calcularTotalMedicamentos(contadorMedicamentos);
+        this.robotCarryingDrug = false;
+        this.robotCarryingBeer = false;
+        this.carryingBox = false;
     }
 
 
@@ -321,7 +333,7 @@ public class HouseModel extends GridWorldModel {
             return false;
         }
 
-        if (Ag == ROBOT_AGENT_ID || Ag == OWNER_AGENT_ID) {
+        if (Ag == ROBOT_AGENT_ID || Ag == OWNER_AGENT_ID || Ag == AUXILIAR_AGENT_ID) { 
             if ((x == 7 && y == 9)  || (x == 7 && y == 10) || (x == 14 && y == 1) ||
                 (x == 15 && y == 1) || (x == 15 && y == 0) || (x == 21 && y == 1) ||
                 (x == 22 && y == 1) || (x == 22 && y == 0) || (x == 13 && y == 10) ||
@@ -332,7 +344,7 @@ public class HouseModel extends GridWorldModel {
             return !hasObject(WASHER, x, y) && !hasObject(TABLE, x, y) &&
                    !hasObject(SOFA, x, y) && !hasObject(CHAIR, x, y) &&
                    !hasObject(BED, x, y) && !hasObject(FRIDGE, x, y) &&
-                   !hasObject(MEDCAB, x, y);
+                   !hasObject(MEDCAB, x, y) && !hasObject(CHARGER, x, y);
         } else {
             return true;
         }
@@ -512,16 +524,22 @@ public class HouseModel extends GridWorldModel {
      *
      * @return true si la acción se realizó con éxito, false si falló por alguna condición.
      */
+     /**
+     * Permite al robot tomar una cerveza de la nevera si está abierta,
+     * hay stock disponible y no está cargando una actualmente.
+     * (Método actualizado para usar robotCarryingBeer)
+     * @return true si la acción se realizó con éxito, false si falló por alguna condición.
+     */
     boolean getBeer() {
-        if (fridgeOpen && availableBeers > 0 && !carryingBeer) {
+        if (fridgeOpen && availableBeers > 0 && !robotCarryingBeer) { // <-- MODIFICADO
             availableBeers--;
-            carryingBeer = true;
+            robotCarryingBeer = true; // <-- MODIFICADO
             System.out.println("Robot got a beer. Beers left: " + availableBeers);
             return true;
         } else {
             if (!fridgeOpen) System.out.println("Failed to get beer: Fridge is closed.");
             if (availableBeers <= 0) System.out.println("Failed to get beer: No beers available.");
-            if (carryingBeer) System.out.println("Failed to get beer: Robot already carrying a beer.");
+            if (robotCarryingBeer) System.out.println("Failed to get beer: Robot already carrying a beer."); // <-- MODIFICADO
             return false;
         }
     }
@@ -546,19 +564,27 @@ public class HouseModel extends GridWorldModel {
      * @return true si la entrega fue exitosa, false si falló por distancia o falta de carga.
      */
     boolean handInBeer() {
-        Location robotPos = getAgPos(0);
-        Location ownerPos = getAgPos(1);
+        Location robotPos = getAgPos(ROBOT_AGENT_ID); // Usar constante
+        Location ownerPos = getAgPos(OWNER_AGENT_ID); // Usar constante
+        boolean toret;
 
-        if (carryingBeer && robotPos.isNeigbour(ownerPos)) {
-            sipCount = 10;
-            carryingBeer = false;
-            System.out.println("Robot handed beer to owner.");
-            return true;
-        } else {
-            if (!carryingBeer) System.out.println("Failed to hand in beer: Robot not carrying one.");
-            if (!robotPos.isNeigbour(ownerPos)) System.out.println("Failed to hand in beer: Robot not near owner.");
-            return false;
+        // Comprobar si las posiciones son válidas
+        if (robotPos == null || ownerPos == null) {
+             System.out.println("Failed to hand in beer: Agent position not found.");
+             return false;
         }
+
+        if (robotCarryingBeer && robotPos.isNeigbour(ownerPos)) { // <-- MODIFICADO
+            sipCount = 10;       // Owner ahora tiene la cerveza
+            robotCarryingBeer = false; // Robot ya no la lleva <-- MODIFICADO
+            System.out.println("Robot handed beer to owner.");
+            toret = true;
+        } else {
+            if (!robotCarryingBeer) System.out.println("Failed to hand in beer: Robot not carrying one."); // <-- MODIFICADO
+            if (!robotPos.isNeigbour(ownerPos)) System.out.println("Failed to hand in beer: Robot not near owner.");
+            toret = false;
+        }
+        return toret;
     }
 
     /**
@@ -605,12 +631,7 @@ public class HouseModel extends GridWorldModel {
         return true;
     }
 
-    /**
-     * Entrega un medicamento al dueño si el robot lo está cargando y se encuentra cerca.
-     * Inicia el contador de uso de medicamentos y libera la carga del robot.
-     *
-     * @return true si la entrega fue exitosa, false si no se cumple alguna condición.
-     */
+   
     /**
      * Entrega un medicamento específico al dueño si el robot lo está cargando y se encuentra cerca.
      * Actualiza el estado del dueño y libera la carga del robot.
@@ -618,31 +639,63 @@ public class HouseModel extends GridWorldModel {
      * @param drugName El nombre del medicamento que se está entregando. // <--- Parámetro añadido
      * @return true si la entrega fue exitosa, false si no se cumple alguna condición.
      */
-    boolean handInDrug(String drugName) { // <--- Firma cambiada para aceptar String
-        Location robotPos = getAgPos(0);
-        Location ownerPos = getAgPos(1);
+   /**
+     * Entrega un medicamento específico al dueño si el agente especificado (robot o auxiliar)
+     * lo está cargando y se encuentra cerca del dueño.
+     * Actualiza el estado del dueño y libera la carga del agente que entrega.
+     *
+     * @param agentId  ID del agente que realiza la entrega (0 para robot, 2 para auxiliar). // <-- Parámetro añadido
+     * @param drugName El nombre del medicamento que se está entregando (usado para log).
+     * @return true si la entrega fue exitosa, false si no se cumple alguna condición.
+     */
+    boolean handInDrug(int agentId, String drugName) {
+        String agentName = (agentId == ROBOT_AGENT_ID) ? "Robot" :
+                           (agentId == AUXILIAR_AGENT_ID ? "Auxiliar" : "Unknown Agent " + agentId);
+        Location agentPos = getAgPos(agentId);
+        Location ownerPos = getAgPos(OWNER_AGENT_ID);
 
-        // Opcional: verificar si drugName es válido si es necesario
-        // if (drugName == null || drugName.isEmpty()) {
-        //     System.out.println("Failed to hand in drug: drugName parameter is missing.");
-        //     return false;
-        // }
+        // --- Verificaciones iniciales (sin cambios) ---
+        if (agentPos == null) { /* ... */ return false; }
+        if (ownerPos == null) { /* ... */ return false; }
+        if (agentId != ROBOT_AGENT_ID && agentId != AUXILIAR_AGENT_ID) { /* ... */ return false; }
 
-        if (carryingDrug && robotPos.isNeigbour(ownerPos)) {
-            // Establece el contador del dueño a 1 (asumiendo que recibe una dosis)
-            // Cambiado de 10 que parecía incorrecto. ¡Verifica si esto es lo que quieres!
-            drugsCount = 1;
+        boolean canDeliver = false;
+        boolean isCarrying = false;
 
-            // ¡Importante! Libera la carga del robot
-            carryingDrug = false;
+        if (agentId == ROBOT_AGENT_ID) {
+            isCarrying = robotCarryingDrug; // <-- MODIFICADO
+            if (isCarrying && agentPos.isNeigbour(ownerPos)) {
+                canDeliver = true;
+            }
+        } else if (agentId == AUXILIAR_AGENT_ID) {
+            isCarrying = carryingBox; // Sin cambios para auxiliar
+            if (isCarrying && agentPos.isNeigbour(ownerPos)) {
+                canDeliver = true;
+            }
+        }
 
-            // Mensaje de log ahora incluye el nombre de la droga
-            System.out.println("Robot handed '" + drugName + "' to owner.");
+        if (canDeliver) {
+            drugsCount = 10; // Owner ahora tiene el medicamento listo
+
+            // Libera la carga del agente que entregó
+            if (agentId == ROBOT_AGENT_ID) {
+                robotCarryingDrug = false; // <-- MODIFICADO
+            } else if (agentId == AUXILIAR_AGENT_ID) {
+                carryingBox = false; // Sin cambios para auxiliar
+            }
+
+            System.out.println(agentName + " handed '" + drugName + "' to owner.");
             return true;
+
         } else {
-            // Mensajes de error sin cambios
-            if (!carryingDrug) System.out.println("Failed to hand in drug: Robot not carrying one.");
-            if (!robotPos.isNeigbour(ownerPos)) System.out.println("Failed to hand in drug: Robot not near owner.");
+            // Mensajes de error (actualizados para reflejar la variable correcta)
+            if (!isCarrying) {
+                 System.out.println("Failed to hand in drug: " + agentName + " not carrying an item (" + (agentId == ROBOT_AGENT_ID ? "robotCarryingDrug=false" : "carryingBox=false") + ")."); // <-- MODIFICADO (texto)
+            } else if (!agentPos.isNeigbour(ownerPos)) {
+                 System.out.println("Failed to hand in drug: " + agentName + " not near owner (Agent at " + agentPos + ", Owner at " + ownerPos + ").");
+            } else {
+                 System.out.println("Failed to hand in drug ("+agentName+"): Unknown reason (carrying=" + isCarrying + ", near=" + agentPos.isNeigbour(ownerPos) + ").");
+            }
             return false;
         }
     }
@@ -671,99 +724,94 @@ public class HouseModel extends GridWorldModel {
      * @return true si la acción fue exitosa, false si no se cumplen las condiciones necesarias.
      */
     boolean getDrug() {
-        if (medCabOpen && availableDrugs > 0 && !carryingDrug) {
-            availableDrugs--;
-            carryingDrug = true;
-            System.out.println("Robot got a drug. Drugs left: " + availableDrugs);
+        // Esta acción implícitamente la hace el robot
+        if (medCabOpen && availableDrugs > 0 && !robotCarryingDrug) { // <-- MODIFICADO
+            availableDrugs--; // Reduce el total general
+            // Nota: No se reduce el contador específico aquí, ¿es intencional?
+            // La acción 'agenteGetSpecificDrug' sí lo hace. Quizás esta acción 'getDrug' es genérica.
+            robotCarryingDrug = true; // <-- MODIFICADO
+            System.out.println("Robot got a generic drug. Drugs left (total): " + availableDrugs);
             return true;
         } else {
             if (!medCabOpen) System.out.println("Failed to get drug: MedCab is closed.");
             if (availableDrugs <= 0) System.out.println("Failed to get drug: No drugs available.");
-            if (carryingDrug) System.out.println("Failed to get drug: Robot already carrying a drug.");
+            if (robotCarryingDrug) System.out.println("Failed to get drug: Robot already carrying a drug."); // <-- MODIFICADO
             return false;
         }
     }
 
     /**
-     * Permite que un agente (robot o dueño) tome un medicamento específico del botiquín.
+     * Permite que un agente (robot, dueño o auxiliar) tome un medicamento específico del botiquín.
      * Verifica precondiciones como cercanía al botiquín, disponibilidad del medicamento,
-     * y si el agente ya lleva uno. Si el medicamento está agotado, lo repone automáticamente.
+     * y si el agente ya lleva un objeto (drug para robot, box para auxiliar) o tiene dosis pendiente (dueño).
+     * Si el medicamento está agotado, lo repone automáticamente.
      *
-     * @param agentId ID del agente (0 para robot, 1 para dueño).
+     * @param agentId ID del agente (0 para robot, 1 para dueño, 2 para auxiliar). // <-- Actualizada descripción
      * @param nombreMedicamento Nombre exacto del medicamento que se desea obtener.
      * @return true si el agente obtuvo el medicamento, false en caso contrario.
      */
     boolean agenteGetSpecificDrug(int agentId, String nombreMedicamento) {
-        String agentName = (agentId == ROBOT_AGENT_ID) ? "Robot" : (agentId == OWNER_AGENT_ID ? "Owner" : "Unknown Agent " + agentId);
+        String agentName = (agentId == ROBOT_AGENT_ID) ? "Robot" :
+                           (agentId == OWNER_AGENT_ID ? "Owner" :
+                           (agentId == AUXILIAR_AGENT_ID ? "Auxiliar" : "Unknown Agent " + agentId));
+
         System.out.println("\n" + agentName + " trying to get: " + nombreMedicamento);
 
-        if (!medCabOpen) {
-            System.out.println("Error (" + agentName + "): MedCab is closed.");
-            return false;
-        }
-
+        // --- Precondiciones (sin cambios) ---
+        if (!medCabOpen) { /* ... */ return false; }
         Location agentPos = getAgPos(agentId);
-        if (agentPos == null) {
-            System.out.println("Error (" + agentName + "): Invalid agent ID " + agentId);
-            return false;
-        }
+        if (agentPos == null) { /* ... */ return false; }
+        if (!agentPos.isNeigbour(lMedCab)) { /* ... */ return false; }
 
-        if (!agentPos.isNeigbour(lMedCab)) {
-            System.out.println("Error (" + agentName + "): Not near MedCab at " + lMedCab + " (Agent at " + agentPos + ")");
-            return false;
-        }
-
-        if (agentId == ROBOT_AGENT_ID && carryingDrug) {
+        // --- Precondiciones específicas por agente (actualizadas) ---
+        if (agentId == ROBOT_AGENT_ID && robotCarryingDrug) { // <-- MODIFICADO
             System.out.println("Error (" + agentName + "): Already carrying a drug.");
             return false;
         }
-
-        if (agentId == OWNER_AGENT_ID && drugsCount > 0) {
+        if (agentId == OWNER_AGENT_ID && drugsCount > 0) { // Sin cambios para owner
             System.out.println("Error (" + agentName + "): Already has a drug ready (drugsCount=" + drugsCount + "). Must take it first.");
             return false;
         }
+        if (agentId == AUXILIAR_AGENT_ID && carryingBox) { // Sin cambios para auxiliar
+            System.out.println("Error (" + agentName + "): Already carrying a box/item.");
+            return false;
+        }
 
+        // --- Lógica para obtener el medicamento (actualizada) ---
         if (contadorMedicamentos.containsKey(nombreMedicamento)) {
             int cantidadEspecifica = contadorMedicamentos.get(nombreMedicamento);
             boolean justRefilledThis = false;
 
             if (cantidadEspecifica <= 0) {
-                System.out.println("\n**");
-                System.out.println("*** Medicamento específico '" + nombreMedicamento + "' AGOTADO! ***");
-                System.out.println("*** Auto-rellenando SOLO '" + nombreMedicamento + "' a 5 unidades... ***");
+                // ... (lógica de auto-rellenado sin cambios) ...
+                 int refillAmount = 5; // Ejemplo
+                 contadorMedicamentos.put(nombreMedicamento, refillAmount);
+                 justRefilledThis = true;
+                 this.availableDrugs = calcularTotalMedicamentos(contadorMedicamentos);
+                 cantidadEspecifica = refillAmount;
+                 // ... (Mensajes y update view sin cambios) ...
+                 System.out.println("*** Rellenado específico completado. Nueva cantidad de '" + nombreMedicamento + "': " + refillAmount + ". ***");
 
-                int refillAmount = 5;
-                contadorMedicamentos.put(nombreMedicamento, refillAmount);
-                justRefilledThis = true;
-                this.availableDrugs = calcularTotalMedicamentos(contadorMedicamentos);
-
-                System.out.println("*** Rellenado específico completado. Nueva cantidad de '" + nombreMedicamento + "': " + refillAmount + ". ***");
-                System.out.println("*** Total de medicamentos disponibles ahora: " + this.availableDrugs + " ***");
-
-                cantidadEspecifica = refillAmount;
-
-                if (view != null) {
-                    view.update(lMedCab.x, lMedCab.y);
-                }
             }
 
+            // Decrementar contadores
             contadorMedicamentos.put(nombreMedicamento, cantidadEspecifica - 1);
             availableDrugs--;
 
+            // --- MODIFICADO: Actualizar estado del agente correcto ---
             if (agentId == ROBOT_AGENT_ID) {
-                carryingDrug = true;
+                robotCarryingDrug = true; // <-- MODIFICADO
             } else if (agentId == OWNER_AGENT_ID) {
-                drugsCount = 1;
+                drugsCount = 10; // Owner tiene 1 dosis lista
+            } else if (agentId == AUXILIAR_AGENT_ID) {
+                carryingBox = true; // Auxiliar ahora lleva algo
             }
 
-            if (justRefilledThis) {
-                System.out.println("Success (" + agentName + "): Got " + nombreMedicamento + " (after auto-refill).");
-            } else {
-                System.out.println("Success (" + agentName + "): Got " + nombreMedicamento + ".");
-            }
-
-            System.out.println("  Specific units left: " + contadorMedicamentos.get(nombreMedicamento));
-            System.out.println("  Total units left: " + availableDrugs);
+            // --- Mensajes de éxito (sin cambios) ---
+            // ...
+             System.out.println("Success (" + agentName + "): Got " + nombreMedicamento + ".");
+             System.out.println("   Specific units left: " + contadorMedicamentos.get(nombreMedicamento));
+             System.out.println("   Total units left: " + availableDrugs);
             return true;
 
         } else {
@@ -771,6 +819,7 @@ public class HouseModel extends GridWorldModel {
             return false;
         }
     }
+
 
     /**
      * Añade una cantidad específica de un medicamento al inventario.
