@@ -73,7 +73,6 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 
 /* ----- ##### NUEVO: PLANES PARA REVISIÓN PROACTIVA DE PAUTA (MODIFICADO) ##### ----- */
 
-// Plan para revisar periódicamente la pauta de medicación (USA HORA y MINUTO SIMULADOS)
 // Plan para revisar periódicamente la pauta de medicación (USA HORA SIMULADA)
 +clock(SimulatedHour)[source(Source)] : free[source(self)] <-
     .println("PLAN REACTIVO (Clock ", SimulatedHour, "): Revisando pauta...");
@@ -119,7 +118,7 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
     obtener_medicamento(DrugName); // Acción que puede fallar
     close(medCab);
     !at(enfermera, Ag);
-    hand_in(DrugName);
+    hand_in(Ag, DrugName);
 
     // Registrar consumo
     .date(YY, MM, DD); .time(HH, NN, SS);

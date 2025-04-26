@@ -25,27 +25,16 @@ public class HouseModel extends GridWorldModel {
 
     // --- Constantes de Objetos ---
     
-    /** Objeto tipo columna (no utilizado en lógica actual) */
     public static final int COLUMN   =     4;
-    /** Objeto tipo silla */
     public static final int CHAIR    =     8;
-    /** Objeto tipo sofá */
     public static final int SOFA     =    16;
-    /** Objeto tipo nevera */
     public static final int FRIDGE   =    32;
-    /** Objeto tipo lavadora */
     public static final int WASHER   =    64;
-    /** Objeto tipo puerta */
     public static final int DOOR     =   128;
-    /** Objeto tipo cargador (no utilizado) */
     public static final int CHARGER  =   256;
-    /** Objeto tipo mesa */
     public static final int TABLE    =   512;
-    /** Objeto tipo cama */
     public static final int BED      =  1024;
-    /** Objeto tipo pared vertical (no utilizado) */
     public static final int WALLV    =  2048;
-    /** Objeto tipo botiquín (único lugar para medicamentos) */
     public static final int MEDCAB   =  4096;
 
     // --- Configuración del Grid y Agentes ---
@@ -71,15 +60,13 @@ public class HouseModel extends GridWorldModel {
     /** Estado de apertura del botiquín */
     boolean medCabOpen = false;
     /** Si el robot lleva medicamentos */
-    boolean robotCarryingDrug = false; // Estado del ROBOT llevando medicamento
-    boolean robotCarryingBeer = false;// Estado del ROBOT llevando cerveza
+    boolean robotCarryingDrug = false; 
+    boolean robotCarryingBeer = false;
+
+    boolean auxiliarCarryingDrug = false; 
 
 
 
-    boolean carryingBox= false;
-
-    /** Si el robot lleva cerveza */
-    boolean carryingBeer = false;
     /** Número de sorbos de cerveza tomados */
     int sipCount = 0;
     /** Número de medicamentos consumidos */
@@ -101,7 +88,7 @@ public class HouseModel extends GridWorldModel {
     Location lDeliver = new Location(0, 12);
     Location lWasher  = new Location(4, 0);
     Location lFridge  = new Location(0, 0);
-    Location lMedCab  = new Location(0, 2);
+    Location lMedCab  = new Location(8, 0); 
     Location lTable   = new Location(6, 9);
     Location lBed2    = new Location(14, 0);
     Location lBed3    = new Location(21, 0);
@@ -110,7 +97,7 @@ public class HouseModel extends GridWorldModel {
 
     // --- Ubicaciones de Puertas ---
 
-    Location lDoorHome  = new Location(0, 12);
+    Location lDoorHome  = new Location(0, 11);
     Location lDoorKit1  = new Location(0, 6);
     Location lDoorKit2  = new Location(7, 5);
     Location lDoorSal1  = new Location(3, 11);
@@ -201,7 +188,7 @@ public class HouseModel extends GridWorldModel {
         this.availableDrugs = calcularTotalMedicamentos(contadorMedicamentos);
         this.robotCarryingDrug = false;
         this.robotCarryingBeer = false;
-        this.carryingBox = false;
+        this.auxiliarCarryingDrug = false;
     }
 
 
@@ -518,12 +505,6 @@ public class HouseModel extends GridWorldModel {
         return totalPath;
     }
 
-    /**
-     * Permite al robot tomar una cerveza de la nevera si está abierta,
-     * hay stock disponible y no está cargando una actualmente.
-     *
-     * @return true si la acción se realizó con éxito, false si falló por alguna condición.
-     */
      /**
      * Permite al robot tomar una cerveza de la nevera si está abierta,
      * hay stock disponible y no está cargando una actualmente.
@@ -531,15 +512,13 @@ public class HouseModel extends GridWorldModel {
      * @return true si la acción se realizó con éxito, false si falló por alguna condición.
      */
     boolean getBeer() {
-        if (fridgeOpen && availableBeers > 0 && !robotCarryingBeer) { // <-- MODIFICADO
+        if (fridgeOpen && availableBeers > 0) { // <-- MODIFICADO
             availableBeers--;
-            robotCarryingBeer = true; // <-- MODIFICADO
             System.out.println("Robot got a beer. Beers left: " + availableBeers);
             return true;
         } else {
             if (!fridgeOpen) System.out.println("Failed to get beer: Fridge is closed.");
             if (availableBeers <= 0) System.out.println("Failed to get beer: No beers available.");
-            if (robotCarryingBeer) System.out.println("Failed to get beer: Robot already carrying a beer."); // <-- MODIFICADO
             return false;
         }
     }
@@ -632,13 +611,6 @@ public class HouseModel extends GridWorldModel {
     }
 
    
-    /**
-     * Entrega un medicamento específico al dueño si el robot lo está cargando y se encuentra cerca.
-     * Actualiza el estado del dueño y libera la carga del robot.
-     *
-     * @param drugName El nombre del medicamento que se está entregando. // <--- Parámetro añadido
-     * @return true si la entrega fue exitosa, false si no se cumple alguna condición.
-     */
    /**
      * Entrega un medicamento específico al dueño si el agente especificado (robot o auxiliar)
      * lo está cargando y se encuentra cerca del dueño.
@@ -668,7 +640,7 @@ public class HouseModel extends GridWorldModel {
                 canDeliver = true;
             }
         } else if (agentId == AUXILIAR_AGENT_ID) {
-            isCarrying = carryingBox; // Sin cambios para auxiliar
+            isCarrying = auxiliarCarryingDrug; // Sin cambios para auxiliar
             if (isCarrying && agentPos.isNeigbour(ownerPos)) {
                 canDeliver = true;
             }
@@ -681,7 +653,7 @@ public class HouseModel extends GridWorldModel {
             if (agentId == ROBOT_AGENT_ID) {
                 robotCarryingDrug = false; // <-- MODIFICADO
             } else if (agentId == AUXILIAR_AGENT_ID) {
-                carryingBox = false; // Sin cambios para auxiliar
+                auxiliarCarryingDrug = false; // Sin cambios para auxiliar
             }
 
             System.out.println(agentName + " handed '" + drugName + "' to owner.");
@@ -690,7 +662,7 @@ public class HouseModel extends GridWorldModel {
         } else {
             // Mensajes de error (actualizados para reflejar la variable correcta)
             if (!isCarrying) {
-                 System.out.println("Failed to hand in drug: " + agentName + " not carrying an item (" + (agentId == ROBOT_AGENT_ID ? "robotCarryingDrug=false" : "carryingBox=false") + ")."); // <-- MODIFICADO (texto)
+                 System.out.println("Failed to hand in drug: " + agentName + " not carrying an item (" + (agentId == ROBOT_AGENT_ID ? "robotCarryingDrug=false" : "auxiliarCarryingDrug=false") + ")."); // <-- MODIFICADO (texto)
             } else if (!agentPos.isNeigbour(ownerPos)) {
                  System.out.println("Failed to hand in drug: " + agentName + " not near owner (Agent at " + agentPos + ", Owner at " + ownerPos + ").");
             } else {
@@ -772,7 +744,7 @@ public class HouseModel extends GridWorldModel {
             System.out.println("Error (" + agentName + "): Already has a drug ready (drugsCount=" + drugsCount + "). Must take it first.");
             return false;
         }
-        if (agentId == AUXILIAR_AGENT_ID && carryingBox) { // Sin cambios para auxiliar
+        if (agentId == AUXILIAR_AGENT_ID && auxiliarCarryingDrug) { // Sin cambios para auxiliar
             System.out.println("Error (" + agentName + "): Already carrying a box/item.");
             return false;
         }
@@ -804,7 +776,7 @@ public class HouseModel extends GridWorldModel {
             } else if (agentId == OWNER_AGENT_ID) {
                 drugsCount = 10; // Owner tiene 1 dosis lista
             } else if (agentId == AUXILIAR_AGENT_ID) {
-                carryingBox = true; // Auxiliar ahora lleva algo
+                auxiliarCarryingDrug = true; // Auxiliar ahora lleva algo
             }
 
             // --- Mensajes de éxito (sin cambios) ---
@@ -854,4 +826,102 @@ public class HouseModel extends GridWorldModel {
         }
         return total;
     }
+
+
+
+    /**
+ * Permite al agente auxiliar (ID 2) simular la recogida de una entrega (medicamento/objeto)
+ * cuando se encuentra en la puerta de casa (lDoorHome). Establece auxiliarCarryingDrug a true.
+ * Solo funciona si el auxiliar no está ya cargando algo.
+ *
+ * @param agentId El ID del agente que intenta realizar la acción. Debe ser AUXILIAR_AGENT_ID.
+ * @return true si el agente auxiliar estaba en la puerta, no llevaba nada y recogió
+ * exitosamente la entrega (flag establecido); false en caso contrario.
+ */
+boolean auxiliarPickUpDelivery(int agentId) {
+    // 1. Verificar si es el agente auxiliar
+    if (agentId != AUXILIAR_AGENT_ID) {
+        System.out.println("Action 'auxiliarPickUpDelivery' is only for the Auxiliar Agent (ID " + AUXILIAR_AGENT_ID + "). Agent " + agentId + " cannot perform it.");
+        return false;
+    }
+
+    // 2. Obtener la posición del agente
+    Location agentPos = getAgPos(agentId);
+    if (agentPos == null) {
+        System.out.println("Failed to get position for Auxiliar Agent (ID " + agentId + "). Cannot perform pickup.");
+        return false;
+    }
+
+    // 3. Verificar si está en la ubicación correcta (lDoorHome)
+    if (!agentPos.equals(lDoorHome)) {
+        System.out.println("Auxiliar Agent is not at the home door (lDoorHome: " + lDoorHome + "). Current position: " + agentPos + ". Cannot pick up delivery.");
+        return false;
+    }
+
+    // 4. Verificar si ya está cargando algo
+    if (auxiliarCarryingDrug) {
+        System.out.println("Auxiliar Agent is already carrying a drug/item. Cannot pick up another.");
+        return false;
+    }
+
+    // 5. Realizar la acción: establecer la bandera
+    auxiliarCarryingDrug = true;
+    System.out.println("Auxiliar Agent has picked up the delivery at the door (lDoorHome). Now carrying item (auxiliarCarryingDrug = true).");
+
+    // Opcional: Actualizar la vista si es necesario
+    // if (view != null) view.update(lDoorHome.x, lDoorHome.y); // Update door location appearance?
+    // if (view != null) view.update(agentPos.x, agentPos.y); // Update agent appearance?
+
+    return true;
+}
+
+/**
+ * Rellena el botiquín estableciendo la cantidad de cada tipo de medicamento existente
+ * a un valor fijo (100 unidades). Actualiza el recuento total de medicamentos disponibles.
+ * Si no hay medicamentos definidos en el inventario, simplemente informa y actualiza el total (a 0).
+ *
+ * @return true si el relleno se completó (incluso si no había nada que rellenar),
+ * false si ocurre un error grave (ej. el mapa de inventario es null).
+ */
+boolean refillMedCabFull() {
+    final int TARGET_QUANTITY = 100; // La cantidad objetivo fija para cada medicamento
+
+    System.out.println("\n--- Refilling Medicine Cabinet to Full (" + TARGET_QUANTITY + " units each) ---");
+
+    auxiliarCarryingDrug = false;
+
+    
+    // Comprobación de seguridad por si el mapa fuera null
+    if (contadorMedicamentos == null) {
+        System.err.println("CRITICAL ERROR: Medicine inventory map (contadorMedicamentos) is null! Cannot refill.");
+        return false; // Indica un fallo grave
+    }
+
+    if (contadorMedicamentos.isEmpty()) {
+        System.out.println("Warning: Medicine inventory (contadorMedicamentos) is empty. No specific drug types exist to refill to " + TARGET_QUANTITY + ".");
+        // No hay nada que rellenar, pero la operación se considera completada lógicamente.
+    } else {
+        System.out.println("Setting quantity of each existing drug type to: " + TARGET_QUANTITY);
+        // Iterar sobre todas las claves existentes (nombres de medicamentos)
+        // y establecer su valor a TARGET_QUANTITY en el mapa.
+        // Usamos keySet() para obtener los nombres y luego put() para actualizar.
+        for (String drugName : contadorMedicamentos.keySet()) {
+            int oldCount = contadorMedicamentos.getOrDefault(drugName, 0); // Obtener el valor anterior para el log
+            contadorMedicamentos.put(drugName, TARGET_QUANTITY);
+            System.out.println("  - Refilled '" + drugName + "': " + oldCount + " -> " + TARGET_QUANTITY);
+        }
+    }
+
+    // Recalcular el número total de medicamentos disponibles basado en el mapa actualizado
+    // Se llama incluso si el mapa estaba vacío, para asegurar que availableDrugs sea 0.
+    this.availableDrugs = calcularTotalMedicamentos(contadorMedicamentos);
+
+    System.out.println("Medicine Cabinet refill complete. Total available drugs now: " + this.availableDrugs);
+    System.out.println("-----------------------------------------------------------\n");
+
+    // Opcional: Actualizar la vista del botiquín si es necesario
+    // if (view != null) view.update(lMedCab.x, lMedCab.y);
+
+    return true; // La operación se considera exitosa
+}
 }

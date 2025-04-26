@@ -281,7 +281,7 @@ public class HouseView extends GridWorldView {
             String objPath;
             // *** IMPORTANT: Replace hmodel.auxCarryingBox with your actual condition ***
             // *** OR add boolean auxCarryingBox to HouseModel ***
-            boolean isCarrying = hmodel.carryingBox; // Placeholder condition
+            boolean isCarrying = hmodel.auxiliarCarryingDrug; // Placeholder condition
 
             if (isCarrying) {
                 objPath = "/doc/auxiliarCaja.png"; // Image when carrying

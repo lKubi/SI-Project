@@ -23,7 +23,7 @@ connect(livingroom, hallway, doorSal2).
 free.
 
 caduca("Ibuprofeno 600mg", 0). 
-caduca("Omeprazol 20mg", 2).  
+caduca("Omeprazol 20mg", 15).  
 caduca("Aspirina 100mg", 20). 
 caduca("Paracetamol 500mg", 23).
 caduca("Loratadina 10mg", 12).  
@@ -73,13 +73,11 @@ pauta_intervalo("Loratadina 10mg", 24). // Cada 24 horas
      : pauta_intervalo(NombreMedicina, IntervaloHoras)
 <-
     .println("Procediendo a reponer medicamento: ", NombreMedicina);
-	!at(Ag, delivery);
-	cargar_medicamento; // Cargar el medicamento en el agente
+	
 	.println("Agente ", Ag, " recogiendo la medicacion de entrega.");
 	.wait(1000);
     !at(Ag, medCab);
     open(medCab);
-	reponer_medicamento;
     close(medCab);
     .wait(1000); 
     .println("Medicamento ", NombreMedicina, " repuesto.");
