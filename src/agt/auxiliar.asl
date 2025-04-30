@@ -20,6 +20,7 @@ connect(livingroom, hall, doorSal1).
 connect(hallway, livingroom, doorSal2).
 connect(livingroom, hallway, doorSal2).
 
+<<<<<<< Updated upstream
 free.
 
 caduca("Ibuprofeno 600mg", 0). 
@@ -73,12 +74,117 @@ pauta_intervalo("Loratadina 10mg", 24). // Cada 24 horas
      : pauta_intervalo(NombreMedicina, IntervaloHoras)
 <-
     .println("Procediendo a reponer medicamento: ", NombreMedicina);
+=======
+caduca("Paracetamol", 0, 30).
+caduca("Amoxicilina", 1, 30).
+caduca("Omeprazol", 2, 30).
+caduca("Ibuprofeno",3, 30).
+caduca("Loratadina", 4, 30).
+
+
+free.
+
+!stay_alert.
+
+
+/* ----- OBJETIVO: Ir a un lugar (!at) ----- */
++!at(Ag, P) : at(Ag, P) <-
+    .wait(10).
++!at(Ag, P) : not at(Ag, P) <-
+    .println("Owner: Yendo a ", P);
+    !go(P);
+    !at(Ag, P). 
+
+/* ----- OBJETIVO: Navegar a un lugar (!go) ----- */
++!go(P) : atRoom(RoomAg) & atRoom(P, RoomAg) <-
+    move_towards(P).
++!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
+          connect(RoomAg, RoomP, Door) & atDoor <- // Ya en puerta
+    move_towards(P).
++!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
+          connect(RoomAg, RoomP, Door) & not atDoor <- // No en puerta
+    move_towards(Door);
+    !go(P).
++!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
+          not connect(RoomAg, RoomP, _) & connect(RoomAg, Room, DoorR) &
+          connect(Room, RoomP, DoorP) & not atDoor <-
+    move_towards(DoorR);
+    !go(P).
++!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
+          not connect(RoomAg, RoomP, _) & connect(RoomAg, Room, DoorR) &
+          connect(Room, RoomP, DoorP) & atDoor <-
+    move_towards(DoorP);
+    !go(P).
++!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP <- // Fallback
+    move_towards(P).
+-!go(P) <- 
+.println("Owner: He llegado a ", P, ".").
+
+
+// Plan para mantenerse mínimamente activo
++!stay_alert : true <-
+    .wait(500); // Espera un tiempo corto (ajusta si es necesario)
+    // .print("Auxiliar check..."); // Mensaje de depuración opcional
+    !stay_alert. // Vuelve a lanzar el objetivo para crear un ciclo controlado
+
+
+
+/* ----- OBJETIVO: Recibir y mostrar mensajes (Sin cambios lógicos) ----- */
++msg(M)[source(Ag)] : .my_name(Name) <-
+    .print(Ag, " envió a ", Name, " el mensaje: '", M, "'").
+   
+
+
++clock(H, M)[source(S)] : free[source(self)] <-
+    .findall(Drug, caduca(Drug, H, M), ExpiringDrugs); // Encuentra todas las coincidencias
+    if (.length(ExpiringDrugs) > 0) {
+        .print("Auxiliar: [Clock ", H, ":", M, "] Caducaciones encontradas: ", ExpiringDrugs);
+        for ( .member(DrugToReponer, ExpiringDrugs) ) {
+            // Para cada una, añade la creencia intermedia o directamente el objetivo
+             .print("Iniciando proceso para: ", DrugToReponer);
+             +esta_caducada(DrugToReponer, H, M);
+             // OJO: El plan +esta_caducada elimina caduca(). Esto podría ser problemático
+             // si se ejecutan concurrentemente. Podría ser mejor eliminar caduca()
+             // DESPUÉS de reponer exitosamente.
+        }
+    } else {
+        .println("Auxiliar: [Clock ", H, ":", M, "] No hay caducacion programada para mí a esta hora.");
+    }.
+// Similar change for the 'not free' plan trigger
++clock(SimulatedHour, SimulatedMinute)[source(Source)] : not free[source(self)] <-
+     .wait(1000);
+     .println("Auxiliar: [Clock ", SimulatedHour, ":", SimulatedMinute, "] Reintentando procesamiento de tick (estaba ocupado).");
+     +clock(SimulatedHour, SimulatedMinute)[source(Source)].
+
+
+
+
++esta_caducada(NombreMedicina, HoraDetectada, MinutoDetectado)  
+    : caduca(NombreMedicina, HoraDetectada, MinutoDetectado) 
+<-
+    -caduca(NombreMedicina, HoraDetectada, MinutoDetectado);
+    .println("¡Detectada caducidad para: ", NombreMedicina, " a la hora ", HoraDetectada, MinutoDetectado, "!");
+    .println("Procediendo a iniciar reposición...");
+
+    -esta_caducada(NombreMedicina, HoraDetectada, MinutoDetectado);
+    .println("Marca de caducidad eliminada para ", NombreMedicina);
+    !reponer_medicamento(NombreMedicina, HoraDetectada, MinutoDetectado);
+.
+
+// Plan para realizar la acción de reponer Y reprogramar la siguiente pauta
++!reponer_medicamento(NombreMedicina, HoraVencimiento, MinutoVencimiento) // <- Acepta la HoraVencimiento
+     // CONTEXTO: Necesitamos el intervalo definido en las creencias estáticas
+<-
+    .println("Procediendo a reponer medicamento: ", NombreMedicina);
+	.my_name(Ag);
+>>>>>>> Stashed changes
 	!at(Ag, delivery);
 	cargar_medicamento; // Cargar el medicamento en el agente
 	.println("Agente ", Ag, " recogiendo la medicacion de entrega.");
 	.wait(1000);
     !at(Ag, medCab);
     open(medCab);
+<<<<<<< Updated upstream
 	reponer_medicamento;
     close(medCab);
     .wait(1000); 
@@ -156,3 +262,14 @@ pauta_intervalo("Loratadina 10mg", 24). // Cada 24 horas
 +?time : true
 	<-  watchClock.
 	
+=======
+	reponer_medicamento(NombreMedicina);
+    close(medCab);
+    .wait(1000); 
+    .println("Medicamento ", NombreMedicina, " repuesto.");
+.
+
+
++?time : true
+	<-  watchClock.
+>>>>>>> Stashed changes

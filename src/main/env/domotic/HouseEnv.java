@@ -59,7 +59,11 @@ public class HouseEnv extends Environment {
         clock = new SimulatedClock(this); // Pass 'this' HouseEnv instance
 
         if (args.length == 1 && args[0].equals("gui")) {
+<<<<<<< Updated upstream
             view = new HouseView(model); // Assign to the field
+=======
+            view = new HouseView(model, clock); // Assign to the field
+>>>>>>> Stashed changes
             model.setView(view);
         }
 
@@ -283,8 +287,22 @@ public class HouseEnv extends Environment {
         }
 
         if (model.medCabOpen) {
+<<<<<<< Updated upstream
             addPercept("enfermera", Literal.parseLiteral("stock(drug," + model.availableDrugs + ")"));
             addPercept("auxiliar", Literal.parseLiteral("stock(drug," + model.availableDrugs + ")"));
+=======
+            addPercept("enfermera", Literal.parseLiteral("stock(\"Paracetamol\", " + model.contadorMedicamentos.get("Paracetamol") + ")"));
+            addPercept("enfermera", Literal.parseLiteral("stock(\"Ibuprofeno\", " + model.contadorMedicamentos.get("Ibuprofeno") + ")"));
+            addPercept("enfermera", Literal.parseLiteral("stock(\"Amoxicilina\", " + model.contadorMedicamentos.get("Amoxicilina") + ")"));
+            addPercept("enfermera", Literal.parseLiteral("stock(\"Omeprazol\", " + model.contadorMedicamentos.get("Omeprazol") + ")"));
+            addPercept("enfermera", Literal.parseLiteral("stock(\"Loratadina\", " + model.contadorMedicamentos.get("Loratadina") + ")"));
+        
+            addPercept("owner", Literal.parseLiteral("stock(\"Paracetamol\", " + model.contadorMedicamentos.get("Paracetamol") + ")"));
+            addPercept("owner", Literal.parseLiteral("stock(\"Ibuprofeno\", " + model.contadorMedicamentos.get("Ibuprofeno") + ")"));
+            addPercept("owner", Literal.parseLiteral("stock(\"Amoxicilina\", " + model.contadorMedicamentos.get("Amoxicilina") + ")"));
+            addPercept("owner", Literal.parseLiteral("stock(\"Omeprazol\", " + model.contadorMedicamentos.get("Omeprazol") + ")"));
+            addPercept("owner", Literal.parseLiteral("stock(\"Loratadina\", " + model.contadorMedicamentos.get("Loratadina") + ")"));
+>>>>>>> Stashed changes
 
         }
 
@@ -294,11 +312,22 @@ public class HouseEnv extends Environment {
             addPercept("auxiliar", hod);
         }
 
+<<<<<<< Updated upstream
         // Only add clock percept if clock is available
         if (clock != null) {
             addPercept("enfermera", Literal.parseLiteral("clock(" + clock.getTime() + ")"));
             addPercept("owner", Literal.parseLiteral("clock(" + clock.getTime() + ")"));
             addPercept("auxiliar", Literal.parseLiteral("clock(" + clock.getTime() + ")")); // <-- AÑADIDO
+=======
+        // In HouseEnv, when updating percepts:
+        if (clock != null) {
+            int currentHour = clock.getTime();
+            int currentMinutes = clock.getMinutes(); // Get minutes from the clock
+            String timeLiteral = String.format("clock(%d, %d)", currentHour, currentMinutes);
+            addPercept("enfermera", Literal.parseLiteral(timeLiteral));
+            addPercept("owner", Literal.parseLiteral(timeLiteral));
+            addPercept("auxiliar", Literal.parseLiteral(timeLiteral));
+>>>>>>> Stashed changes
         }
 
     }
@@ -356,10 +385,17 @@ public class HouseEnv extends Environment {
                 if (ag.equals("enfermera")) {
                     System.out.println("[enfermera] is sitting");
                     result = model.sit(0, dest);
+<<<<<<< Updated upstream
                 } else if(ag.equals("owner")) {
                     System.out.println("[owner] is sitting");
                     result = model.sit(1, dest);
                 }else if (ag.equals("auxiliar")) { 
+=======
+                } else if (ag.equals("owner")) {
+                    System.out.println("[owner] is sitting");
+                    result = model.sit(1, dest);
+                } else if (ag.equals("auxiliar")) {
+>>>>>>> Stashed changes
                     System.out.println("[auxiliar] is sitting");
                     result = model.sit(2, dest);
                 }
@@ -456,7 +492,11 @@ public class HouseEnv extends Environment {
             try {
                 if (ag.equals("enfermera")) {
                     result = model.moveTowards(0, dest);
+<<<<<<< Updated upstream
                 } else if (ag.equals("auxiliar")) { 
+=======
+                } else if (ag.equals("auxiliar")) {
+>>>>>>> Stashed changes
                     result = model.moveTowards(2, dest);
                 } else {
                     result = model.moveTowards(1, dest);
@@ -526,6 +566,7 @@ public class HouseEnv extends Environment {
                 logger.info("Failed to execute action deliverbeer!" + e);
             }
 
+<<<<<<< Updated upstream
         }
         else if (action.getFunctor().equals("cargar_medicamento")) {
                 result = model.auxiliarPickUpDelivery(agentId);          
@@ -535,13 +576,34 @@ public class HouseEnv extends Environment {
 
         }
          else {
+=======
+        } else if (action.getFunctor().equals("cargar_medicamento")) {
+            result = model.auxiliarPickUpDelivery(agentId);
+        } else if (action.getFunctor().equals("reponer_medicamento")) {
+
+            Term drugTerm = action.getTerm(0);
+            String drugName = "";
+            if (drugTerm instanceof StringTerm) {
+                drugName = ((StringTerm) drugTerm).getString();
+            } else {
+                // Remove quotes if it's parsed as an atom containing quotes
+                drugName = drugTerm.toString().replace("\"", "");
+            }
+            result = model.refillSingleDrug(drugName);
+
+        } else {
+>>>>>>> Stashed changes
             logger.info("Agent " + ag + " tried to execute unknown or failed action: " + action);
         }
 
         if (result) {
             updatePercepts();
             try {
+<<<<<<< Updated upstream
                 Thread.sleep(200);
+=======
+                Thread.sleep(250);
+>>>>>>> Stashed changes
             } catch (Exception e) {
             }
         }

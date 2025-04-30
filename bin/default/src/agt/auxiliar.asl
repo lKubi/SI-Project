@@ -22,6 +22,7 @@ connect(livingroom, hallway, doorSal2).
 
 free.
 
+<<<<<<< Updated upstream
 caduca("Ibuprofeno 600mg", 0). 
 caduca("Omeprazol 20mg", 15).  
 caduca("Aspirina 100mg", 20). 
@@ -74,10 +75,62 @@ pauta_intervalo("Loratadina 10mg", 24). // Cada 24 horas
 <-
     .println("Procediendo a reponer medicamento: ", NombreMedicina);
 	
+=======
+//Si se quiere cambiar algo de aqui, cambialo tambien en housemodel en el hashmap ya que, para poder verlo visualmente
+caduca("Paracetamol 500mg", 0, 30).
+caduca("Amoxicilina 500mg", 1, 30). 
+caduca("Omeprazol 20mg", 2, 30).  
+caduca("Ibuprofeno 600mg", 3, 30). 
+caduca("Loratadina 10mg", 4, 30).  
+
+/* ----- ##### PLANES MEJORADOS (Misma Estructura, Lógica Cambiada) ##### ----- */
+
+
+// Triggered by the new percept format
++clock(SimulatedHour, SimulatedMinute)[source(Source)] : free[source(self)] <-
+    // Use both variables for printing
+    .println("Owner: [Clock ", SimulatedHour, ":", SimulatedMinute, "] Tick recibido.");
+    // The rest of the logic might need adjustment if 'medician' still only uses the hour
+    if (medician(DrugToTake, SimulatedHour, SimulatedMinute)) { // Ahora busca HORA y MINUTO
+         .println("Owner: [Clock ", SimulatedHour, ":", SimulatedMinute, "] ¡Pauta encontrada para esta hora exacta!: ", DrugToTake);
+         !check_and_take_medicine(DrugToTake, SimulatedHour, SimulatedMinute);
+    } else {
+         .println("Owner: [Clock ", SimulatedHour, ":", SimulatedMinute, "] No hay medicina programada para mí a esta hora.");
+    }.
+
+// Similar change for the 'not free' plan trigger
++clock(SimulatedHour, SimulatedMinute)[source(Source)] : not free[source(self)] <-
+     .wait(1000);
+     .println("Owner: [Clock ", SimulatedHour, ":", SimulatedMinute, "] Reintentando procesamiento de tick (estaba ocupado).");
+     +clock(SimulatedHour, SimulatedMinute)[source(Source)].
+
+
++esta_caducada(NombreMedicina, HoraDetectada, MinutoDetectado)  
+    : caduca(NombreMedicina, HoraDetectada, MinutoDetectado) 
+<-
+    -caduca(NombreMedicina, HoraDetectada, MinutoDetectado);
+    .println("¡Detectada caducidad para: ", NombreMedicina, " a la hora ", HoraDetectada, MinutoDetectado, "!");
+    .println("Procediendo a iniciar reposición...");
+
+    -esta_caducada(NombreMedicina, HoraDetectada, MinutoDetectado);
+    .println("Marca de caducidad eliminada para ", NombreMedicina);
+    !reponer_medicamento(NombreMedicina, HoraDetectada, MinutoDetectado);
+.
+
+// Plan para realizar la acción de reponer Y reprogramar la siguiente pauta
++!reponer_medicamento(NombreMedicina, HoraVencimiento, MinutoVencimiento) // <- Acepta la HoraVencimiento
+     // CONTEXTO: Necesitamos el intervalo definido en las creencias estáticas
+<-
+    .println("Procediendo a reponer medicamento: ", NombreMedicina);
+	.my_name(Ag);
+	!at(Ag, delivery);
+	cargar_medicamento; // Cargar el medicamento en el agente
+>>>>>>> Stashed changes
 	.println("Agente ", Ag, " recogiendo la medicacion de entrega.");
 	.wait(1000);
     !at(Ag, medCab);
     open(medCab);
+<<<<<<< Updated upstream
     close(medCab);
     .wait(1000); 
     .println("Medicamento ", NombreMedicina, " repuesto.");
@@ -88,6 +141,12 @@ pauta_intervalo("Loratadina 10mg", 24). // Cada 24 horas
 
     +caduca(NombreMedicina, NuevaHoraProximaDosis);
     .println("Pauta para ", NombreMedicina, " reprogramada periódicamente. Próxima hora: ", NuevaHoraProximaDosis);
+=======
+	reponer_medicamento(NombreMedicina);
+    close(medCab);
+    .wait(1000); 
+    .println("Medicamento ", NombreMedicina, " repuesto.");
+>>>>>>> Stashed changes
 .
 
 

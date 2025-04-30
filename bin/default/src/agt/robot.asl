@@ -70,6 +70,7 @@ orderDrug(DrugName, Ag) :-
 // Reglas para cerveza (sin cambios, asumiendo 'beer' es el único tipo)
 bringBeer(Ag) :- available(beer, fridge) & not too_much(beer, Ag).
 orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
+<<<<<<< Updated upstream
 
 /* ----- ##### NUEVO: PLANES PARA REVISIÓN PROACTIVA DE PAUTA (MODIFICADO) ##### ----- */
 
@@ -102,6 +103,8 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 +clock(SimulatedHour)[source(Source)] : not free[source(self)] <-
      .wait(1000); // Espera un poco si está ocupado
      +clock(SimulatedHour)[source(Source)]. // Reintenta revisar el reloj (o +!check_schedule si usas ese patrón)
+=======
+>>>>>>> Stashed changes
 
 
 /* ----- PLANES PARA TRAER MEDICAMENTO O CERVEZA (Modificados para ser específicos) ----- */
@@ -111,11 +114,23 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 +!has(Ag, DrugName)[source(Source)] :
     bringDrug(DrugName, Ag) & free[source(self)] <-
     .println("REGLA 1 (Traer Específico): Intentando llevar ", DrugName, " a ", Ag, " (solicitado por ", Source, ")");
+<<<<<<< Updated upstream
     -free[source(self)];
     if (Ag == owner) { .send(owner, tell, nurse_is_delivering) };
     !at(enfermera, medCab);
     open(medCab);
     obtener_medicamento(DrugName); // Acción que puede fallar
+=======
+    +free[source(self)];
+    if (Ag == owner) { .send(owner, tell, nurse_is_delivering) };
+    !at(enfermera, medCab);
+    open(medCab);
+    obtener_medicamento(DrugName);  
+    if (Ag == owner) { .send(owner, tell, medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)) };
+    .send(Ag, achieve, remove_my_medician(DrugName, SimulatedHour, SimulatedMinute)); // Pide al owner eliminar la suya
+    .println("ENTREGA PROGRAMADA ÉXITO: Eliminando pauta para ", DrugName, " a las ", SimulatedHour, SimulatedMinute, "h.");
+    .abolish(medician(DrugName, SimulatedHour, SimulatedMinute)); // Elimina creencia local de la enfermera
+>>>>>>> Stashed changes
     close(medCab);
     !at(enfermera, Ag);
     hand_in(Ag, DrugName);
@@ -126,12 +141,19 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
     .println("Registrado consumo de ", DrugName, " por ", Ag);
 
     // *** NUEVO: Limpieza de pauta SOLO SI era programada Y tuvo éxito ***
+<<<<<<< Updated upstream
     if (is_scheduled_delivery(DrugName, Ag, Hour)) {
         .println("ENTREGA PROGRAMADA ÉXITO: Eliminando pauta para ", DrugName, " a las ", Hour, "h.");
         .abolish(medician(DrugName, Hour)); // Elimina creencia local de la enfermera
         .send(Ag, achieve, remove_my_medician(DrugName, Hour)); // Pide al owner eliminar la suya
         // Eliminar la creencia temporal de la enfermera
         -is_scheduled_delivery(DrugName, Ag, Hour);
+=======
+    if (is_scheduled_delivery(DrugName, Ag, SimulatedHour, SimulatedMinute)) {
+       
+        // Eliminar la creencia temporal de la enfermera
+        -is_scheduled_delivery(DrugName, Ag, SimulatedHour, SimulatedMinute);
+>>>>>>> Stashed changes
     };
 
     if (Ag == owner) { .send(owner, tell, nurse_finished_delivering) };
@@ -244,10 +266,17 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 
     // *** NUEVO: Limpieza de creencia temporal SI era programada Y falló ***
     // Crucial: NO eliminar la pauta 'medician' si la entrega falló.
+<<<<<<< Updated upstream
     if (is_scheduled_delivery(P, Name, Hour)) {
          .println("ENTREGA PROGRAMADA FALLO: NO se elimina pauta para ", P, " a las ", Hour, "h.");
          // Solo eliminar la creencia temporal
          -is_scheduled_delivery(P, Name, Hour);
+=======
+    if (is_scheduled_delivery(P, Name, SimulatedHour, SimulatedMinute)) {
+         .println("ENTREGA PROGRAMADA FALLO: NO se elimina pauta para ", P, " a las ", SimulatedHour, SimulatedMinute, "h.");
+         // Solo eliminar la creencia temporal
+         -is_scheduled_delivery(P, Name, SimulatedHour, SimulatedMinute);
+>>>>>>> Stashed changes
     };
 
     // Asegurarse de notificar al owner que la enfermera ya no está ocupada (si lo estaba)
@@ -268,43 +297,36 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 	!at(Ag, P).            
 														
 	+!go(P) : atRoom(RoomAg) & atRoom(P, RoomAg) <- 
-		.println("<================== 1 =====================>");
-		.println("Al estar en la misma habitación se debe mover directamente a: ", P);
 		move_towards(P).  
 	+!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
 			connect(RoomAg, RoomP, Door) & not atDoor <-
-		.println("<================== 3 =====================>");
-		.println("Al estar en una habitación contigua se mueve hacia la puerta: ", Door);
 		move_towards(Door); 
 		!go(P).                     
 	+!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
 			connect(RoomAg, RoomP, Door) <- //& not atDoor <-
-		.println("<================== 3 =====================>");
-		.println("Al estar en la puerta de la habitación contigua se mueve hacia ", P);
 		move_towards(P); 
 		!go(P).       
 	+!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
 			not connect(RoomAg, RoomP, _) & connect(RoomAg, Room, DoorR) &
 			connect(Room, RoomP, DoorP) & not atDoor <-
-		.println("<================== 4 =====================>");
-		.println("Se mueve a: ", DoorR, " para ir a la habitación contigua, ", Room);
 		move_towards(DoorR); 
 		!go(P). 
 	+!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
 			not connect(RoomAg, RoomP, _) & connect(RoomAg, Room, DoorR) &
 			connect(Room, RoomP, DoorP) & atDoor <-
-		.println("<================== 4 BIS =====================>");
-		.println("Se mueve a: ", DoorP, " para acceder a la habitación ", RoomP);
 		move_towards(DoorP); 
 		!go(P). 
 	+!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP <- //& not atDoor <-
-		.println("Owner is at ", RoomAg,", that is not a contiguous room to ", RoomP);
-		.println("<================== 5 =====================>");
 		move_towards(P).                                                          
 	-!go(P) <- 
+<<<<<<< Updated upstream
 		.println("¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿ WHAT A FUCK !!!!!!!!!!!!!!!!!!!!");
 		.println("..........SOMETHING GOES WRONG......").                                        
 																						
+=======
+			.println("I am already at ", P, " <=======================");
+            .																			
+>>>>>>> Stashed changes
 /* ----- MANEJO DE ENTREGA ----- */
 // Cuando el repartidor realiza una entrega, el robot actualiza su estado y vuelve a intentar cumplir la tarea.
 +delivered(DrugName, _Qtd, _OrderId)[source(repartidor)]
@@ -341,6 +363,121 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 	.println("El agente ", Ag, " me ha chateado: ", Msg);
 	.send(Ag, tell, msg(Answ)). 
 
+<<<<<<< Updated upstream
+=======
+
+	
+/* ----- ##### GESTIÓN DE NOTIFICACIÓN DE CONSUMO (MODIFICADO CON VERIFICACIÓN SIMULADA) ##### ----- */
+
+// Cuando el dueño informa que ha consumido un medicamento ESPECÍFICO y el robot está libre:
+// Robot actualiza pauta y lanza la verificación (simulada) para ese medicamento.
++medication_consumed(DrugName, SimulatedHour, SimulatedMinute)[source(Ag)] : free[source(self)] <-
+    .println("Notificación recibida: ", Ag, " dice haber tomado ", DrugName, " (pauta de las ", SimulatedHour, SimulatedMinute, "h).");
+    -free[source(self)]; // <-- Robot se ocupa para ir a verificar
+    // Acción Inmediata: Eliminar la pauta correspondiente de las creencias del robot
+    .abolish(medician(DrugName, SimulatedHour, SimulatedMinute));
+    .println("Robot: Pauta para ", DrugName, " a las ", SimulatedHour, SimulatedMinute, "h eliminada de mi horario.");
+    .println("Robot: Iniciando plan para verificar el consumo de '", DrugName, "' en medCab."); // Log usa nombre específico
+    // Disparar la verificación específica para DrugName
+    !verify_consumption(Ag, DrugName). // <-- Pasa DrugName específico al plan de verificación
+
+// Si el robot está ocupado cuando recibe la notificación ESPECÍFICA:
+// Actualiza la pauta inmediatamente pero informa al dueño que verificará más tarde.
++medication_consumed(DrugName, SimulatedHour, SimulatedMinute)[source(Ag)] : not free[source(self)] <-
+    .println("Recibí notificación de consumo de ", DrugName, " (pauta de las ", SimulatedHour, SimulatedMinute, "h) por ", Ag, ", pero estoy ocupado con otra tarea.");
+    // Acción Inmediata: Eliminar la pauta de las creencias del robot, incluso estando ocupado
+    .abolish(medician(DrugName, SimulatedHour, SimulatedMinute));
+    .println("Robot: Pauta para ", DrugName, " a las ", SimulatedHour, SimulatedMinute, "h eliminada de mi horario (mientras estaba ocupado).");
+    // Informar al dueño que se recibió y actualizó, pero la verificación será más tarde.
+    .send(Ag, tell, msg("Recibí tu notificación sobre ", DrugName, " de las ", SimulatedHour, SimulatedMinute, "h y actualicé mi horario. Verificaré el consumo en el botiquín cuando termine mi tarea actual.")).
+    // NOTA: No llamamos a !verify_consumption aquí porque está ocupado.
+    // Se podría añadir opcionalmente !!verify_consumption(Ag, DrugName) para ponerlo en cola si se desea.
+
+/* ----- ##### PLAN PARA VERIFICAR EL CONSUMO (MODIFICADO) ##### ----- */
+// Plan AHORA recibe el nombre específico del medicamento (DrugName)
++!verify_consumption(Ag, DrugName) <- // <-- Trigger modificado, recibe DrugName
+    .println("Verificando consumo de '", DrugName, "' en ", medCab, " solicitado por ", Ag); // <-- Log actualizado
+    .println("Llegué a ", medCab, ". Realizando verificación de stock de '", DrugName,"'."); // <-- Log actualizado
+
+    // --- Inicio: Simulación/Acción de Verificación ---
+    // ESTA PARTE SIGUE SIENDO UNA SIMULACIÓN. NO COMPRUEBA REALMENTE EL STOCK.
+    // Para una verificación real, necesitarías interactuar con el entorno aquí.
+    .println("Robot: [Simulación] Buscando/Contando unidades de ", DrugName, "...");
+    .wait(3000); // Simula tiempo de chequeo
+    .println("Verificación de stock simulada para '", DrugName, "' completada."); // <-- Log actualizado
+    // --- Fin: Simulación/Acción de Verificación ---
+
+    .println("Verificación finalizada para ", DrugName, ". Enviando confirmación a ", Ag);
+    // Mensaje de confirmación final (ahora menciona el medicamento verificado)
+    .send(Ag, tell, msg("He verificado en el estante de medicación respecto a ", DrugName, ". ¡Gracias por informarme!")); // <-- Mensaje actualizado
+    +free[source(self)]; // <-- Libera robot DESPUÉS de verificar
+    .println("Robot libre después de verificar consumo de ", DrugName, ".").
+
+// Plan de fallo para la verificación (MODIFICADO)
+// Ahora también usa DrugName
+-!verify_consumption(Ag, DrugName)[error(E)] <- // <-- Trigger modificado
+    .println("¡ERROR al verificar el consumo de ", DrugName, " para ", Ag, "! Error: ", E); // <-- Log actualizado
+    .send(Ag, tell, msg("Tuve un problema al intentar verificar el consumo de ", DrugName, ". Por favor, revisa manualmente.")); // <-- Mensaje actualizado
+    +free[source(self)]. // <-- Asegura liberar robot en caso de error
+
+
+// Este plan ahora espera DrugName y SimulatedHour, SimulatedMinute enviados por el owner
++medicina_recogida_owner(DrugName, SimulatedHour, SimulatedMinute)[source(owner)] <-
+    .print("DEBUG: Creencia medicina_recogida_owner(", DrugName, ",", SimulatedHour, SimulatedMinute, ") RECIBIDA de ", owner);
+    .println("El owner ha sido mas rapido que yo con ", DrugName, ", asi que procedo a retirar mi accion");
+    .drop_all_intentions;
+    .abolish(medician(DrugName, SimulatedHour, SimulatedMinute)); // <-- ¡¡ELIMINAR LA PAUTA LOCAL DE LA ENFERMERA!!
+    .println("Enfermera: Pauta para ", DrugName, " a las ", SimulatedHour, SimulatedMinute, "h eliminada de mi horario (owner fue más rápido).");
+    -medicina_recogida_owner(DrugName, SimulatedHour, SimulatedMinute)[source(owner)]; // Eliminar creencia específica
+    +free[source(self)]. // Marcarse como libre
+
+/* ----- RECEPCIÓN DE PAUTAS DE MEDICACIÓN ----- */
+// Al recibir una pauta del owner, la añade a sus creencias.
++medician(M, H)[source(owner)] <-
+    +medician(M, H);
+    .println("Pauta recibida y almacenada: Tomar ", M, " a las ", H, "h.").
+
++!clear_schedule // Forma más simple si no necesitas saber quién lo envió
+    : true // Condición de contexto: siempre aplicable cuando se recibe el objetivo
+<-
+    .println("Enfermera: Recibida orden para borrar el horario de medicación.");
+
+    .abolish(medician(_, _));
+
+    .println("Enfermera: Todas las pautas de medicación (creencias 'medician') han sido eliminadas.").
+
+
+// Plan para revisar periódicamente la pauta de medicación (USA HORA SIMULADA)
++clock(SimulatedHour, SimulatedMinute)[source(Source)] : free[source(self)] <-
+    .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): Revisando pauta...");
+    if (medician(DrugToDeliver, SimulatedHour, SimulatedMinute)) {
+        .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): Pauta encontrada: Entregar ", DrugToDeliver, " a owner.");
+        if (not too_much(DrugToDeliver, owner)) {
+            if (available(DrugToDeliver, medCab)) {
+                .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): Intentando iniciar entrega de ", DrugToDeliver);
+                // *** NUEVO: Añadir creencia temporal ANTES de lanzar !has ***
+                // Esta creencia marca que la siguiente ejecución de !has es para una entrega programada.
+                +is_scheduled_delivery(DrugToDeliver, owner, SimulatedHour, SimulatedMinute);
+                // Lanzar el objetivo de entrega estándar. Los planes +!has / -!has se encargarán del resto.
+                !has(owner, DrugToDeliver)[source(self)];
+                // <<< YA NO SE ABOLISH NI SEND DESDE AQUÍ >>>
+            } else {
+                .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): No se puede entregar ", DrugToDeliver, ": No disponible en ", medCab);
+                // Opcional: intentar pedirlo si no está disponible? !orderDrug(...) ?
+            }
+        } else {
+            .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): No se puede entregar ", DrugToDeliver, ": Límite diario alcanzado.");
+        }
+    } else {
+        .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): No hay medicación pautada para esta hora.");
+    }.
+
+// Plan alternativo si no está libre (SIN CAMBIOS)
++clock(SimulatedHour, SimulatedMinute)[source(Source)] : not free[source(self)] <-
+     .wait(1000); // Espera un poco si está ocupado
+     +clock(SimulatedHour, SimulatedMinute)[source(Source)]. // Reintenta revisar el reloj (o +!check_schedule si usas ese patrón)
+
+>>>>>>> Stashed changes
 /* ----- ACTUALIZACIÓN DE LA HORA ----- */
 // El robot puede verificar la hora actual.                  
 +?time : true
