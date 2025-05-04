@@ -9,6 +9,10 @@ import domotic.SimulatedClock;
 import domotic.HouseModel;
 import domotic.HouseView;
 
+import java.util.Set;      // <--- Añade esta línea si falta
+import java.util.HashSet;  // <--- Añade esta línea si falta
+import java.util.Arrays;   // <--- Añade esta línea si falta
+
 public class HouseEnv extends Environment {
 
     // common literals
@@ -29,11 +33,15 @@ public class HouseEnv extends Environment {
     public static final Literal ef = Literal.parseLiteral("at(enfermera,fridge)");
     public static final Literal eo = Literal.parseLiteral("at(enfermera,owner)");
     public static final Literal ed = Literal.parseLiteral("at(enfermera,delivery)");
+    public static final Literal ec = Literal.parseLiteral("at(enfermera,cargador)");
+
+
 
     public static final Literal amc = Literal.parseLiteral("at(auxiliar, medCab)");
     public static final Literal af = Literal.parseLiteral("at(auxiliar,fridge)");
     public static final Literal ao = Literal.parseLiteral("at(auxiliar,owner)");
     public static final Literal ad = Literal.parseLiteral("at(auxiliar,delivery)");
+    public static final Literal ac = Literal.parseLiteral("at(auxiliar,cargador)");
 
     public static final Literal oamc = Literal.parseLiteral("at(owner, medCab)");
     public static final Literal oaf = Literal.parseLiteral("at(owner,fridge)");
@@ -47,6 +55,22 @@ public class HouseEnv extends Environment {
     public static final Literal aob3 = Literal.parseLiteral("at(owner,bed3)");
     public static final Literal oad = Literal.parseLiteral("at(owner,delivery)");
 
+    private static final Set<String> ACTION_COSTING_ENERGY = new HashSet<>(Arrays.asList(
+            "move_towards", // Moverse físicamente
+            "sit",          // Cambiar a estado sentado (movimiento físico)
+            "open",         // Abrir nevera o botiquín (interacción física)
+            "close",        // Cerrar nevera o botiquín (interacción física)
+            "get",          // Coger cerveza (genérico 'get(beer)')
+            "obtener_medicamento", // Coger medicamento específico
+            "hand_in",      // Entregar objeto (cerveza o medicamento)
+            "cargar_medicamento", // Auxiliar recoge entrega (interacción física)
+            "reponer_medicamento", // Auxiliar rellena botiquín (interacción física)
+            "deliverdrug",  // Simulación de colocar droga tras entrega (interacción física)
+            "deliverbeer"   // Simulación de colocar cerveza tras entrega (interacción física)
+    // Acciones como 'sip', 'watchClock', 'start_charging', 'stop_charging', 'test_stop_charge' NO consumen energía aquí.
+    // Las acciones internas de planes (println, findall, etc.) no pasan por aquí directamente.
+    ));
+
     static Logger logger = Logger.getLogger(HouseEnv.class.getName());
 
     HouseModel model;
@@ -56,14 +80,10 @@ public class HouseEnv extends Environment {
     @Override
     public void init(String[] args) {
         model = new HouseModel();
-        clock = new SimulatedClock(this); // Pass 'this' HouseEnv instance
+        clock = new SimulatedClock(this, model); // Pasar 'this' (HouseEnv) y 'model' (HouseModel)
 
         if (args.length == 1 && args[0].equals("gui")) {
-<<<<<<< Updated upstream
-            view = new HouseView(model); // Assign to the field
-=======
             view = new HouseView(model, clock); // Assign to the field
->>>>>>> Stashed changes
             model.setView(view);
         }
 
@@ -144,6 +164,10 @@ public class HouseEnv extends Environment {
      * como el botiquín, la nevera, el sofá, sillas, camas y punto de entrega.
      */
     void updateThingsPlace() {
+
+        String cargadorPlace = model.getRoom(model.lCargador);
+        addPercept(Literal.parseLiteral("atRoom(cargador, " + cargadorPlace + ")"));
+
         String medCabPlace = model.getRoom(model.lMedCab);
         addPercept(Literal.parseLiteral("atRoom(medCab, " + medCabPlace + ")"));
 
@@ -212,6 +236,17 @@ public class HouseEnv extends Environment {
         if (lRobot.distance(model.lFridge) < 2) {
             addPercept("enfermera", ef);
         }
+
+        if (lRobot.distance(model.lCargador) < 2) {
+            addPercept("enfermera", ec);
+        }
+
+
+
+        if (lAuxiliar.distance(model.lCargador) < 2) {
+            addPercept("auxiliar", ac);
+        }
+
 
         if (lOwner.distance(model.lFridge) < 2) {
             addPercept("owner", oaf);
@@ -287,22 +322,27 @@ public class HouseEnv extends Environment {
         }
 
         if (model.medCabOpen) {
-<<<<<<< Updated upstream
-            addPercept("enfermera", Literal.parseLiteral("stock(drug," + model.availableDrugs + ")"));
-            addPercept("auxiliar", Literal.parseLiteral("stock(drug," + model.availableDrugs + ")"));
-=======
-            addPercept("enfermera", Literal.parseLiteral("stock(\"Paracetamol\", " + model.contadorMedicamentos.get("Paracetamol") + ")"));
-            addPercept("enfermera", Literal.parseLiteral("stock(\"Ibuprofeno\", " + model.contadorMedicamentos.get("Ibuprofeno") + ")"));
-            addPercept("enfermera", Literal.parseLiteral("stock(\"Amoxicilina\", " + model.contadorMedicamentos.get("Amoxicilina") + ")"));
-            addPercept("enfermera", Literal.parseLiteral("stock(\"Omeprazol\", " + model.contadorMedicamentos.get("Omeprazol") + ")"));
-            addPercept("enfermera", Literal.parseLiteral("stock(\"Loratadina\", " + model.contadorMedicamentos.get("Loratadina") + ")"));
-        
-            addPercept("owner", Literal.parseLiteral("stock(\"Paracetamol\", " + model.contadorMedicamentos.get("Paracetamol") + ")"));
-            addPercept("owner", Literal.parseLiteral("stock(\"Ibuprofeno\", " + model.contadorMedicamentos.get("Ibuprofeno") + ")"));
-            addPercept("owner", Literal.parseLiteral("stock(\"Amoxicilina\", " + model.contadorMedicamentos.get("Amoxicilina") + ")"));
-            addPercept("owner", Literal.parseLiteral("stock(\"Omeprazol\", " + model.contadorMedicamentos.get("Omeprazol") + ")"));
-            addPercept("owner", Literal.parseLiteral("stock(\"Loratadina\", " + model.contadorMedicamentos.get("Loratadina") + ")"));
->>>>>>> Stashed changes
+            addPercept("enfermera", Literal
+                    .parseLiteral("stock(\"Paracetamol\", " + model.contadorMedicamentos.get("Paracetamol") + ")"));
+            addPercept("enfermera", Literal
+                    .parseLiteral("stock(\"Ibuprofeno\", " + model.contadorMedicamentos.get("Ibuprofeno") + ")"));
+            addPercept("enfermera", Literal
+                    .parseLiteral("stock(\"Amoxicilina\", " + model.contadorMedicamentos.get("Amoxicilina") + ")"));
+            addPercept("enfermera",
+                    Literal.parseLiteral("stock(\"Omeprazol\", " + model.contadorMedicamentos.get("Omeprazol") + ")"));
+            addPercept("enfermera", Literal
+                    .parseLiteral("stock(\"Loratadina\", " + model.contadorMedicamentos.get("Loratadina") + ")"));
+
+            addPercept("owner", Literal
+                    .parseLiteral("stock(\"Paracetamol\", " + model.contadorMedicamentos.get("Paracetamol") + ")"));
+            addPercept("owner", Literal
+                    .parseLiteral("stock(\"Ibuprofeno\", " + model.contadorMedicamentos.get("Ibuprofeno") + ")"));
+            addPercept("owner", Literal
+                    .parseLiteral("stock(\"Amoxicilina\", " + model.contadorMedicamentos.get("Amoxicilina") + ")"));
+            addPercept("owner",
+                    Literal.parseLiteral("stock(\"Omeprazol\", " + model.contadorMedicamentos.get("Omeprazol") + ")"));
+            addPercept("owner", Literal
+                    .parseLiteral("stock(\"Loratadina\", " + model.contadorMedicamentos.get("Loratadina") + ")"));
 
         }
 
@@ -312,13 +352,6 @@ public class HouseEnv extends Environment {
             addPercept("auxiliar", hod);
         }
 
-<<<<<<< Updated upstream
-        // Only add clock percept if clock is available
-        if (clock != null) {
-            addPercept("enfermera", Literal.parseLiteral("clock(" + clock.getTime() + ")"));
-            addPercept("owner", Literal.parseLiteral("clock(" + clock.getTime() + ")"));
-            addPercept("auxiliar", Literal.parseLiteral("clock(" + clock.getTime() + ")")); // <-- AÑADIDO
-=======
         // In HouseEnv, when updating percepts:
         if (clock != null) {
             int currentHour = clock.getTime();
@@ -327,8 +360,29 @@ public class HouseEnv extends Environment {
             addPercept("enfermera", Literal.parseLiteral(timeLiteral));
             addPercept("owner", Literal.parseLiteral(timeLiteral));
             addPercept("auxiliar", Literal.parseLiteral(timeLiteral));
->>>>>>> Stashed changes
         }
+
+        // Para Enfermera (Robot)
+        int robotCurrentE = model.getCurrentEnergy(HouseModel.ROBOT_AGENT_ID);
+        int robotMaxE = model.getMaxEnergy(HouseModel.ROBOT_AGENT_ID);
+        addPercept("enfermera", Literal.parseLiteral("current_energy(" + robotCurrentE + ")"));
+        addPercept("enfermera", Literal.parseLiteral("max_energy(" + robotMaxE + ")"));
+        // También útil para que otros agentes sepan su energía (opcional)
+        // addPercept("owner", Literal.parseLiteral("energy(enfermera," + robotCurrentE
+        // + "," + robotMaxE + ")"));
+        // addPercept("auxiliar", Literal.parseLiteral("energy(enfermera," +
+        // robotCurrentE + "," + robotMaxE + ")"));
+
+        // Para Auxiliar
+        int auxCurrentE = model.getCurrentEnergy(HouseModel.AUXILIAR_AGENT_ID);
+        int auxMaxE = model.getMaxEnergy(HouseModel.AUXILIAR_AGENT_ID);
+        addPercept("auxiliar", Literal.parseLiteral("current_energy(" + auxCurrentE + ")"));
+        addPercept("auxiliar", Literal.parseLiteral("max_energy(" + auxMaxE + ")"));
+        // También útil para que otros agentes sepan su energía (opcional)
+        // addPercept("owner", Literal.parseLiteral("energy(auxiliar," + auxCurrentE +
+        // "," + auxMaxE + ")"));
+        // addPercept("enfermera", Literal.parseLiteral("energy(auxiliar," + auxCurrentE
+        // + "," + auxMaxE + ")"));
 
     }
 
@@ -385,17 +439,10 @@ public class HouseEnv extends Environment {
                 if (ag.equals("enfermera")) {
                     System.out.println("[enfermera] is sitting");
                     result = model.sit(0, dest);
-<<<<<<< Updated upstream
-                } else if(ag.equals("owner")) {
-                    System.out.println("[owner] is sitting");
-                    result = model.sit(1, dest);
-                }else if (ag.equals("auxiliar")) { 
-=======
                 } else if (ag.equals("owner")) {
                     System.out.println("[owner] is sitting");
                     result = model.sit(1, dest);
                 } else if (ag.equals("auxiliar")) {
->>>>>>> Stashed changes
                     System.out.println("[auxiliar] is sitting");
                     result = model.sit(2, dest);
                 }
@@ -419,6 +466,10 @@ public class HouseEnv extends Environment {
             String l = action.getTerm(0).toString();
             Location dest = null;
             switch (l) {
+                case "cargador":
+                    dest = model.lCargador;
+                    break;
+
                 case "medCab":
                     dest = model.lMedCab;
                     break;
@@ -492,11 +543,7 @@ public class HouseEnv extends Environment {
             try {
                 if (ag.equals("enfermera")) {
                     result = model.moveTowards(0, dest);
-<<<<<<< Updated upstream
-                } else if (ag.equals("auxiliar")) { 
-=======
                 } else if (ag.equals("auxiliar")) {
->>>>>>> Stashed changes
                     result = model.moveTowards(2, dest);
                 } else {
                     result = model.moveTowards(1, dest);
@@ -566,17 +613,6 @@ public class HouseEnv extends Environment {
                 logger.info("Failed to execute action deliverbeer!" + e);
             }
 
-<<<<<<< Updated upstream
-        }
-        else if (action.getFunctor().equals("cargar_medicamento")) {
-                result = model.auxiliarPickUpDelivery(agentId);          
-        }
-        else if (action.getFunctor().equals("reponer_medicamento")) {
-                result = model.refillMedCabFull();    
-
-        }
-         else {
-=======
         } else if (action.getFunctor().equals("cargar_medicamento")) {
             result = model.auxiliarPickUpDelivery(agentId);
         } else if (action.getFunctor().equals("reponer_medicamento")) {
@@ -591,22 +627,62 @@ public class HouseEnv extends Environment {
             }
             result = model.refillSingleDrug(drugName);
 
+        } else if (action.getFunctor().equals("start_charging")) {
+            System.out.println("[ENV] Recibida acción de prueba: start_charging para " + ag);
+            if (agentId == HouseModel.ROBOT_AGENT_ID || agentId == HouseModel.AUXILIAR_AGENT_ID) {
+                // --- Añadir DEBUG de ubicación AHORA ---
+                Location currentLoc = model.getAgPos(agentId); // Obtiene la posición JUSTO AHORA
+                System.out.println("[ENV DEBUG] Posición actual de agente " + agentId
+                        + " ANTES de llamar a startCharging: " + currentLoc);
+                // --- Fin DEBUG ---
+                result = model.startCharging(agentId); // Llama al método del modelo
+                System.out.println("[ENV] Resultado de model.startCharging: " + result);
+            } else {
+                logger.warning("start_charging no aplica para agente: " + ag);
+                result = false;
+            }
+        } else if (action.getFunctor().equals("stop_charging")) {
+            System.out.println("[ENV] Recibida acción de prueba: stop_charging para " + ag);
+            if (agentId == HouseModel.ROBOT_AGENT_ID || agentId == HouseModel.AUXILIAR_AGENT_ID) {
+                result = model.stopCharging(agentId); // Llama al método stop que acabamos de crear
+                System.out.println("[ENV] Resultado de model.stopCharging: " + result);
+            } else {
+                logger.warning("stop_charging no aplica para agente: " + ag);
+                result = false;
+            }
         } else {
->>>>>>> Stashed changes
             logger.info("Agent " + ag + " tried to execute unknown or failed action: " + action);
         }
 
-        if (result) {
-            updatePercepts();
-            try {
-<<<<<<< Updated upstream
-                Thread.sleep(200);
-=======
-                Thread.sleep(250);
->>>>>>> Stashed changes
-            } catch (Exception e) {
-            }
+      // REEMPLAZA EL BLOQUE ANTERIOR CON ESTE
+      if (result) { // Si la acción se ejecutó con éxito (sintaxis, método del modelo OK)
+        String functor = action.getFunctor(); // <-- OBTENER NOMBRE DE LA ACCIÓN
+
+        // --- INICIO: DECREMENTAR ENERGÍA (MODIFICADO) ---
+        // Comprueba ID agente, si NO está cargando, Y si la acción está en la lista de coste
+        if ((agentId == HouseModel.ROBOT_AGENT_ID || agentId == HouseModel.AUXILIAR_AGENT_ID)
+                && !model.isAgentCharging(agentId)
+                && ACTION_COSTING_ENERGY.contains(functor)) { // <-- *** ESTA ES LA CONDICIÓN MODIFICADA ***
+
+            // Opcional: Añadir un log para depurar cuándo se resta energía
+            // logger.fine("[ENV] Action '" + functor + "' costs 1 energy for agent " + agentId);
+            model.decrementAgentEnergy(agentId, 1); // Resta 1 de energía
         }
+        // --- FIN: DECREMENTAR ENERGÍA (MODIFICADO) ---
+
+        updatePercepts(); // Actualiza percepciones para todos los agentes
+        try {
+            Thread.sleep(250); // Pausa corta para simular tiempo de acción y visualización
+        } catch (InterruptedException e) {
+             Thread.currentThread().interrupt(); // Restablecer estado interrumpido
+             logger.warning("Environment sleep interrupted.");
+        } catch (Exception e) {
+             logger.log(java.util.logging.Level.SEVERE,"Error during post-action sleep", e);
+        }
+    } else {
+         // Log opcional si la acción falló
+         // logger.warning("Action " + action + " for agent " + ag + " failed or returned false.");
+    }
 
         return result;
     }

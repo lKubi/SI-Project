@@ -26,11 +26,18 @@ free.
 
 /* ----- DISPONIBILIDAD INICIAL DE PRODUCTOS (Específica) ----- */
 // Estas creencias deben reflejar el estado inicial en HouseModel o ser actualizadas por percepciones.
-available("Paracetamol 500mg", medCab).
-available("Ibuprofeno 600mg", medCab).
-available("Amoxicilina 500mg", medCab).
-available("Omeprazol 20mg", medCab).
-available("Loratadina 10mg", medCab).
+available("Paracetamol", medCab).
+available("Ibuprofeno", medCab).
+available("Amoxicilina", medCab).
+available("Omeprazol", medCab).
+available("Loratadina", medCab).
+
+// Al inicio de enfermera.asl
+
+// Umbral para ir a cargar
+low_energy_threshold(250). // Por ejemplo, ir a cargar cuando baje de 150
+
+
 
 available(beer, fridge).
 
@@ -38,6 +45,17 @@ available(beer, fridge).
 // Establecer límites para cada cerveza.
 
 limit(beer, 5).
+
+/*
+limit("Paracetamol", 4).
+limit("Ibuprofeno", 3).
+limit("Amoxicilina", 2).
+limit("Omeprazol", 1).
+limit("Loratadina", 1).
+*/
+
+
+
 
 //LO QUITAMOS O NO LO QUITAMOS
 /* ----- REGLA DE CONSUMO EXCESIVO (Verifica droga específica 'B') ----- */
@@ -70,67 +88,98 @@ orderDrug(DrugName, Ag) :-
 // Reglas para cerveza (sin cambios, asumiendo 'beer' es el único tipo)
 bringBeer(Ag) :- available(beer, fridge) & not too_much(beer, Ag).
 orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
-<<<<<<< Updated upstream
 
-/* ----- ##### NUEVO: PLANES PARA REVISIÓN PROACTIVA DE PAUTA (MODIFICADO) ##### ----- */
+//!run_charge_test.
+//!run_charge_stop_test.
+//!run_partial_charge_penalty_test.
 
-// Plan para revisar periódicamente la pauta de medicación (USA HORA SIMULADA)
-+clock(SimulatedHour)[source(Source)] : free[source(self)] <-
-    .println("PLAN REACTIVO (Clock ", SimulatedHour, "): Revisando pauta...");
-    if (medician(DrugToDeliver, SimulatedHour)) {
-        .println("PLAN REACTIVO (Clock ", SimulatedHour, "): Pauta encontrada: Entregar ", DrugToDeliver, " a owner.");
-        if (not too_much(DrugToDeliver, owner)) {
-            if (available(DrugToDeliver, medCab)) {
-                .println("PLAN REACTIVO (Clock ", SimulatedHour, "): Intentando iniciar entrega de ", DrugToDeliver);
-                // *** NUEVO: Añadir creencia temporal ANTES de lanzar !has ***
-                // Esta creencia marca que la siguiente ejecución de !has es para una entrega programada.
-                +is_scheduled_delivery(DrugToDeliver, owner, SimulatedHour);
-                // Lanzar el objetivo de entrega estándar. Los planes +!has / -!has se encargarán del resto.
-                !has(owner, DrugToDeliver)[source(self)];
-                // <<< YA NO SE ABOLISH NI SEND DESDE AQUÍ >>>
-            } else {
-                .println("PLAN REACTIVO (Clock ", SimulatedHour, "): No se puede entregar ", DrugToDeliver, ": No disponible en ", medCab);
-                // Opcional: intentar pedirlo si no está disponible? !orderDrug(...) ?
-            }
-        } else {
-            .println("PLAN REACTIVO (Clock ", SimulatedHour, "): No se puede entregar ", DrugToDeliver, ": Límite diario alcanzado.");
-        }
-    } else {
-        .println("PLAN REACTIVO (Clock ", SimulatedHour, "): No hay medicación pautada para esta hora.");
-    }.
+!check_energy. // <-- AÑADE ESTA LÍNEA (Para iniciar el bucle de chequeo)
 
-// Plan alternativo si no está libre (SIN CAMBIOS)
-+clock(SimulatedHour)[source(Source)] : not free[source(self)] <-
-     .wait(1000); // Espera un poco si está ocupado
-     +clock(SimulatedHour)[source(Source)]. // Reintenta revisar el reloj (o +!check_schedule si usas ese patrón)
-=======
->>>>>>> Stashed changes
+
+/*
++!run_charge_stop_test
+   <- .print("Agente: Iniciando prueba Start/Stop...");
+      start_charging;      // Ejecuta start
+      .wait(2000);            // Espera 2 segundos (tiempo real, solo para separar las acciones)
+      .print("Agente: Intentando detener carga...");
+      stop_charging;       // Ejecuta stop
+      .print("Agente: Prueba Start/Stop completada.").
+
++!run_charge_test
+   <- start_charging.
+
+
++!run_partial_charge_penalty_test
+   <- .print("--- INICIO TEST PENALIZACIÓN ---");
+      // Ciclo 1
+      .print("Test: Ciclo Parcial 1");
+      start_charging; .wait(1000); stop_charging; .wait(500);
+      // Ciclo 2
+      .print("Test: Ciclo Parcial 2");
+      start_charging; .wait(1000); stop_charging; .wait(500);
+      // Ciclo 3
+      .print("Test: Ciclo Parcial 3");
+      start_charging; .wait(1000); stop_charging; .wait(500);
+      // Ciclo 4 (Aquí debería aplicarse la penalización)
+      .print("Test: Ciclo Parcial 4 - Esperando penalización");
+      start_charging; .wait(1000); stop_charging; .wait(500);
+      // Ciclo 5 (Para ver si se mantiene penalizado)
+       .print("Test: Ciclo Parcial 5 - Verificando");
+      start_charging; .wait(1000);
+      .print("--- FIN TEST PENALIZACIÓN ---").
+*/
+// Plan para reaccionar a baja energía
+// Se activa si la energía actual (CE) es menor que el umbral (T)
+// y si NO tenemos el objetivo de cargar activo (evita lanzarlo múltiples veces)
+// Plan Bucle: Energía BAJA, está LIBRE y NO está ya intentando cargar
++!check_energy
+   : current_energy(CE) & low_energy_threshold(T) & CE < T & // Energía baja
+     free[source(self)] // Está libre
+<-
+   .print("¡Energía baja (", CE, "/", T, ")! [Bucle Check] Necesito cargar.");
+   !charge_battery;          // <-- Lanza el objetivo de carga
+   .wait(300);              // Espera 5 segundos (ajusta si quieres)
+   !check_energy.             // Continúa el bucle
+
+// Plan Bucle: Energía OK, o está OCUPADO, o YA está intentando cargar
++!check_energy
+   : current_energy(CE) & low_energy_threshold(T) & // Necesitamos saber la energía y umbral
+     ( CE >= T | not free[source(self)] ) // Condición: E OK, O No libre, O Ya cargando
+<-
+   // .print("DEBUG: Check energía OK/Ocupado/Cargando. Esperando..."); // Log opcional
+   .wait(300);  // Espera 5 segundos (ajusta si quieres)
+   !check_energy. // Continúa el bucle
+
+
+// Plan para lograr el objetivo de cargar la batería
++!charge_battery : free[source(self)] // Necesitamos saber dónde está el cargador
+    <- .print("Iniciando secuencia de carga hacia el cargador...");
+       // PASO 1: Ir a la zona del cargador
+       .print("Navegando hacia la zona del cargador...");
+       !at(auxiliar, cargador); // Intentar ir a la ubicación del cargador
+
+       // PASO 2: Una vez allí, iniciar la carga
+       .print("Cerca del cargador, iniciando carga...");
+       start_charging; // Ejecutar la acción en el entorno
+
+       // *** PASO 3: INICIAR MONITORIZACIÓN *** <--- AÑADIR ESTO
+       .print("Carga iniciada, comenzando monitorización...").
 
 
 /* ----- PLANES PARA TRAER MEDICAMENTO O CERVEZA (Modificados para ser específicos) ----- */
-
 // Plan para traer un MEDICAMENTO ESPECÍFICO cuando se solicita (o cuando lo inicia el propio robot)
 // Se activa con !has(AgenteDestino, NombreDelMedicamento)
 +!has(Ag, DrugName)[source(Source)] :
     bringDrug(DrugName, Ag) & free[source(self)] <-
     .println("REGLA 1 (Traer Específico): Intentando llevar ", DrugName, " a ", Ag, " (solicitado por ", Source, ")");
-<<<<<<< Updated upstream
-    -free[source(self)];
-    if (Ag == owner) { .send(owner, tell, nurse_is_delivering) };
-    !at(enfermera, medCab);
-    open(medCab);
-    obtener_medicamento(DrugName); // Acción que puede fallar
-=======
     +free[source(self)];
-    if (Ag == owner) { .send(owner, tell, nurse_is_delivering) };
+    if (Ag == owner) { .send(owner, tell, nurse_delivering) };
     !at(enfermera, medCab);
     open(medCab);
     obtener_medicamento(DrugName);  
     if (Ag == owner) { .send(owner, tell, medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)) };
-    .send(Ag, achieve, remove_my_medician(DrugName, SimulatedHour, SimulatedMinute)); // Pide al owner eliminar la suya
     .println("ENTREGA PROGRAMADA ÉXITO: Eliminando pauta para ", DrugName, " a las ", SimulatedHour, SimulatedMinute, "h.");
     .abolish(medician(DrugName, SimulatedHour, SimulatedMinute)); // Elimina creencia local de la enfermera
->>>>>>> Stashed changes
     close(medCab);
     !at(enfermera, Ag);
     hand_in(Ag, DrugName);
@@ -140,23 +189,7 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
     +consumed(YY, MM, DD, HH, NN, SS, DrugName, Ag);
     .println("Registrado consumo de ", DrugName, " por ", Ag);
 
-    // *** NUEVO: Limpieza de pauta SOLO SI era programada Y tuvo éxito ***
-<<<<<<< Updated upstream
-    if (is_scheduled_delivery(DrugName, Ag, Hour)) {
-        .println("ENTREGA PROGRAMADA ÉXITO: Eliminando pauta para ", DrugName, " a las ", Hour, "h.");
-        .abolish(medician(DrugName, Hour)); // Elimina creencia local de la enfermera
-        .send(Ag, achieve, remove_my_medician(DrugName, Hour)); // Pide al owner eliminar la suya
-        // Eliminar la creencia temporal de la enfermera
-        -is_scheduled_delivery(DrugName, Ag, Hour);
-=======
-    if (is_scheduled_delivery(DrugName, Ag, SimulatedHour, SimulatedMinute)) {
-       
-        // Eliminar la creencia temporal de la enfermera
-        -is_scheduled_delivery(DrugName, Ag, SimulatedHour, SimulatedMinute);
->>>>>>> Stashed changes
-    };
-
-    if (Ag == owner) { .send(owner, tell, nurse_finished_delivering) };
+    if (Ag == owner) { .send(owner, untell, nurse_delivering) };
     +free[source(self)];
     .println("Robot libre después de entregar ", DrugName).
 
@@ -166,7 +199,7 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
     .println("REGLA 1 (Traer Cerveza): Intentando llevar cerveza a ", Ag);
     -free[source(self)];
     // <<< ===== NUEVO: AVISO INICIO ENTREGA ===== >>>
-    if (Ag == owner) { .send(owner, tell, nurse_is_delivering) };
+    if (Ag == owner) { .send(owner, untell, nurse_delivering) };
     // <<< ====================================== >>>
     !at(enfermera, fridge);
     open(fridge);
@@ -179,7 +212,7 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
     +consumed(YY, MM, DD, HH, NN, SS, beer, Ag);
 
     // <<< ===== NUEVO: AVISO FIN ENTREGA ===== >>>
-    if (Ag == owner) { .send(owner, tell, nurse_finished_delivering) };
+    if (Ag == owner) { .send(owner, untell, nurse_delivering) };
     // <<< ==================================== >>>
     +free[source(self)].
 
@@ -263,70 +296,72 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
     .current_intention(I);
     .println("Failed to achieve goal: !has(", Name, " , ", P, "). Error: ", E);
     .println("Current intention is: ", I);
-
-    // *** NUEVO: Limpieza de creencia temporal SI era programada Y falló ***
-    // Crucial: NO eliminar la pauta 'medician' si la entrega falló.
-<<<<<<< Updated upstream
-    if (is_scheduled_delivery(P, Name, Hour)) {
-         .println("ENTREGA PROGRAMADA FALLO: NO se elimina pauta para ", P, " a las ", Hour, "h.");
-         // Solo eliminar la creencia temporal
-         -is_scheduled_delivery(P, Name, Hour);
-=======
-    if (is_scheduled_delivery(P, Name, SimulatedHour, SimulatedMinute)) {
-         .println("ENTREGA PROGRAMADA FALLO: NO se elimina pauta para ", P, " a las ", SimulatedHour, SimulatedMinute, "h.");
-         // Solo eliminar la creencia temporal
-         -is_scheduled_delivery(P, Name, SimulatedHour, SimulatedMinute);
->>>>>>> Stashed changes
-    };
-
     // Asegurarse de notificar al owner que la enfermera ya no está ocupada (si lo estaba)
-    if (Name == owner) { .send(owner, tell, nurse_finished_delivering) };
+    if (Name == owner) { .send(owner, untell, nurse_delivering) };
     +free[source(self)]. // Asegurarse de que la enfermera queda libre
 
 
-/* ----- ACTUALIZACIÓN DE LA LOCALIZACIÓN DEL ROBOT ----- */
-// El robot actualiza su ubicación y se mueve entre habitaciones o hacia puertas dependiendo de su situación.
-+!at(Ag, P) : at(Ag, P) <- 
-	//.println(Ag, " is at ",P);
-	.wait(500).
-+!at(Ag, P) : not at(Ag, P) <- 
-	.println("Going to ", P, " <=======================");  
-	.wait(200);
-	!go(P);                                        
-	//.println("Checking if is at ", P, " ============>");
-	!at(Ag, P).            
-														
-	+!go(P) : atRoom(RoomAg) & atRoom(P, RoomAg) <- 
-		move_towards(P).  
-	+!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
-			connect(RoomAg, RoomP, Door) & not atDoor <-
-		move_towards(Door); 
-		!go(P).                     
-	+!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
-			connect(RoomAg, RoomP, Door) <- //& not atDoor <-
-		move_towards(P); 
-		!go(P).       
-	+!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
-			not connect(RoomAg, RoomP, _) & connect(RoomAg, Room, DoorR) &
-			connect(Room, RoomP, DoorP) & not atDoor <-
-		move_towards(DoorR); 
-		!go(P). 
-	+!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
-			not connect(RoomAg, RoomP, _) & connect(RoomAg, Room, DoorR) &
-			connect(Room, RoomP, DoorP) & atDoor <-
-		move_towards(DoorP); 
-		!go(P). 
-	+!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP <- //& not atDoor <-
-		move_towards(P).                                                          
-	-!go(P) <- 
-<<<<<<< Updated upstream
-		.println("¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿ WHAT A FUCK !!!!!!!!!!!!!!!!!!!!");
-		.println("..........SOMETHING GOES WRONG......").                                        
-																						
-=======
-			.println("I am already at ", P, " <=======================");
-            .																			
->>>>>>> Stashed changes
+/* ----- ACTUALIZACIÓN DE LA LOCALIZACIÓN DEL ROBOT ----- */ // (O OBJETIVO: Ir a un lugar (!at))
+
+// Plan si ya está en el lugar
++!at(Ag, P) : at(Ag, P) <-
+    //.println(Ag, " is at ",P); // Mensaje opcional
+    .wait(10). // Espera mínima
+
+// Plan si no está en el lugar Y TIENE energía
++!at(Ag, P) : not at(Ag, P) & current_energy(CE) & CE > 0 // <-- AÑADIDO chequeo energía
+   <- .println("[Enfermera] Yendo a ", P, "..."); // <-- Corregido/Aclarado
+      !go(P); // Lanza el sub-objetivo de navegación
+      !at(Ag, P). // Vuelve a intentar !at para confirmar llegada
+
+// Plan si intenta !at con 0 energía
++!at(Ag, P) : not at(Ag, P) & current_energy(0)
+   <- .println("[Enfermera] No puedo ir a ", P, ", ¡sin energía!").
+
+
+/* ----- OBJETIVO: Navegar a un lugar (!go) ----- */
+
+// Plan para ir dentro de la misma habitación
++!go(P) : atRoom(RoomAg) & atRoom(P, RoomAg) & current_energy(CE) & CE > 0 // <-- AÑADIDO chequeo energía
+   <- move_towards(P).
+
+// Plan para ir a otra habitación, conectada directamente, estando ya en la puerta
++!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
+          connect(RoomAg, RoomP, Door) & atDoor & current_energy(CE) & CE > 0 // <-- AÑADIDO chequeo energía
+   <- move_towards(P).
+
+// Plan para ir a otra habitación, conectada directamente, SIN estar en la puerta
++!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
+          connect(RoomAg, RoomP, Door) & not atDoor & current_energy(CE) & CE > 0 // <-- AÑADIDO chequeo energía
+   <- move_towards(Door);
+      !go(P).
+
+// Plan para ir a otra habitación, NO conectada directamente, SIN estar en la puerta intermedia
++!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
+          not connect(RoomAg, RoomP, _) & connect(RoomAg, Room, DoorR) &
+          connect(Room, RoomP, DoorP) & not atDoor & current_energy(CE) & CE > 0 // <-- AÑADIDO chequeo energía
+   <- move_towards(DoorR);
+      !go(P).
+
+// Plan para ir a otra habitación, NO conectada directamente, ESTANDO en la puerta intermedia
++!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
+          not connect(RoomAg, RoomP, _) & connect(RoomAg, Room, DoorR) &
+          connect(Room, RoomP, DoorP) & atDoor & current_energy(CE) & CE > 0 // <-- AÑADIDO chequeo energía
+   <- move_towards(DoorP);
+      !go(P).
+
+// Plan Fallback (si los otros fallan pero las habitaciones son distintas)
++!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP & current_energy(CE) & CE > 0 // <-- AÑADIDO chequeo energía
+   <- move_towards(P).
+
+// Plan de fallo si no puede moverse por falta de energía
+-!go(P)[error(E)] : current_energy(0)
+   <- .println("[Enfermera] Fallo al intentar ir a ", P, " por falta de energía (0). Error: ", E).
+
+// Plan de llegada
+-!go(P) <-
+   .println("[Enfermera] He llegado a ", P, "."). // <-- Corregido/Aclarado
+   																		
 /* ----- MANEJO DE ENTREGA ----- */
 // Cuando el repartidor realiza una entrega, el robot actualiza su estado y vuelve a intentar cumplir la tarea.
 +delivered(DrugName, _Qtd, _OrderId)[source(repartidor)]
@@ -363,8 +398,6 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 	.println("El agente ", Ag, " me ha chateado: ", Msg);
 	.send(Ag, tell, msg(Answ)). 
 
-<<<<<<< Updated upstream
-=======
 
 	
 /* ----- ##### GESTIÓN DE NOTIFICACIÓN DE CONSUMO (MODIFICADO CON VERIFICACIÓN SIMULADA) ##### ----- */
@@ -449,106 +482,45 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 
 // Plan para revisar periódicamente la pauta de medicación (USA HORA SIMULADA)
 +clock(SimulatedHour, SimulatedMinute)[source(Source)] : free[source(self)] <-
-    .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): Revisando pauta...");
+    //.println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): Revisando pauta...");
+
+ if (not ha_caducado(DrugToDeliver)) {
     if (medician(DrugToDeliver, SimulatedHour, SimulatedMinute)) {
-        .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): Pauta encontrada: Entregar ", DrugToDeliver, " a owner.");
+       // .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): Pauta encontrada: Entregar ", DrugToDeliver, " a owner.");
+    
+
         if (not too_much(DrugToDeliver, owner)) {
-            if (available(DrugToDeliver, medCab)) {
                 .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): Intentando iniciar entrega de ", DrugToDeliver);
-                // *** NUEVO: Añadir creencia temporal ANTES de lanzar !has ***
-                // Esta creencia marca que la siguiente ejecución de !has es para una entrega programada.
-                +is_scheduled_delivery(DrugToDeliver, owner, SimulatedHour, SimulatedMinute);
                 // Lanzar el objetivo de entrega estándar. Los planes +!has / -!has se encargarán del resto.
                 !has(owner, DrugToDeliver)[source(self)];
                 // <<< YA NO SE ABOLISH NI SEND DESDE AQUÍ >>>
-            } else {
-                .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): No se puede entregar ", DrugToDeliver, ": No disponible en ", medCab);
-                // Opcional: intentar pedirlo si no está disponible? !orderDrug(...) ?
-            }
-        } else {
-            .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): No se puede entregar ", DrugToDeliver, ": Límite diario alcanzado.");
+        }else{
+            .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): No se puede entregar ", DrugToDeliver, ": Límite de consumo alcanzado.");
         }
+     
     } else {
-        .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): No hay medicación pautada para esta hora.");
+        //.println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): No hay medicación pautada para esta hora.");
+    };
+    } else {
+        //.println("Enfermera: La medicacion esta caducada.");
     }.
+    
 
 // Plan alternativo si no está libre (SIN CAMBIOS)
 +clock(SimulatedHour, SimulatedMinute)[source(Source)] : not free[source(self)] <-
      .wait(1000); // Espera un poco si está ocupado
      +clock(SimulatedHour, SimulatedMinute)[source(Source)]. // Reintenta revisar el reloj (o +!check_schedule si usas ese patrón)
 
->>>>>>> Stashed changes
+
 /* ----- ACTUALIZACIÓN DE LA HORA ----- */
 // El robot puede verificar la hora actual.                  
 +?time : true
 	<-  watchClock.
-	
-/* ----- ##### GESTIÓN DE NOTIFICACIÓN DE CONSUMO (MODIFICADO CON VERIFICACIÓN SIMULADA) ##### ----- */
-
-// Cuando el dueño informa que ha consumido un medicamento ESPECÍFICO y el robot está libre:
-// Robot actualiza pauta y lanza la verificación (simulada) para ese medicamento.
-+medication_consumed(DrugName, Hour)[source(Ag)] : free[source(self)] <-
-    .println("Notificación recibida: ", Ag, " dice haber tomado ", DrugName, " (pauta de las ", Hour, "h).");
-    -free[source(self)]; // <-- Robot se ocupa para ir a verificar
-    // Acción Inmediata: Eliminar la pauta correspondiente de las creencias del robot
-    .abolish(medician(DrugName, Hour));
-    .println("Robot: Pauta para ", DrugName, " a las ", Hour, "h eliminada de mi horario.");
-    .println("Robot: Iniciando plan para verificar el consumo de '", DrugName, "' en medCab."); // Log usa nombre específico
-    // Disparar la verificación específica para DrugName
-    !verify_consumption(Ag, DrugName). // <-- Pasa DrugName específico al plan de verificación
-
-// Si el robot está ocupado cuando recibe la notificación ESPECÍFICA:
-// Actualiza la pauta inmediatamente pero informa al dueño que verificará más tarde.
-+medication_consumed(DrugName, Hour)[source(Ag)] : not free[source(self)] <-
-    .println("Recibí notificación de consumo de ", DrugName, " (pauta de las ", Hour, "h) por ", Ag, ", pero estoy ocupado con otra tarea.");
-    // Acción Inmediata: Eliminar la pauta de las creencias del robot, incluso estando ocupado
-    .abolish(medician(DrugName, Hour));
-    .println("Robot: Pauta para ", DrugName, " a las ", Hour, "h eliminada de mi horario (mientras estaba ocupado).");
-    // Informar al dueño que se recibió y actualizó, pero la verificación será más tarde.
-    .send(Ag, tell, msg("Recibí tu notificación sobre ", DrugName, " de las ", Hour, "h y actualicé mi horario. Verificaré el consumo en el botiquín cuando termine mi tarea actual.")).
-    // NOTA: No llamamos a !verify_consumption aquí porque está ocupado.
-    // Se podría añadir opcionalmente !!verify_consumption(Ag, DrugName) para ponerlo en cola si se desea.
-
-/* ----- ##### PLAN PARA VERIFICAR EL CONSUMO (MODIFICADO) ##### ----- */
-// Plan AHORA recibe el nombre específico del medicamento (DrugName)
-+!verify_consumption(Ag, DrugName) <- // <-- Trigger modificado, recibe DrugName
-    .println("Verificando consumo de '", DrugName, "' en ", medCab, " solicitado por ", Ag); // <-- Log actualizado
-    .println("Llegué a ", medCab, ". Realizando verificación de stock de '", DrugName,"'."); // <-- Log actualizado
-
-    // --- Inicio: Simulación/Acción de Verificación ---
-    // ESTA PARTE SIGUE SIENDO UNA SIMULACIÓN. NO COMPRUEBA REALMENTE EL STOCK.
-    // Para una verificación real, necesitarías interactuar con el entorno aquí.
-    .println("Robot: [Simulación] Buscando/Contando unidades de ", DrugName, "...");
-    .wait(3000); // Simula tiempo de chequeo
-    .println("Verificación de stock simulada para '", DrugName, "' completada."); // <-- Log actualizado
-    // --- Fin: Simulación/Acción de Verificación ---
-
-    .println("Verificación finalizada para ", DrugName, ". Enviando confirmación a ", Ag);
-    // Mensaje de confirmación final (ahora menciona el medicamento verificado)
-    .send(Ag, tell, msg("He verificado en el estante de medicación respecto a ", DrugName, ". ¡Gracias por informarme!")); // <-- Mensaje actualizado
-    +free[source(self)]; // <-- Libera robot DESPUÉS de verificar
-    .println("Robot libre después de verificar consumo de ", DrugName, ".").
-
-// Plan de fallo para la verificación (MODIFICADO)
-// Ahora también usa DrugName
--!verify_consumption(Ag, DrugName)[error(E)] <- // <-- Trigger modificado
-    .println("¡ERROR al verificar el consumo de ", DrugName, " para ", Ag, "! Error: ", E); // <-- Log actualizado
-    .send(Ag, tell, msg("Tuve un problema al intentar verificar el consumo de ", DrugName, ". Por favor, revisa manualmente.")); // <-- Mensaje actualizado
-    +free[source(self)]. // <-- Asegura liberar robot en caso de error
 
 
-/* ----- RECEPCIÓN DE PAUTAS DE MEDICACIÓN ----- */
-// Al recibir una pauta del owner, la añade a sus creencias.
-+medician(M, H)[source(owner)] <-
-    +medician(M, H);
-    .println("Pauta recibida y almacenada: Tomar ", M, " a las ", H, "h.").
-
-+!clear_schedule // Forma más simple si no necesitas saber quién lo envió
-    : true // Condición de contexto: siempre aplicable cuando se recibe el objetivo
-<-
-    .println("Enfermera: Recibida orden para borrar el horario de medicación.");
-
-    .abolish(medician(_, _));
-
-    .println("Enfermera: Todas las pautas de medicación (creencias 'medician') han sido eliminadas.").
-
++orden_eliminar_caducaciones[source(auxiliar)] <-
+    .println("Agente B: Recibida señal de ", auxiliar, " para eliminar la caducacion.");
+    .abolish(ha_caducado(_));
+    .println("Agente B: Caducacion eliminada.");
+    -orden_eliminar_caducaciones[source(auxiliar)]; // Limpia la creencia señal
+    .

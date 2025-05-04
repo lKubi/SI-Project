@@ -17,6 +17,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Random;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import domotic.AStar;
 
 /**
@@ -28,20 +31,6 @@ import domotic.AStar;
 public class HouseModel extends GridWorldModel {
 
     // --- Constantes de Objetos ---
-<<<<<<< Updated upstream
-    
-    public static final int COLUMN   =     4;
-    public static final int CHAIR    =     8;
-    public static final int SOFA     =    16;
-    public static final int FRIDGE   =    32;
-    public static final int WASHER   =    64;
-    public static final int DOOR     =   128;
-    public static final int CHARGER  =   256;
-    public static final int TABLE    =   512;
-    public static final int BED      =  1024;
-    public static final int WALLV    =  2048;
-    public static final int MEDCAB   =  4096;
-=======
 
     public static final int COLUMN = 4;
     public static final int CHAIR = 8;
@@ -54,7 +43,11 @@ public class HouseModel extends GridWorldModel {
     public static final int BED = 1024;
     public static final int WALLV = 2048;
     public static final int MEDCAB = 4096;
->>>>>>> Stashed changes
+
+    // --- Constantes de Carga ---
+    public static final int FULL_CHARGE_MINUTES = 60; // 1 hora simulada
+    public static final int PARTIAL_CHARGE_LIMIT = 3; // Permitidas 3, la 4ta penaliza
+    public static final double MAX_ENERGY_PENALTY_FACTOR = 0.95; // Reducción del 5%
 
     // --- Configuración del Grid y Agentes ---
 
@@ -72,6 +65,19 @@ public class HouseModel extends GridWorldModel {
     /** Número total de agentes definidos */
     private static final int nAgents = 3;
 
+    private Map<Integer, Integer> agentCurrentEnergy = new HashMap<>();
+    /** Energía máxima por ID de agente (Enfermera y Auxiliar) */
+    private Map<Integer, Integer> agentMaxEnergy = new HashMap<>();
+
+    // --- Estado de Carga ---
+    // Mapa para contar cargas parciales por agente
+    private Map<Integer, Integer> agentPartialChargeCount = new ConcurrentHashMap<>();
+    // Mapa para rastrear los minutos restantes para carga completa (si está
+    // cargando)
+    private Map<Integer, Integer> agentRemainingChargeTimeMinutes = new ConcurrentHashMap<>();
+    // Almacenamos la energía máxima original para calcular la penalización
+    // correctamente
+    private Map<Integer, Integer> agentOriginalMaxEnergy = new ConcurrentHashMap<>();
     // --- Estado del Modelo ---
 
     /** Estado de apertura de la nevera */
@@ -79,19 +85,10 @@ public class HouseModel extends GridWorldModel {
     /** Estado de apertura del botiquín */
     boolean medCabOpen = false;
     /** Si el robot lleva medicamentos */
-<<<<<<< Updated upstream
-    boolean robotCarryingDrug = false; 
-    boolean robotCarryingBeer = false;
-
-    boolean auxiliarCarryingDrug = false; 
-
-
-=======
     boolean robotCarryingDrug = false;
     boolean robotCarryingBeer = false;
 
     boolean auxiliarCarryingDrug = false;
->>>>>>> Stashed changes
 
     /** Número de sorbos de cerveza tomados */
     int sipCount = 0;
@@ -112,27 +109,6 @@ public class HouseModel extends GridWorldModel {
     Location lChair2 = new Location(7, 8);
     Location lChair4 = new Location(6, 8);
     Location lDeliver = new Location(0, 12);
-<<<<<<< Updated upstream
-    Location lWasher  = new Location(4, 0);
-    Location lFridge  = new Location(0, 0);
-    Location lMedCab  = new Location(8, 0); 
-    Location lTable   = new Location(6, 9);
-    Location lBed2    = new Location(14, 0);
-    Location lBed3    = new Location(21, 0);
-    Location lBed1    = new Location(13, 9);
-    Location lCharger = new Location(2,7);
-
-    // --- Ubicaciones de Puertas ---
-
-    Location lDoorHome  = new Location(0, 11);
-    Location lDoorKit1  = new Location(0, 6);
-    Location lDoorKit2  = new Location(7, 5);
-    Location lDoorSal1  = new Location(3, 11);
-    Location lDoorSal2  = new Location(11, 6);
-    Location lDoorBed1  = new Location(13, 6);
-    Location lDoorBed2  = new Location(13, 4);
-    Location lDoorBed3  = new Location(23, 4);
-=======
     Location lWasher = new Location(4, 0);
     Location lFridge = new Location(0, 0);
     Location lMedCab = new Location(4, 0);
@@ -140,7 +116,7 @@ public class HouseModel extends GridWorldModel {
     Location lBed2 = new Location(14, 0);
     Location lBed3 = new Location(21, 0);
     Location lBed1 = new Location(13, 9);
-    Location lCharger = new Location(2, 7);
+    Location lCargador = new Location(2, 2);
 
     // --- Ubicaciones de Puertas ---
 
@@ -152,7 +128,6 @@ public class HouseModel extends GridWorldModel {
     Location lDoorBed1 = new Location(13, 6);
     Location lDoorBed2 = new Location(13, 4);
     Location lDoorBed3 = new Location(23, 4);
->>>>>>> Stashed changes
     Location lDoorBath1 = new Location(11, 4);
     Location lDoorBath2 = new Location(20, 7);
 
@@ -170,12 +145,15 @@ public class HouseModel extends GridWorldModel {
 
     /** Mapa de direcciones de movimiento por agente */
     private Map<Integer, String> directionMap = new HashMap<>();
-
     private Map<Integer, Integer> agentWaitCounters = new HashMap<>();
     private Random random = new Random();
 
     private HashMap<String, Location> medicamentosExpiry = new HashMap<>();
-    private int currentSimulatedHour = 0;
+    private HouseView view;
+
+    public void setView(HouseView view) { // Añade este método si no existe
+        this.view = view;
+    }
 
     /**
      * Constructor del modelo del entorno. Inicializa el grid,
@@ -184,35 +162,38 @@ public class HouseModel extends GridWorldModel {
      */
     public HouseModel() {
         super(2 * GSize - 5, GSize, nAgents); // Grid de 24x12
+        // --- MOVER CÁLCULO AQUÍ ---
+        int gridWidth = getWidth();
+        int gridHeight = getHeight();
+        // Asegúrate que getWidth/getHeight ya funcionan aquí (deberían después de
+        // super())
+        int initialEnergy = gridWidth * gridHeight;
+        System.out.println(
+                "DEBUG: Grid Dimensions: " + gridWidth + "x" + gridHeight + " -> Initial Energy: " + initialEnergy); // DEBUG
+        // --- FIN MOVIMIENTO ---
 
-        // Posiciones iniciales de los agentes
-<<<<<<< Updated upstream
-        setAgPos(0, 19, 10);   // enfermera
-        setAgPos(1, 13, 9);    // owner
-        setAgPos(2, 1, 10); // auxiliar
-
-=======
-        setAgPos(0, 19, 10); // enfermera
+        // Posiciones iniciales de los agentes (Mantenemos la de prueba)
+        setAgPos(ROBOT_AGENT_ID, 19, 3); // TEMPORAL: Poner robot en su cargador
         setAgPos(1, 13, 9); // owner
         setAgPos(2, 1, 10); // auxiliar
->>>>>>> Stashed changes
+
+        // Inicializar energía para enfermera y auxiliar (Usa la variable calculada
+        // arriba)
+        agentCurrentEnergy.put(ROBOT_AGENT_ID, initialEnergy);
+        agentMaxEnergy.put(ROBOT_AGENT_ID, initialEnergy);
+        agentCurrentEnergy.put(AUXILIAR_AGENT_ID, initialEnergy);
+        agentMaxEnergy.put(AUXILIAR_AGENT_ID, initialEnergy);
+
+        // Inicializar contadores y energía original (Usa la variable calculada arriba)
+        agentPartialChargeCount.put(ROBOT_AGENT_ID, 0);
+        agentPartialChargeCount.put(AUXILIAR_AGENT_ID, 0);
+        agentOriginalMaxEnergy.put(ROBOT_AGENT_ID, initialEnergy); // Guardar la original
+        agentOriginalMaxEnergy.put(AUXILIAR_AGENT_ID, initialEnergy); // Guardar la original
 
         // Objetos fijos en el entorno
         add(MEDCAB, lMedCab);
         add(FRIDGE, lFridge);
         add(WASHER, lWasher);
-<<<<<<< Updated upstream
-        add(DOOR,   lDeliver);
-        add(SOFA,   lSofa);
-        add(CHAIR,  lChair2);
-        add(CHAIR,  lChair3);
-        add(CHAIR,  lChair4);
-        add(CHAIR,  lChair1);
-        add(TABLE,  lTable);
-        add(BED,    lBed1);
-        add(BED,    lBed2);
-        add(BED,    lBed3);
-=======
         add(DOOR, lDeliver);
         add(SOFA, lSofa);
         add(CHAIR, lChair2);
@@ -223,8 +204,7 @@ public class HouseModel extends GridWorldModel {
         add(BED, lBed1);
         add(BED, lBed2);
         add(BED, lBed3);
->>>>>>> Stashed changes
-        add(CHARGER, lCharger);
+        add(CHARGER, lCargador);
 
         // Puertas
         add(DOOR, lDoorKit2);
@@ -252,13 +232,6 @@ public class HouseModel extends GridWorldModel {
         addWall(14, 6, 23, 6);
 
         // Medicamentos iniciales disponibles
-<<<<<<< Updated upstream
-        contadorMedicamentos.put("Paracetamol 500mg", 3);
-        contadorMedicamentos.put("Ibuprofeno 600mg", 4);
-        contadorMedicamentos.put("Amoxicilina 500mg", 8);
-        contadorMedicamentos.put("Omeprazol 20mg", 1);
-        contadorMedicamentos.put("Loratadina 10mg", 4);
-=======
         contadorMedicamentos.put("Paracetamol", 3);
         contadorMedicamentos.put("Ibuprofeno", 4);
         contadorMedicamentos.put("Amoxicilina", 8);
@@ -270,7 +243,6 @@ public class HouseModel extends GridWorldModel {
         medicamentosExpiry.put("Omeprazol", new Location(2, 30));
         medicamentosExpiry.put("Ibuprofeno", new Location(3, 30));
         medicamentosExpiry.put("Loratadina", new Location(4, 30));
->>>>>>> Stashed changes
 
         this.availableDrugs = calcularTotalMedicamentos(contadorMedicamentos);
         this.robotCarryingDrug = false;
@@ -278,15 +250,45 @@ public class HouseModel extends GridWorldModel {
         this.auxiliarCarryingDrug = false;
     }
 
-    // *** NUEVO: Método para obtener el mapa de caducidades ***
+    // --- NUEVO: Getters para Energía ---
+
+    /**
+     * Obtiene la energía actual de un agente.
+     * 
+     * @param agentId ID del agente (0 para Robot, 2 para Auxiliar).
+     * @return La energía actual, o 0 si el agente no tiene sistema de energía.
+     */
+    public synchronized int getCurrentEnergy(int agentId) {
+        // Retorna 0 si el agente no es el robot o el auxiliar, o si no está en el mapa
+        // por alguna razón
+        if (agentId == ROBOT_AGENT_ID || agentId == AUXILIAR_AGENT_ID) {
+            return agentCurrentEnergy.getOrDefault(agentId, 0);
+        }
+        return 0;
+    }
+
+    /**
+     * Obtiene la energía máxima de un agente.
+     * 
+     * @param agentId ID del agente (0 para Robot, 2 para Auxiliar).
+     * @return La energía máxima, o 0 si el agente no tiene sistema de energía.
+     */
+    public synchronized int getMaxEnergy(int agentId) {
+        if (agentId == ROBOT_AGENT_ID || agentId == AUXILIAR_AGENT_ID) {
+            return agentMaxEnergy.getOrDefault(agentId, 0);
+        }
+        return 0;
+    }
+
+    // * NUEVO: Método para obtener el mapa de caducidades *
     public HashMap<String, Location> getMedicamentosExpiry() {
         // El nombre del método puede seguir siendo el mismo si ya no usas la versión
         // antigua
         return this.medicamentosExpiry;
     }
 
-    // *** NUEVO: Getter para el contador de medicamentos si no existía
-    // explícitamente ***
+    // * NUEVO: Getter para el contador de medicamentos si no existía
+    // explícitamente *
     public HashMap<String, Integer> getContadorMedicamentos() {
         return contadorMedicamentos;
     }
@@ -427,34 +429,19 @@ public class HouseModel extends GridWorldModel {
         if (agentInCell != -1 && agentInCell != Ag) {
             return false;
         }
-<<<<<<< Updated upstream
-
-        if (Ag == ROBOT_AGENT_ID || Ag == OWNER_AGENT_ID || Ag == AUXILIAR_AGENT_ID) { 
-            if ((x == 7 && y == 9)  || (x == 7 && y == 10) || (x == 14 && y == 1) ||
-                (x == 15 && y == 1) || (x == 15 && y == 0) || (x == 21 && y == 1) ||
-                (x == 22 && y == 1) || (x == 22 && y == 0) || (x == 13 && y == 10) ||
-                (x == 14 && y == 9) || (x == 14 && y == 10)) {
-=======
         // ... rest of your canMoveTo logic ...
         if (Ag == ROBOT_AGENT_ID || Ag == OWNER_AGENT_ID || Ag == AUXILIAR_AGENT_ID) {
             if ((x == 7 && y == 9) || (x == 7 && y == 10) || (x == 14 && y == 1) ||
                     (x == 15 && y == 1) || (x == 15 && y == 0) || (x == 21 && y == 1) ||
                     (x == 22 && y == 1) || (x == 22 && y == 0) || (x == 13 && y == 10) ||
                     (x == 14 && y == 9) || (x == 14 && y == 10)) {
->>>>>>> Stashed changes
                 return false;
             }
 
             return !hasObject(WASHER, x, y) && !hasObject(TABLE, x, y) &&
-<<<<<<< Updated upstream
-                   !hasObject(SOFA, x, y) && !hasObject(CHAIR, x, y) &&
-                   !hasObject(BED, x, y) && !hasObject(FRIDGE, x, y) &&
-                   !hasObject(MEDCAB, x, y) && !hasObject(CHARGER, x, y);
-=======
                     !hasObject(SOFA, x, y) && !hasObject(CHAIR, x, y) &&
                     !hasObject(BED, x, y) && !hasObject(FRIDGE, x, y) &&
                     !hasObject(MEDCAB, x, y) && !hasObject(CHARGER, x, y);
->>>>>>> Stashed changes
         } else {
             return true;
         }
@@ -538,44 +525,15 @@ public class HouseModel extends GridWorldModel {
         }
         // --- FIN: Comprobar contador de espera ---
 
-<<<<<<< Updated upstream
-        // Si ya está en el destino, no hacer nada
-=======
         Location start = getAgPos(Ag); // Posición actual
 
         // 1. Comprobar si ya está en el destino
->>>>>>> Stashed changes
         if (start.equals(dest)) {
             // Ya está en el destino, no necesita moverse ni esperar.
             agentWaitCounters.remove(Ag); // Asegurarse de limpiar cualquier espera residual
             return true;
         }
 
-<<<<<<< Updated upstream
-        Map<Location, Location> cameFrom = new HashMap<>();
-        Map<Location, Integer> gScore = new HashMap<>();
-        Map<Location, Integer> fScore = new HashMap<>();
-        Comparator<Location> fScoreComparator = Comparator.comparingInt(loc -> fScore.getOrDefault(loc, Integer.MAX_VALUE));
-        PriorityQueue<Location> openSet = new PriorityQueue<>(fScoreComparator); // Nodos por evaluar
-
-        Set<Location> closedSet = new HashSet<>(); // Nodos ya evaluados
-
-        // Inicializar valores para el nodo de inicio
-        gScore.put(start, 0);
-        fScore.put(start, manhattanDistance(start, dest));
-        openSet.add(start);
-
-        // 2. Bucle principal de A*
-        while (!openSet.isEmpty()) {
-            Location current = openSet.poll(); // Obtener nodo con menor fScore
-
-            // Si hemos llegado al destino
-            if (current.equals(dest)) {
-                // Reconstruir el camino y mover un paso
-                List<Location> path = reconstructPath(cameFrom, current);
-                if (path.size() > 1) {
-                    Location nextStep = path.get(1);
-=======
         // 2. Calcular la ruta con A*
         List<Location> path = AStar.findPath(this, Ag, start, dest);
 
@@ -591,7 +549,6 @@ public class HouseModel extends GridWorldModel {
                 // --- CASO NORMAL: El siguiente paso está libre o soy yo mismo (raro, pero
                 // seguro) ---
                 // Es seguro moverse al nextStep planeado.
->>>>>>> Stashed changes
 
                 int dx = nextStep.x - start.x;
                 int dy = nextStep.y - start.y;
@@ -636,80 +593,6 @@ public class HouseModel extends GridWorldModel {
                     agentWaitCounters.remove(Ag); // Limpiar contador de espera si se movió (side-step)
 
                 } else {
-<<<<<<< Updated upstream
-                    // El camino solo tiene el nodo inicial (o está vacío), ¿quizás start == dest?
-                    // Ya se manejó al principio. Si llegamos aquí, es un caso raro.
-                    System.err.println("A* found a path with < 2 steps, but start != dest.");
-                    return true; // Consideramos que no hay movimiento necesario o posible
-                }
-            }
-
-            closedSet.add(current); // Marcar como evaluado
-
-             // 3. Explorar vecinos (arriba, abajo, izquierda, derecha)
-			 int[] dx = {0, 0, 1, -1};
-			 int[] dy = {1, -1, 0, 0};
- 
-			 for (int i = 0; i < 4; i++) {
-				 int nextX = current.x + dx[i];
-				 int nextY = current.y + dy[i];
-				 Location neighbor = new Location(nextX, nextY);
- 
-				 // --- INICIO DE LA MODIFICACIÓN ---
-				 // Validar vecino: Aplicar canMoveTo SÓLO si el vecino NO es el destino final.
-				 // Si es el destino final, permitimos que A* lo considere para completar la ruta,
-				 // aunque no podamos "pisarlo" según canMoveTo. El movimiento real se detendrá antes.
-				 if (!neighbor.equals(dest)) {
-					 if (!canMoveTo(Ag, nextX, nextY)) {
-						 continue; // Ignorar si no es transitable (pared, obstáculo, fuera de límites)
-					 }
-				 } else {
-					 // Si es el destino, al menos verificamos que esté dentro de los límites del grid
-					 // (aunque canMoveTo ya lo haría si se llamase)
-					  if (nextX < 0 || nextX >= getWidth() || nextY < 0 || nextY >= getHeight()) {
-						 continue;
-					  }
-					  // También podríamos verificar si es un OBSTACLE (pared), ya que eso sí sería infranqueable.
-					  if (hasObject(OBSTACLE, nextX, nextY)){
-						 continue;
-					  }
-					  // No aplicamos el resto de chequeos de canMoveTo (FRIDGE, CHAIR, etc.) aquí.
-				 }
-				 // --- FIN DE LA MODIFICACIÓN ---
- 
- 
-				 if (closedSet.contains(neighbor)) {
-					 continue; // Ignorar si ya fue evaluado
-				 }
- 
-				 // Costo de moverse al vecino (asumimos costo 1 para movimientos ortogonales)
-				 int tentativeGScore = gScore.getOrDefault(current, Integer.MAX_VALUE) + 1;
- 
-				 // Si esta ruta hacia el vecino es mejor que cualquier ruta anterior
-				 if (tentativeGScore < gScore.getOrDefault(neighbor, Integer.MAX_VALUE)) {
-					 // Actualizar información del camino
-					 cameFrom.put(neighbor, current);
-					 gScore.put(neighbor, tentativeGScore);
-					 fScore.put(neighbor, tentativeGScore + manhattanDistance(neighbor, dest));
- 
-					 // Añadir a openSet si no está ya, o actualizar su prioridad
-					 // (Java PriorityQueue maneja esto al re-añadir o si contains es falso)
-					 if (!openSet.contains(neighbor)) {
-						  openSet.add(neighbor);
-					 } else {
-						 // Para forzar la actualización de prioridad en Java PQ si ya existe:
-						 openSet.remove(neighbor);
-						 openSet.add(neighbor);
-					 }
-				 }
-			 }
-		 } // Fin del while (!openSet.isEmpty())
-
-        // Si el bucle termina y no se encontró el destino, no hay camino posible
-        System.out.println("Agent " + Ag + " could not find a path from " + start + " to " + dest);
-        return true; // Indicar que el intento se hizo, aunque no hubo movimiento.
-                     // Podría devolverse false si se quiere indicar fallo en encontrar ruta.
-=======
                     // No hay espacio para apartarse, inicia espera aleatoria (Deadlock situation)
                     int waitTime = 1 + random.nextInt(3); // Espera entre 1 y 3 ciclos (inclusive)
                     agentWaitCounters.put(Ag, waitTime);
@@ -732,7 +615,6 @@ public class HouseModel extends GridWorldModel {
         // Siempre devuelve true, la acción se procesó (movimiento, side-step, espera o
         // sin ruta).
         return true;
->>>>>>> Stashed changes
     }
 
     public String getLastDirection(int ag) { // <--- It exists and is public!
@@ -740,45 +622,6 @@ public class HouseModel extends GridWorldModel {
     }
 
     /**
-<<<<<<< Updated upstream
-     * Calcula la distancia de Manhattan entre dos ubicaciones del grid.
-     * 
-     * @param a Primera ubicación.
-     * @param b Segunda ubicación.
-     * @return Distancia Manhattan entre ambas ubicaciones.
-     */
-    private int manhattanDistance(Location a, Location b) {
-        return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-    }
-
-    /**
-     * Reconstruye el camino desde el nodo final hasta el inicio utilizando el mapa de procedencia.
-     *
-     * @param cameFrom Mapa que indica para cada nodo desde qué nodo se llegó.
-     * @param current Nodo final del camino.
-     * @return Lista de ubicaciones que representan el camino desde el inicio hasta el destino.
-     */
-    private List<Location> reconstructPath(Map<Location, Location> cameFrom, Location current) {
-        List<Location> totalPath = new ArrayList<>();
-        totalPath.add(current);
-        while (cameFrom.containsKey(current)) {
-            current = cameFrom.get(current);
-            totalPath.add(current);
-        }
-        Collections.reverse(totalPath);
-        return totalPath;
-    }
-
-     /**
-     * Permite al robot tomar una cerveza de la nevera si está abierta,
-     * hay stock disponible y no está cargando una actualmente.
-     * (Método actualizado para usar robotCarryingBeer)
-     * @return true si la acción se realizó con éxito, false si falló por alguna condición.
-     */
-    boolean getBeer() {
-        if (fridgeOpen && availableBeers > 0) { // <-- MODIFICADO
-            availableBeers--;
-=======
      * Permite al robot tomar una cerveza de la nevera si está abierta,
      * hay stock disponible y no está cargando una actualmente.
      * (Método actualizado para usar robotCarryingBeer)
@@ -799,17 +642,16 @@ public class HouseModel extends GridWorldModel {
         if (availableBeers > 0) {
             // Hay cervezas y el frigo está abierto: coger una.
             availableBeers--; // Decrementa el contador
->>>>>>> Stashed changes
             System.out.println("Robot got a beer. Beers left: " + availableBeers);
 
-            // *** INICIO DE LA LÓGICA DE AUTO-RELLENADO ***
+            // * INICIO DE LA LÓGICA DE AUTO-RELLENADO *
             // Comprueba SI DESPUÉS de coger la cerveza, el contador ha llegado a 0.
             if (availableBeers == 0) {
                 System.out.println("Fridge empty! Automatically refilling beers...");
                 availableBeers = 10; // Rellena automáticamente a 10
                 System.out.println("Fridge refilled. Beers available now: " + availableBeers);
             }
-            // *** FIN DE LA LÓGICA DE AUTO-RELLENADO ***
+            // * FIN DE LA LÓGICA DE AUTO-RELLENADO *
 
             return true; // La acción de coger la cerveza fue exitosa
 
@@ -849,34 +691,20 @@ public class HouseModel extends GridWorldModel {
 
         // Comprobar si las posiciones son válidas
         if (robotPos == null || ownerPos == null) {
-<<<<<<< Updated upstream
-             System.out.println("Failed to hand in beer: Agent position not found.");
-             return false;
-        }
-
-        if (robotCarryingBeer && robotPos.isNeigbour(ownerPos)) { // <-- MODIFICADO
-            sipCount = 10;       // Owner ahora tiene la cerveza
-=======
             System.out.println("Failed to hand in beer: Agent position not found.");
             return false;
         }
 
         if (robotCarryingBeer && robotPos.isNeigbour(ownerPos)) { // <-- MODIFICADO
             sipCount = 1; // Owner ahora tiene la cerveza
->>>>>>> Stashed changes
             robotCarryingBeer = false; // Robot ya no la lleva <-- MODIFICADO
             System.out.println("Robot handed beer to owner.");
             toret = true;
         } else {
-<<<<<<< Updated upstream
-            if (!robotCarryingBeer) System.out.println("Failed to hand in beer: Robot not carrying one."); // <-- MODIFICADO
-            if (!robotPos.isNeigbour(ownerPos)) System.out.println("Failed to hand in beer: Robot not near owner.");
-=======
             if (!robotCarryingBeer)
                 System.out.println("Failed to hand in beer: Robot not carrying one."); // <-- MODIFICADO
             if (!robotPos.isNeigbour(ownerPos))
                 System.out.println("Failed to hand in beer: Robot not near owner.");
->>>>>>> Stashed changes
             toret = false;
         }
         return toret;
@@ -928,21 +756,6 @@ public class HouseModel extends GridWorldModel {
         return true;
     }
 
-<<<<<<< Updated upstream
-   
-   /**
-     * Entrega un medicamento específico al dueño si el agente especificado (robot o auxiliar)
-     * lo está cargando y se encuentra cerca del dueño.
-     * Actualiza el estado del dueño y libera la carga del agente que entrega.
-     *
-     * @param agentId  ID del agente que realiza la entrega (0 para robot, 2 para auxiliar). // <-- Parámetro añadido
-     * @param drugName El nombre del medicamento que se está entregando (usado para log).
-     * @return true si la entrega fue exitosa, false si no se cumple alguna condición.
-     */
-    boolean handInDrug(int agentId, String drugName) {
-        String agentName = (agentId == ROBOT_AGENT_ID) ? "Robot" :
-                           (agentId == AUXILIAR_AGENT_ID ? "Auxiliar" : "Unknown Agent " + agentId);
-=======
     /**
      * Entrega un medicamento específico al dueño si el agente especificado (robot o
      * auxiliar)
@@ -959,16 +772,10 @@ public class HouseModel extends GridWorldModel {
     boolean handInDrug(int agentId, String drugName) {
         String agentName = (agentId == ROBOT_AGENT_ID) ? "Robot"
                 : (agentId == AUXILIAR_AGENT_ID ? "Auxiliar" : "Unknown Agent " + agentId);
->>>>>>> Stashed changes
         Location agentPos = getAgPos(agentId);
         Location ownerPos = getAgPos(OWNER_AGENT_ID);
 
         // --- Verificaciones iniciales (sin cambios) ---
-<<<<<<< Updated upstream
-        if (agentPos == null) { /* ... */ return false; }
-        if (ownerPos == null) { /* ... */ return false; }
-        if (agentId != ROBOT_AGENT_ID && agentId != AUXILIAR_AGENT_ID) { /* ... */ return false; }
-=======
         if (agentPos == null) {
             /* ... */ return false;
         }
@@ -978,7 +785,6 @@ public class HouseModel extends GridWorldModel {
         if (agentId != ROBOT_AGENT_ID && agentId != AUXILIAR_AGENT_ID) {
             /* ... */ return false;
         }
->>>>>>> Stashed changes
 
         boolean canDeliver = false;
         boolean isCarrying = false;
@@ -1011,13 +817,6 @@ public class HouseModel extends GridWorldModel {
         } else {
             // Mensajes de error (actualizados para reflejar la variable correcta)
             if (!isCarrying) {
-<<<<<<< Updated upstream
-                 System.out.println("Failed to hand in drug: " + agentName + " not carrying an item (" + (agentId == ROBOT_AGENT_ID ? "robotCarryingDrug=false" : "auxiliarCarryingDrug=false") + ")."); // <-- MODIFICADO (texto)
-            } else if (!agentPos.isNeigbour(ownerPos)) {
-                 System.out.println("Failed to hand in drug: " + agentName + " not near owner (Agent at " + agentPos + ", Owner at " + ownerPos + ").");
-            } else {
-                 System.out.println("Failed to hand in drug ("+agentName+"): Unknown reason (carrying=" + isCarrying + ", near=" + agentPos.isNeigbour(ownerPos) + ").");
-=======
                 System.out.println("Failed to hand in drug: " + agentName + " not carrying an item ("
                         + (agentId == ROBOT_AGENT_ID ? "robotCarryingDrug=false" : "auxiliarCarryingDrug=false")
                         + ")."); // <-- MODIFICADO (texto)
@@ -1027,7 +826,6 @@ public class HouseModel extends GridWorldModel {
             } else {
                 System.out.println("Failed to hand in drug (" + agentName + "): Unknown reason (carrying=" + isCarrying
                         + ", near=" + agentPos.isNeigbour(ownerPos) + ").");
->>>>>>> Stashed changes
             }
             return false;
         }
@@ -1055,53 +853,31 @@ public class HouseModel extends GridWorldModel {
      * Permite al robot tomar un medicamento del botiquín si está abierto,
      * hay unidades disponibles y no está cargando otro medicamento.
      *
-<<<<<<< Updated upstream
-     * @return true si la acción fue exitosa, false si no se cumplen las condiciones necesarias.
-=======
      * @return true si la acción fue exitosa, false si no se cumplen las condiciones
      *         necesarias.
->>>>>>> Stashed changes
      */
     boolean getDrug() {
         // Esta acción implícitamente la hace el robot
         if (medCabOpen && availableDrugs > 0 && !robotCarryingDrug) { // <-- MODIFICADO
             availableDrugs--; // Reduce el total general
             // Nota: No se reduce el contador específico aquí, ¿es intencional?
-<<<<<<< Updated upstream
-            // La acción 'agenteGetSpecificDrug' sí lo hace. Quizás esta acción 'getDrug' es genérica.
-=======
             // La acción 'agenteGetSpecificDrug' sí lo hace. Quizás esta acción 'getDrug' es
             // genérica.
->>>>>>> Stashed changes
             robotCarryingDrug = true; // <-- MODIFICADO
             System.out.println("Robot got a generic drug. Drugs left (total): " + availableDrugs);
             return true;
         } else {
-<<<<<<< Updated upstream
-            if (!medCabOpen) System.out.println("Failed to get drug: MedCab is closed.");
-            if (availableDrugs <= 0) System.out.println("Failed to get drug: No drugs available.");
-            if (robotCarryingDrug) System.out.println("Failed to get drug: Robot already carrying a drug."); // <-- MODIFICADO
-=======
             if (!medCabOpen)
                 System.out.println("Failed to get drug: MedCab is closed.");
             if (availableDrugs <= 0)
                 System.out.println("Failed to get drug: No drugs available.");
             if (robotCarryingDrug)
                 System.out.println("Failed to get drug: Robot already carrying a drug."); // <-- MODIFICADO
->>>>>>> Stashed changes
             return false;
         }
     }
 
     /**
-<<<<<<< Updated upstream
-     * Permite que un agente (robot, dueño o auxiliar) tome un medicamento específico del botiquín.
-     * Verifica precondiciones como cercanía al botiquín, disponibilidad del medicamento,
-     * y si el agente ya lleva un objeto (drug para robot, box para auxiliar) o tiene dosis pendiente (dueño).
-     * Si el medicamento está agotado, lo repone automáticamente.
-     *
-     * @param agentId ID del agente (0 para robot, 1 para dueño, 2 para auxiliar). // <-- Actualizada descripción
-=======
      * Permite que un agente (robot, dueño o auxiliar) tome un medicamento
      * específico del botiquín.
      * Verifica precondiciones como cercanía al botiquín, disponibilidad del
@@ -1112,30 +888,17 @@ public class HouseModel extends GridWorldModel {
      *
      * @param agentId           ID del agente (0 para robot, 1 para dueño, 2 para
      *                          auxiliar). // <-- Actualizada descripción
->>>>>>> Stashed changes
      * @param nombreMedicamento Nombre exacto del medicamento que se desea obtener.
      * @return true si el agente obtuvo el medicamento, false en caso contrario.
      */
     boolean agenteGetSpecificDrug(int agentId, String nombreMedicamento) {
-<<<<<<< Updated upstream
-        String agentName = (agentId == ROBOT_AGENT_ID) ? "Robot" :
-                           (agentId == OWNER_AGENT_ID ? "Owner" :
-                           (agentId == AUXILIAR_AGENT_ID ? "Auxiliar" : "Unknown Agent " + agentId));
-=======
         String agentName = (agentId == ROBOT_AGENT_ID) ? "Robot"
                 : (agentId == OWNER_AGENT_ID ? "Owner"
                         : (agentId == AUXILIAR_AGENT_ID ? "Auxiliar" : "Unknown Agent " + agentId));
->>>>>>> Stashed changes
 
         System.out.println("\n" + agentName + " trying to get: " + nombreMedicamento);
 
         // --- Precondiciones (sin cambios) ---
-<<<<<<< Updated upstream
-        if (!medCabOpen) { /* ... */ return false; }
-        Location agentPos = getAgPos(agentId);
-        if (agentPos == null) { /* ... */ return false; }
-        if (!agentPos.isNeigbour(lMedCab)) { /* ... */ return false; }
-=======
         if (!medCabOpen) {
             /* ... */ return false;
         }
@@ -1146,7 +909,6 @@ public class HouseModel extends GridWorldModel {
         if (!agentPos.isNeigbour(lMedCab)) {
             /* ... */ return false;
         }
->>>>>>> Stashed changes
 
         // --- Precondiciones específicas por agente (actualizadas) ---
         if (agentId == ROBOT_AGENT_ID && robotCarryingDrug) { // <-- MODIFICADO
@@ -1154,16 +916,8 @@ public class HouseModel extends GridWorldModel {
             return false;
         }
         if (agentId == OWNER_AGENT_ID && drugsCount > 0) { // Sin cambios para owner
-<<<<<<< Updated upstream
-            System.out.println("Error (" + agentName + "): Already has a drug ready (drugsCount=" + drugsCount + "). Must take it first.");
-=======
             System.out.println("Error (" + agentName + "): Already has a drug ready (drugsCount=" + drugsCount
                     + "). Must take it first.");
-            return false;
-        }
-        if (agentId == AUXILIAR_AGENT_ID && auxiliarCarryingDrug) { // Sin cambios para auxiliar
-            System.out.println("Error (" + agentName + "): Already carrying a box/item.");
->>>>>>> Stashed changes
             return false;
         }
         if (agentId == AUXILIAR_AGENT_ID && auxiliarCarryingDrug) { // Sin cambios para auxiliar
@@ -1178,24 +932,14 @@ public class HouseModel extends GridWorldModel {
 
             if (cantidadEspecifica <= 0) {
                 // ... (lógica de auto-rellenado sin cambios) ...
-<<<<<<< Updated upstream
-                 int refillAmount = 5; // Ejemplo
-                 contadorMedicamentos.put(nombreMedicamento, refillAmount);
-                 justRefilledThis = true;
-                 this.availableDrugs = calcularTotalMedicamentos(contadorMedicamentos);
-                 cantidadEspecifica = refillAmount;
-                 // ... (Mensajes y update view sin cambios) ...
-                 System.out.println("*** Rellenado específico completado. Nueva cantidad de '" + nombreMedicamento + "': " + refillAmount + ". ***");
-=======
                 int refillAmount = 5; // Ejemplo
                 contadorMedicamentos.put(nombreMedicamento, refillAmount);
                 justRefilledThis = true;
                 this.availableDrugs = calcularTotalMedicamentos(contadorMedicamentos);
                 cantidadEspecifica = refillAmount;
                 // ... (Mensajes y update view sin cambios) ...
-                System.out.println("*** Rellenado específico completado. Nueva cantidad de '" + nombreMedicamento
-                        + "': " + refillAmount + ". ***");
->>>>>>> Stashed changes
+                System.out.println("* Rellenado específico completado. Nueva cantidad de '" + nombreMedicamento
+                        + "': " + refillAmount + ". *");
 
             }
 
@@ -1214,15 +958,9 @@ public class HouseModel extends GridWorldModel {
 
             // --- Mensajes de éxito (sin cambios) ---
             // ...
-<<<<<<< Updated upstream
-             System.out.println("Success (" + agentName + "): Got " + nombreMedicamento + ".");
-             System.out.println("   Specific units left: " + contadorMedicamentos.get(nombreMedicamento));
-             System.out.println("   Total units left: " + availableDrugs);
-=======
             System.out.println("Success (" + agentName + "): Got " + nombreMedicamento + ".");
             System.out.println("   Specific units left: " + contadorMedicamentos.get(nombreMedicamento));
             System.out.println("   Total units left: " + availableDrugs);
->>>>>>> Stashed changes
             return true;
 
         } else {
@@ -1230,7 +968,6 @@ public class HouseModel extends GridWorldModel {
             return false;
         }
     }
-
 
     /**
      * Añade una cantidad específica de un medicamento al inventario.
@@ -1268,105 +1005,6 @@ public class HouseModel extends GridWorldModel {
         return total;
     }
 
-<<<<<<< Updated upstream
-
-
-    /**
- * Permite al agente auxiliar (ID 2) simular la recogida de una entrega (medicamento/objeto)
- * cuando se encuentra en la puerta de casa (lDoorHome). Establece auxiliarCarryingDrug a true.
- * Solo funciona si el auxiliar no está ya cargando algo.
- *
- * @param agentId El ID del agente que intenta realizar la acción. Debe ser AUXILIAR_AGENT_ID.
- * @return true si el agente auxiliar estaba en la puerta, no llevaba nada y recogió
- * exitosamente la entrega (flag establecido); false en caso contrario.
- */
-boolean auxiliarPickUpDelivery(int agentId) {
-    // 1. Verificar si es el agente auxiliar
-    if (agentId != AUXILIAR_AGENT_ID) {
-        System.out.println("Action 'auxiliarPickUpDelivery' is only for the Auxiliar Agent (ID " + AUXILIAR_AGENT_ID + "). Agent " + agentId + " cannot perform it.");
-        return false;
-    }
-
-    // 2. Obtener la posición del agente
-    Location agentPos = getAgPos(agentId);
-    if (agentPos == null) {
-        System.out.println("Failed to get position for Auxiliar Agent (ID " + agentId + "). Cannot perform pickup.");
-        return false;
-    }
-
-    // 3. Verificar si está en la ubicación correcta (lDoorHome)
-    if (!agentPos.equals(lDoorHome)) {
-        System.out.println("Auxiliar Agent is not at the home door (lDoorHome: " + lDoorHome + "). Current position: " + agentPos + ". Cannot pick up delivery.");
-        return false;
-    }
-
-    // 4. Verificar si ya está cargando algo
-    if (auxiliarCarryingDrug) {
-        System.out.println("Auxiliar Agent is already carrying a drug/item. Cannot pick up another.");
-        return false;
-    }
-
-    // 5. Realizar la acción: establecer la bandera
-    auxiliarCarryingDrug = true;
-    System.out.println("Auxiliar Agent has picked up the delivery at the door (lDoorHome). Now carrying item (auxiliarCarryingDrug = true).");
-
-    // Opcional: Actualizar la vista si es necesario
-    // if (view != null) view.update(lDoorHome.x, lDoorHome.y); // Update door location appearance?
-    // if (view != null) view.update(agentPos.x, agentPos.y); // Update agent appearance?
-
-    return true;
-}
-
-/**
- * Rellena el botiquín estableciendo la cantidad de cada tipo de medicamento existente
- * a un valor fijo (100 unidades). Actualiza el recuento total de medicamentos disponibles.
- * Si no hay medicamentos definidos en el inventario, simplemente informa y actualiza el total (a 0).
- *
- * @return true si el relleno se completó (incluso si no había nada que rellenar),
- * false si ocurre un error grave (ej. el mapa de inventario es null).
- */
-boolean refillMedCabFull() {
-    final int TARGET_QUANTITY = 100; // La cantidad objetivo fija para cada medicamento
-
-    System.out.println("\n--- Refilling Medicine Cabinet to Full (" + TARGET_QUANTITY + " units each) ---");
-
-    auxiliarCarryingDrug = false;
-
-    
-    // Comprobación de seguridad por si el mapa fuera null
-    if (contadorMedicamentos == null) {
-        System.err.println("CRITICAL ERROR: Medicine inventory map (contadorMedicamentos) is null! Cannot refill.");
-        return false; // Indica un fallo grave
-    }
-
-    if (contadorMedicamentos.isEmpty()) {
-        System.out.println("Warning: Medicine inventory (contadorMedicamentos) is empty. No specific drug types exist to refill to " + TARGET_QUANTITY + ".");
-        // No hay nada que rellenar, pero la operación se considera completada lógicamente.
-    } else {
-        System.out.println("Setting quantity of each existing drug type to: " + TARGET_QUANTITY);
-        // Iterar sobre todas las claves existentes (nombres de medicamentos)
-        // y establecer su valor a TARGET_QUANTITY en el mapa.
-        // Usamos keySet() para obtener los nombres y luego put() para actualizar.
-        for (String drugName : contadorMedicamentos.keySet()) {
-            int oldCount = contadorMedicamentos.getOrDefault(drugName, 0); // Obtener el valor anterior para el log
-            contadorMedicamentos.put(drugName, TARGET_QUANTITY);
-            System.out.println("  - Refilled '" + drugName + "': " + oldCount + " -> " + TARGET_QUANTITY);
-        }
-    }
-
-    // Recalcular el número total de medicamentos disponibles basado en el mapa actualizado
-    // Se llama incluso si el mapa estaba vacío, para asegurar que availableDrugs sea 0.
-    this.availableDrugs = calcularTotalMedicamentos(contadorMedicamentos);
-
-    System.out.println("Medicine Cabinet refill complete. Total available drugs now: " + this.availableDrugs);
-    System.out.println("-----------------------------------------------------------\n");
-
-    // Opcional: Actualizar la vista del botiquín si es necesario
-    // if (view != null) view.update(lMedCab.x, lMedCab.y);
-
-    return true; // La operación se considera exitosa
-}
-=======
     /**
      * Permite al agente auxiliar (ID 2) simular la recogida de una entrega
      * (medicamento/objeto)
@@ -1510,5 +1148,235 @@ boolean refillMedCabFull() {
         }
     }
 
->>>>>>> Stashed changes
+    /**
+     * Decrementa la energía del agente especificado en una cantidad dada.
+     * No permite que la energía baje de 0.
+     *
+     * @param agentId El ID del agente (0 o 2).
+     * @param amount  La cantidad a decrementar (debería ser positivo).
+     */
+    public synchronized void decrementAgentEnergy(int agentId, int amount) {
+        if (amount <= 0) {
+            System.err.println("Warning: Attempted to decrement energy by non-positive amount: " + amount);
+            return;
+        }
+
+        if (agentId == ROBOT_AGENT_ID || agentId == AUXILIAR_AGENT_ID) {
+            int currentEnergy = agentCurrentEnergy.getOrDefault(agentId, 0);
+            int newEnergy = Math.max(0, currentEnergy - amount); // Evita energía negativa
+            agentCurrentEnergy.put(agentId, newEnergy);
+
+            // --- NUEVO: Actualizar la ventana de energía ---
+            if (view != null) { // Ya no necesitas comprobar si energyStatusWindow es null aquí
+                // Llama al método público de HouseView
+                view.updateEnergyDisplay(agentId, newEnergy, getMaxEnergy(agentId));
+                // Si usaste la versión refreshEnergyDisplay():
+                // view.refreshEnergyDisplay();
+            }
+            // --- FIN NUEVO ---
+
+        } else {
+            System.err.println("Warning: Attempted to decrement energy for agent without energy system: " + agentId);
+        }
+    }
+
+    // --- NUEVOS MÉTODOS AUXILIARES PARA CARGA ---
+
+    /**
+     * Devuelve la ubicación del cargador designado para un agente específico.
+     * 
+     * @param agentId ID del agente (0 o 2).
+     * @return La Location del cargador o null si el agente no tiene uno.
+     */
+    public Location getChargerLocationForAgent(int agentId) {
+        if (agentId == ROBOT_AGENT_ID || agentId == AUXILIAR_AGENT_ID) {
+            return lCargador;
+        }
+        System.err.println("Advertencia: Se pidió ubicación de cargador para agente desconocido: " + agentId);
+        return null;
+    }
+
+    /**
+     * Verifica si un agente está actualmente en proceso de carga.
+     * 
+     * @param agentId ID del agente.
+     * @return true si está cargando (tiene tiempo restante en el mapa), false si
+     *         no.
+     */
+    public boolean isAgentCharging(int agentId) {
+        // Verifica si la clave del agente existe en el mapa de tiempo restante
+        return agentRemainingChargeTimeMinutes.containsKey(agentId);
+    }
+
+    /**
+     * Obtiene el conjunto de IDs de los agentes que están actualmente cargando.
+     * Útil para que el reloj sepa a quién aplicar la carga.
+     * 
+     * @return Un Set con los IDs de los agentes en carga.
+     */
+    public Set<Integer> getChargingAgents() {
+        // Devuelve una copia del conjunto de claves para evitar modificaciones externas
+        // accidentales
+        return new HashSet<>(agentRemainingChargeTimeMinutes.keySet());
+    }
+
+    /**
+     * Inicia el proceso de carga si el agente está cerca del ÚNICO cargador.
+     * PERMITE USO SIMULTÁNEO (no hay chequeo de ocupación).
+     * 
+     * @param agentId ID del agente (0 o 2).
+     * @return true si la carga se inició, false si no está cerca o ya estaba
+     *         cargando.
+     */
+    public synchronized boolean startCharging(int agentId) {
+        if (agentId != ROBOT_AGENT_ID && agentId != AUXILIAR_AGENT_ID) {
+            /* ... */ return false;
+        }
+        if (isAgentCharging(agentId)) {
+            /* Ya está cargando */ return true;
+        } // Usa el método isAgentCharging existente
+
+        Location agentLoc = getAgPos(agentId);
+        if (agentLoc == null) {
+            /* ... */ return false;
+        }
+
+        // Comprobar cercanía al ÚNICO cargador lCargador
+        if (!(agentLoc.equals(lCargador) || agentLoc.isNeigbour(lCargador))) {
+            System.out.println("Error: Agente " + agentId + " no está cerca del cargador (" + lCargador
+                    + ") para iniciar carga. Posición: " + agentLoc);
+            return false; // No está cerca
+        }
+
+        // --- Iniciar la carga (SIN chequeo de ocupación) ---
+        agentRemainingChargeTimeMinutes.put(agentId, FULL_CHARGE_MINUTES); // Iniciar tiempo
+
+        System.out.println("Agente " + agentId + " ha iniciado la carga cerca de " + lCargador
+                + ". Tiempo restante inicial: " + FULL_CHARGE_MINUTES + " mins.");
+
+        if (view != null) {
+            view.updateEnergyDisplay(agentId, getCurrentEnergy(agentId), getMaxEnergy(agentId));
+        }
+        return true;
+    }
+
+    /**
+     * Detiene el proceso de carga para un agente.
+     * Gestiona carga parcial y penalización.
+     * (Ya no necesita liberar cargador, permite uso simultáneo).
+     * 
+     * @param agentId ID del agente (0 o 2).
+     * @return true si estaba cargando y se detuvo, false si no.
+     */
+    public synchronized boolean stopCharging(int agentId) {
+        if (agentId != ROBOT_AGENT_ID && agentId != AUXILIAR_AGENT_ID) {
+            /* ... */ return false;
+        }
+        if (!agentRemainingChargeTimeMinutes.containsKey(agentId)) {
+             System.out.println("[PENALTY DEBUG] Agent " + agentId + ": stopCharging called but agent was not in remainingTime map."); // DEBUG
+            return false;
+        }
+    
+        int remainingTime = agentRemainingChargeTimeMinutes.getOrDefault(agentId, 0);
+        boolean wasPartial = remainingTime > 0; // Check if it WAS partial before removing
+    
+        if (wasPartial) { // Es carga parcial
+            System.out.println("[PENALTY DEBUG] Agent " + agentId + ": Partial stop detected! Remaining time was: " + remainingTime); // DEBUG
+            int currentPartialCount = agentPartialChargeCount.getOrDefault(agentId, 0);
+            currentPartialCount++;
+            agentPartialChargeCount.put(agentId, currentPartialCount);
+            System.out.println("[PENALTY DEBUG] Agent " + agentId + ": Counter incremented to " + currentPartialCount); // DEBUG
+            System.out.println("Agente " + agentId + ": Carga parcial detectada. Contador: " + currentPartialCount + "/" + PARTIAL_CHARGE_LIMIT);
+    
+            if (currentPartialCount > PARTIAL_CHARGE_LIMIT) { // Aplica penalización
+                System.out.println("[PENALTY DEBUG] Agent " + agentId + ": Counter > Limit (" + currentPartialCount + " > " + PARTIAL_CHARGE_LIMIT + "). Applying penalty."); // DEBUG
+                int currentMaxEnergy = getMaxEnergy(agentId);
+                int originalMaxEnergy = agentOriginalMaxEnergy.getOrDefault(agentId, currentMaxEnergy);
+                int newMaxEnergy = (int) Math.round(originalMaxEnergy * MAX_ENERGY_PENALTY_FACTOR);
+                agentMaxEnergy.put(agentId, newMaxEnergy);
+                agentCurrentEnergy.put(agentId, Math.min(getCurrentEnergy(agentId), newMaxEnergy));
+                agentPartialChargeCount.put(agentId, 0); // Reset counter AFTER penalty
+                System.out.println("¡PENALIZACIÓN APLICADA! Agente " + agentId + ": " + currentPartialCount + " cargas parciales > " + PARTIAL_CHARGE_LIMIT + ". Energía máxima reducida a " + newMaxEnergy);
+                System.out.println("[PENALTY DEBUG] Agent " + agentId + ": Penalty applied! New Max Energy: " + newMaxEnergy + ". Counter reset to 0."); // DEBUG
+            }
+        } else { // Carga completa (remainingTime <= 0)
+             System.out.println("[PENALTY DEBUG] Agent " + agentId + ": Full charge detected upon stopping (remainingTime=" + remainingTime + ")"); // DEBUG
+            // Consider resetting counter here if needed (See Point 4)
+            // if (agentPartialChargeCount.containsKey(agentId) && agentPartialChargeCount.get(agentId) > 0) {
+            //     System.out.println("[PENALTY DEBUG] Agent " + agentId + ": Resetting partial charge counter due to full charge.");
+            //     agentPartialChargeCount.put(agentId, 0);
+            // }
+        }
+    
+        // Limpieza SIEMPRE se hace después de chequear si fue parcial o no
+        agentRemainingChargeTimeMinutes.remove(agentId);
+        System.out.println("Agente " + agentId + " ha detenido la carga.");
+    
+        if (view != null) {
+            view.updateEnergyDisplay(agentId, getCurrentEnergy(agentId), getMaxEnergy(agentId));
+        }
+        return true;
+    }
+
+    /**
+     * Aplica un 'tick' de carga. Verifica si el agente sigue cerca del cargador
+     * único.
+     * PERMITE USO SIMULTÁNEO.
+     */
+    public synchronized void applyChargeEnergy() {
+        if (agentRemainingChargeTimeMinutes.isEmpty()) {
+            return;
+        }
+        Set<Integer> chargingAgentIds = new HashSet<>(agentRemainingChargeTimeMinutes.keySet());
+
+        for (int agentId : chargingAgentIds) {
+            Location agentLoc = getAgPos(agentId);
+
+            // --- MODIFICADO: VERIFICAR UBICACIÓN ANTES DE CARGAR (contra lCargador fijo)
+            // ---
+            // Si la ubicación no es válida o ya no está en/junto al cargador único...
+            if (agentLoc == null || lCargador == null || // Añadida comprobación lCargador por si acaso
+                    !(agentLoc.equals(lCargador) || agentLoc.isNeigbour(lCargador))) {
+
+                System.out.println("[MODEL] Agente " + agentId + " ya no está cerca del cargador (" + lCargador
+                        + "). Pos: " + agentLoc + ". Deteniendo carga automáticamente.");
+                stopCharging(agentId); // Detener y limpiar (llamará a la versión simplificada de stopCharging)
+                continue; // Siguiente agente
+            }
+            // --- FIN VERIFICACIÓN UBICACIÓN ---
+
+            // --- Lógica de aplicar energía (igual que antes) ---
+            int remainingTime = agentRemainingChargeTimeMinutes.getOrDefault(agentId, 0); // Re-obtener por si
+                                                                                          // stopCharging fue llamado
+            if (!agentRemainingChargeTimeMinutes.containsKey(agentId)) {
+                continue;
+            } // Ya fue detenido
+            if (remainingTime <= 0) {
+                stopCharging(agentId);
+                continue;
+            }
+
+            remainingTime--;
+            agentRemainingChargeTimeMinutes.put(agentId, remainingTime);
+
+            int maxEnergy = getMaxEnergy(agentId);
+            int originalMaxEnergy = agentOriginalMaxEnergy.getOrDefault(agentId, maxEnergy);
+            double energyPerMinute = (FULL_CHARGE_MINUTES > 0) ? (double) originalMaxEnergy / FULL_CHARGE_MINUTES : 0;
+            int currentEnergy = getCurrentEnergy(agentId);
+            int energyToAdd = (int) Math.round(energyPerMinute);
+            int newEnergy = Math.min(maxEnergy, currentEnergy + energyToAdd);
+            agentCurrentEnergy.put(agentId, newEnergy);
+
+            if (remainingTime <= 0) { // Carga completada por tiempo
+                System.out.println("¡Carga completa para Agente " + agentId + " en " + lCargador + "! Energía final: "
+                        + newEnergy + "/" + maxEnergy);
+                stopCharging(agentId); // Limpieza completa
+            } else {
+                if (view != null) {
+                    view.updateEnergyDisplay(agentId, newEnergy, maxEnergy);
+                }
+            }
+        } // Fin for
+    }
+
 }

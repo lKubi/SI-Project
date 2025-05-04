@@ -20,231 +20,83 @@ connect(livingroom, hall, doorSal1).
 connect(hallway, livingroom, doorSal2).
 connect(livingroom, hallway, doorSal2).
 
-available("Paracetamol 500mg", medCab).
-available("Ibuprofeno 600mg", medCab).
-available("Amoxicilina 500mg", medCab).
-available("Omeprazol 20mg", medCab).
-available("Loratadina 10mg", medCab).
-<<<<<<< Updated upstream
-available(beer, fridge).       
-=======
+available("Paracetamol", medCab).
+available("Ibuprofeno", medCab).
+available("Amoxicilina", medCab).
+available("Omeprazol", medCab).
+available("Loratadina", medCab).
 available(beer, fridge).  
 
 free.
->>>>>>> Stashed changes
 
 // Regla para indicar si hay o no cervezas
 orderBeer :- not available(beer, fridge).
 
 /* ----- OBJETIVOS INICIALES DEL DUEÑO (OWNER) ----- */
 
-<<<<<<< Updated upstream
-!do_something. 
+!do_something.
 !check_bored.
 !medical_guides_initial.
 !update_schedule_later.
-=======
-!check_bored.
-!medical_guides_initial.
-!update_schedule_later.
-
 
 /* ----- NUEVO: PLANES PARA GESTIONAR ESTADO DE LA ENFERMERA/ROBOT ----- */
-
 
 // Este plan ahora espera DrugName y SimulatedHour, SimulatedMinute (si es posible enviarlos)
-+medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)[source(enfermera)]
-   // Opcional: añadir contexto si solo debe aplicarse si owner intentaba ESA medicina
-   // : .intend(check_and_take_medicine(DrugName, SimulatedHour, SimulatedMinute))
-<-
-    .print("DEBUG: Creencia medicina_recogida_robot(", DrugName, ",", SimulatedHour, SimulatedMinute, ") RECIBIDA de ", enfermera);
-    .println("La enfermera ha sido mas rapida que yo con ", DrugName, ", asi que procedo a retirar mi accion");
++medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)[source(enfermera)]<-
+    .print("La medicina ha sido recogida por el robot.");
     .drop_all_intentions;
-    .abolish(medician(DrugName, SimulatedHour, SimulatedMinute)); // <-- ¡¡ELIMINAR LA PAUTA LOCAL!!
+    .abolish(medician(DrugName, SimulatedHour, SimulatedMinute)); 
     .println("Owner: Pauta para ", DrugName, " (", SimulatedHour, SimulatedMinute,"h) eliminada localmente (enfermera fue más rápida).");
-    -medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)[source(enfermera)]; // Eliminar creencia específica
-    +free[source(self)]. // Marcarse como libre para poder reaccionar a otros eventos/reloj
-
-
-/* ----- PLAN PARA ENVIAR PAUTAS INICIALES Y GUARDARLAS LOCALMENTE ----- */
-+!medical_guides_initial : not medical_guides_sent <-
-    .println("Owner: Enviando pautas iniciales a la enfermera y guardándolas localmente...");
-    .send(enfermera, tell, medician("Paracetamol 500mg", 0, 16)); +medician("Paracetamol 500mg", 0, 16);
-
-
-    +medical_guides_sent;
-    .println("Owner: Pautas iniciales enviadas y guardadas localmente.");
-.
-
-+!medical_guides_initial : medical_guides_sent <- true.
-
-
-// Plan para actualizar pautas (ej. después de X tiempo)
-+!update_schedule_later : true  <- 
-    .println("Owner: Esperando para actualizar pautas...");
-    .wait(480000); //Espera 1 dia para cambiar las pautas
-    .println("Owner: ¡Tiempo de actualizar pautas!");
-    !do_schedule_update.
-
-+!do_schedule_update : true <-
-    .println("Owner: Iniciando actualización de pautas...");
-    .send(enfermera, achieve, clear_schedule);
-    .println("Owner: Borrando pautas antiguas locales...");
-    .abolish(medician(_, _)); // Borra todas las pautas locales (con 2 argumentos)
-    .wait(1500);
-    !send_new_schedule_random. // Enviar y guardar las nuevas
-
-//Añadir nuevas pautas manualmente, no lo utilizamos actualmente pero lo deje por si se quiere probar.
-+!send_new_schedule : true <-
-    .println("Owner: Enviando y guardando NUEVAS pautas...");
-    .send(enfermera, tell, medician("Ibuprofeno 600mg", 8)); +medician("Ibuprofeno 600mg", 8);
-    .send(enfermera, tell, medician("Omeprazol 20mg", 14)); +medician("Omeprazol 20mg", 14);
-    .send(enfermera, tell, medician("Aspirina 100mg", 19)); +medician("Aspirina 100mg", 19);
-    .send(enfermera, tell, medician("Paracetamol 500mg", 22)); +medician("Paracetamol 500mg", 22);
-    .println("Owner: NUEVAS pautas enviadas y guardadas.");
-.
-
-//Añadir nuevas pautas de forma aleatoria
-+!send_new_schedule_random : true <-
-    .println("Owner: Enviando y guardando NUEVAS pautas ALEATORIAS...");
-
-    Medications = ["Ibuprofeno 600mg", "Omeprazol 20mg", "Aspirina 100mg", "Paracetamol 500mg"];
-
-    for (.member(MedName, Medications)) {
-        // Genera una hora aleatoria (0-23) para este medicamento
-        .random([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23], RandomHour);
-
-        .print("Owner: Creando pauta aleatoria: [", MedName, ", ", RandomHour, "]");
-
-        .send(enfermera, tell, medician(MedName, RandomHour));
-        +medician(MedName, RandomHour);
-    }
-
-    .println("Owner: NUEVAS pautas ALEATORIAS enviadas y guardadas.");
-.
->>>>>>> Stashed changes
-
-
-/* ----- NUEVO: PLANES PARA GESTIONAR ESTADO DE LA ENFERMERA/ROBOT ----- */
-
-<<<<<<< Updated upstream
-+nurse_is_delivering[source(enfermera)] : not nurse_delivering <- // Verifica fuente y estado actual
-    +nurse_delivering; // Modifica la creencia LOCAL del owner
-    .println("Owner: Recibido aviso de que el robot está entregando. Esperaré.").
-
-// Se activa cuando el robot envía el mensaje 'nurse_finished_delivering'
-+nurse_finished_delivering[source(enfermera)] : nurse_delivering <- // Verifica fuente y estado actual
-    -nurse_delivering; // Modifica la creencia LOCAL del owner
-    .println("Owner: Recibido aviso de que el robot terminó la entrega. Puedo continuar.").
-
-// Opcional: Manejar mensaje de fin si ya no creía que estaba entregando (por si acaso)
-+nurse_finished_delivering[source(enfermera)] : not nurse_delivering <-
-    .println("Owner: Recibido aviso de fin de entrega, pero no creía que estuviera entregando.").
+    -medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)[source(enfermera)]; 
+    +nurse_delivering;
+    +free[source(self)].
 
 /* ----- PLAN PARA ENVIAR PAUTAS INICIALES Y GUARDARLAS LOCALMENTE ----- */
 +!medical_guides_initial : not medical_guides_sent <-
     .println("Owner: Enviando pautas iniciales a la enfermera y guardándolas localmente...");
-    .send(enfermera, tell, medician("Paracetamol 500mg", 1)); +medician("Paracetamol 500mg", 1);
-    .send(enfermera, tell, medician("Paracetamol 500mg", 9)); +medician("Paracetamol 500mg", 9);
-    .send(enfermera, tell, medician("Ibuprofeno 600mg", 11)); +medician("Ibuprofeno 600mg", 11);
-    .send(enfermera, tell, medician("Amoxicilina 500mg", 15)); +medician("Amoxicilina 500mg", 15);
-    .send(enfermera, tell, medician("Omeprazol 20mg", 5)); +medician("Omeprazol 20mg", 5);
-    .send(enfermera, tell, medician("Loratadina 10mg", 3)); +medician("Loratadina 10mg", 3);
-    .send(enfermera, tell, medician("Omeprazol 20mg", 18)); +medician("Omeprazol 20mg", 18);
-    .send(enfermera, tell, medician("Paracetamol 500mg", 20)); +medician("Paracetamol 500mg", 20);
-    .send(enfermera, tell, medician("Omeprazol 20mg", 23)); +medician("Omeprazol 20mg", 23);
-
+    .send(enfermera, tell, medician("Paracetamol", 0, 50)); +medician("Paracetamol", 0, 50);
+    .send(enfermera, tell, medician("Amoxicilina", 2,10)); +medician("Amoxicilina", 2, 10);
+    .send(enfermera, tell, medician("Ibuprofeno", 2, 40)); +medician("Ibuprofeno", 2,40);
+    .send(enfermera, tell, medician("Amoxicilina", 3, 40)); +medician("Amoxicilina", 3,40);
+    .send(enfermera, tell, medician("Omeprazol", 4, 20)); +medician("Omeprazol", 4,20);
+    .send(enfermera, tell, medician("Loratadina", 6, 20)); +medician("Loratadina 10mg", 6, 20);
+    .send(enfermera, tell, medician("Omeprazol", 12, 40)); +medician("Omeprazol", 12, 40);
+    .send(enfermera, tell, medician("Paracetamol", 20, 40)); +medician("Paracetamol", 20, 40);
+    .send(enfermera, tell, medician("Omeprazol", 23, 40)); +medician("Omeprazol", 23, 40);
     +medical_guides_sent;
-    .println("Owner: Pautas iniciales enviadas y guardadas localmente.");
-.
+    .println("Owner: Pautas iniciales enviadas y guardadas localmente.").
 
+//Evitar que se envien las pautas iniciales varias veces
 +!medical_guides_initial : medical_guides_sent <- true.
-
 
 // Plan para actualizar pautas (ej. después de X tiempo)
 +!update_schedule_later : true  <- 
     .println("Owner: Esperando para actualizar pautas...");
-    .wait(480000); //Espera 1 dia para cambiar las pautas
+    .wait(3600000); //Espera 1 dia para cambiar las pautas
     .println("Owner: ¡Tiempo de actualizar pautas!");
     !do_schedule_update.
 
+//Borrado de pautas antiguas si las hubiese y envio de nuevas
 +!do_schedule_update : true <-
     .println("Owner: Iniciando actualización de pautas...");
     .send(enfermera, achieve, clear_schedule);
     .println("Owner: Borrando pautas antiguas locales...");
-    .abolish(medician(_, _)); // Borra todas las pautas locales (con 2 argumentos)
-    .wait(1500);
+    .abolish(medician(_, _)); // Borra todas las pautas locales si las hubiera
     !send_new_schedule_random. // Enviar y guardar las nuevas
-
-//Añadir nuevas pautas manualmente, no lo utilizamos actualmente pero lo deje por si se quiere probar.
-+!send_new_schedule : true <-
-    .println("Owner: Enviando y guardando NUEVAS pautas...");
-    .send(enfermera, tell, medician("Ibuprofeno 600mg", 8)); +medician("Ibuprofeno 600mg", 8);
-    .send(enfermera, tell, medician("Omeprazol 20mg", 14)); +medician("Omeprazol 20mg", 14);
-    .send(enfermera, tell, medician("Aspirina 100mg", 19)); +medician("Aspirina 100mg", 19);
-    .send(enfermera, tell, medician("Paracetamol 500mg", 22)); +medician("Paracetamol 500mg", 22);
-    .println("Owner: NUEVAS pautas enviadas y guardadas.");
-.
 
 //Añadir nuevas pautas de forma aleatoria
 +!send_new_schedule_random : true <-
     .println("Owner: Enviando y guardando NUEVAS pautas ALEATORIAS...");
-
-    Medications = ["Ibuprofeno 600mg", "Omeprazol 20mg", "Aspirina 100mg", "Paracetamol 500mg"];
-
+    Medications = ["Ibuprofeno", "Omeprazol", "Aspirina 100mg", "Paracetamol"];
     for (.member(MedName, Medications)) {
         // Genera una hora aleatoria (0-23) para este medicamento
         .random([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23], RandomHour);
-
         .print("Owner: Creando pauta aleatoria: [", MedName, ", ", RandomHour, "]");
-
         .send(enfermera, tell, medician(MedName, RandomHour));
         +medician(MedName, RandomHour);
     }
+    .println("Owner: NUEVAS pautas ALEATORIAS enviadas y guardadas.").
 
-    .println("Owner: NUEVAS pautas ALEATORIAS enviadas y guardadas.");
-.
-
-
-+!check_and_take_medicine : .my_name(Ag) & medician(DrugToTake, Hour) & not has(Ag, _) <-
-    // Solo entra aquí si hay medicina programada Y no está consumiendo/teniendo otra cosa.
-    .println("Owner [", Ag, "]: [Random Do] Comprobando medicación... ¡Sí! Debo tomar: ", DrugToTake, " (", Hour, "h) y tengo las manos libres.");
-
-    // --- El resto de la lógica para ir, obtener y tomar ---
-    !at(Ag, medCab);
-    .println("Owner [", Ag, "]: [Random Do] He llegado al botiquín (medCab).");
-    open(medCab);
-    obtener_medicamento(DrugToTake); // Ahora debería funcionar si no tiene nada
-    close(medCab);
-    .println("Owner [", Ag, "]: [Random Do] Obtenido ", DrugToTake, " del botiquín.");
-    .wait(1000);
-    .println("Owner [", Ag, "]: [Random Do] Tomando ", DrugToTake, "...");
-    .abolish(medician(DrugToTake, Hour));
-    .println("Owner [", Ag, "]: [Random Do] Pauta para ", DrugToTake, " eliminada localmente.");
-    .send(enfermera, tell, medication_consumed(DrugToTake, Hour));
-    .println("Owner [", Ag, "]: [Random Do] Notificado a 'enfermera'.");
-    !at(Ag, sofa);
-    .println("Owner [", Ag, "]: [Random Do] Volviendo al sofá.");
-    .wait(1000);
-    .println("Owner [", Ag, "]: [Random Do] Acción de tomar ", DrugToTake, " completada.");
-    // FIN DEL PLAN
-.
-
-// NUEVO Plan: Hay medicación pendiente PERO el owner ESTÁ OCUPADO CON OTRA COSA.
-+!check_and_take_medicine : .my_name(Ag) & medician(DrugToTake, Hour) & has(Ag, CurrentItem) <-
-    // Se activa si hay medicina programada pero ya tiene 'CurrentItem'.
-    .println("Owner [", Ag, "]: [Random Do] Debo tomar ", DrugToTake, ", pero todavía estoy con ", CurrentItem, ". Mejor espero a terminar.");
-    // No hace nada más, termina inmediatamente. La medicina sigue programada.
-    // El control vuelve a !do_something.
-.
-// Plan alternativo: No hay medicación pendiente (sin cambios respecto a la versión anterior).
-+!check_and_take_medicine : .my_name(Ag) & not medician(_,_) <-
-    .println("Owner [", Ag, "]: [Random Do] Comprobando medicación... Nada pendiente ahora.");
-    // FIN DEL PLAN
-.
-
-=======
->>>>>>> Stashed changes
 /* ----- OBJETIVO: Ir a un lugar (!at) ----- */
 +!at(Ag, P) : at(Ag, P) <-
     .wait(10).
@@ -257,10 +109,10 @@ orderBeer :- not available(beer, fridge).
 +!go(P) : atRoom(RoomAg) & atRoom(P, RoomAg) <-
     move_towards(P).
 +!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
-          connect(RoomAg, RoomP, Door) & atDoor <- // Ya en puerta
+          connect(RoomAg, RoomP, Door) & atDoor <-
     move_towards(P).
 +!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
-          connect(RoomAg, RoomP, Door) & not atDoor <- // No en puerta
+          connect(RoomAg, RoomP, Door) & not atDoor <-
     move_towards(Door);
     !go(P).
 +!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
@@ -273,13 +125,13 @@ orderBeer :- not available(beer, fridge).
           connect(Room, RoomP, DoorP) & atDoor <-
     move_towards(DoorP);
     !go(P).
-+!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP <- // Fallback
++!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP <-
     move_towards(P).
 -!go(P) <- 
 .println("Owner: He llegado a ", P, ".").
 
 /* ----- OBJETIVO: Pedir medicamento o cerveza ----- */
-+!get(ItemName) : .my_name(Name) <- // ItemName es el nombre específico
++!get(ItemName) : .my_name(Name) <- 
     Time = math.ceil(math.random(4000));
     .println("Owner: Esperando ", Time, " ms antes de pedir ", ItemName, " al robot.");
     .wait(Time);
@@ -288,30 +140,22 @@ orderBeer :- not available(beer, fridge).
 
 /* ----- OBJETIVO: Recibir y procesar medicamento o cerveza ----- */
 +has(owner, ItemName) : true <-
-    .println("Owner: He recibido ", ItemName, ".");
     !take(ItemName). 
 
 /* ----- OBJETIVO: Tomar/Consumir medicamento o cerveza ----- */
 +!take(ItemName) : has(owner, ItemName) <- 
-<<<<<<< Updated upstream
-    +busy;
     sip(ItemName); 
-    .println("Owner: Consumiendo ", ItemName, "...");
-    .wait(1000); // Simular tiempo de consumo
-    !take(ItemName);
-    -busy.
-=======
-    sip(ItemName); 
-    .println("Owner: Consumiendo ", ItemName, "...");
-    .wait(1000); // Simular tiempo de consumo
+    .println("Owner: Consumiendo ...");
+    .wait(100); // Simular tiempo de consumo
+    -has(owner, ItemName); // Eliminar creencia de que tiene el item
+    .abolish(nurse_delivering);
     !take(ItemName).
 
->>>>>>> Stashed changes
 
 // Condición de parada: ya no tiene el item (sip lo consumió o se usó para otra cosa)
 +!take(ItemName) : not has(owner, ItemName) <-
-    .println("Owner: Terminado de consumir ", ItemName, ".").
-
+    .println("Owner: Terminado de consumir");
+    !do_something.
 /* ----- OBJETIVO: Comprobar aburrimiento (Sin cambios lógicos) ----- */
 +!check_bored : true <-
     .wait(100);
@@ -323,82 +167,21 @@ orderBeer :- not available(beer, fridge).
 +msg(M)[source(Ag)] : .my_name(Name) <-
     .print(Ag, " envió a ", Name, " el mensaje: '", M, "'").
    
-<<<<<<< Updated upstream
-=======
 
-// Plan para manejar la solicitud de la enfermera de eliminar una pauta
-+!remove_my_medician(Drug, SimulatedHour, SimulatedMinute)[source(enfermera)] : medician(Drug, SimulatedHour, SimulatedMinute) <- // Solo si aún la tiene
-    .println("Owner: Recibida petición de enfermera para eliminar pauta ", Drug, " (", SimulatedHour, SimulatedMinute, "h).");
-    .abolish(medician(Drug, SimulatedHour, SimulatedMinute));
-    .println("Owner: Pauta eliminada por petición.").
 
-+!remove_my_medician(Drug, SimulatedHour, SimulatedMinute)[source(enfermera)] : not medician(Drug, SimulatedHour, SimulatedMinute) <-
-    .println("Owner: Recibida petición de enfermera para eliminar pauta ", Drug, " (", SimulatedHour, SimulatedMinute, "h), pero ya no la tenía.").
->>>>>>> Stashed changes
-
-// Plan para manejar la solicitud de la enfermera de eliminar una pauta
-+!remove_my_medician(Drug, Hour)[source(enfermera)] : medician(Drug, Hour) <- // Solo si aún la tiene
-    .println("Owner: Recibida petición de enfermera para eliminar pauta ", Drug, " (", Hour, "h).");
-    .abolish(medician(Drug, Hour));
-    .println("Owner: Pauta eliminada por petición.").
-
-<<<<<<< Updated upstream
-+!remove_my_medician(Drug, Hour)[source(enfermera)] : not medician(Drug, Hour) <-
-    .println("Owner: Recibida petición de enfermera para eliminar pauta ", Drug, " (", Hour, "h), pero ya no la tenía.").
-
-+!do_something: not busy & not nurse_delivering <-
-    +busy; // Marcarse como ocupado PARA ESTA ACCIÓN CONCRETA
-    .wait(500);
-    .println("Owner: [do_something] Libre y enfermera no entrega. Decidiendo qué hacer...");
-    .random([0,1,2,3,4],Tarea);
-
-    if (Tarea == 0) {
-        .println("Owner: [do_something] Decidí ir a abrir la puerta (simulado).");
-        !open; // Este plan marcará -busy al finalizar implícitamente o explícitamente si lo modificas
-    } elif (Tarea == 1) {
-        .println("Owner: [do_something] Decidí ir a sentarme.");
-        !sit;
-    } elif (Tarea == 2) {
-        .println("Owner: [do_something] Decidí ir a dormir.");
-        !sleep_bed;
-    } elif (Tarea == 3) {
-        .println("Owner: [do_something] Decidí comprobar si debo tomar medicina.");
-        !check_and_take_medicine; // Este plan debe manejar su propio estado busy si es complejo
-    } else {
-        .println("Owner: [do_something] Decidí pedir/tomar una cerveza.");
-        !drunk; // Este plan debe manejar su propio estado busy si es complejo
-    };
-    // IMPORTANTE: Asumiendo que los sub-objetivos (!open, !sit, etc.) liberan 'busy' al terminar.
-    // Si no lo hacen, necesitas -busy aquí. Pero es mejor que cada sub-objetivo maneje su busy.
-    // Si los sub-objetivos son rápidos y no necesitan busy, puedes quitar +busy al inicio y -busy al final aquí.
-    // PERO, si !check_and_take_medicine o !drunk INICIAN una acción larga, necesitan +busy/-busy dentro de ellos.
-    // Para simplificar, asumamos que los subplanes son atómicos para !do_something
-    -busy; // Liberar busy después de completar la acción elegida
-    .wait(100); // Pequeña pausa antes de volver a evaluar
-    !do_something. // Volver a intentar hacer algo
-
-// NUEVO Plan: Esperar si la enfermera está ocupada entregando (aunque el owner esté libre)
-+!do_something: not busy & nurse_delivering <-
-    .println("Owner: [do_something] Quiero hacer algo, pero la enfermera viene hacia mí. Esperaré...");
-    .wait(2000); // Espera un poco (ajusta el tiempo si es necesario)
-    !do_something. // Vuelve a intentar hacer algo (revisará de nuevo nurse_delivering)
-
-// Plan cuando owner YA ESTÁ OCUPADO con una acción previa (de !do_something o !take)
-+!do_something: busy <-
-    .println("Owner: [do_something] Estoy ocupado con otra cosa. Esperando terminar...");
-    .wait(1000); // Espera mientras está ocupado
-    !do_something. // Re-evalúa después de esperar
-=======
 // Triggered by the new percept format
 +clock(SimulatedHour, SimulatedMinute)[source(Source)] : free[source(self)] <-
-    // Use both variables for printing
-    .println("Owner: [Clock ", SimulatedHour, ":", SimulatedMinute, "] Tick recibido.");
-    // The rest of the logic might need adjustment if 'medician' still only uses the hour
+    if (not ha_caducado(DrugToDeliver)) {
+
     if (medician(DrugToTake, SimulatedHour, SimulatedMinute)) { // Ahora busca HORA y MINUTO
          .println("Owner: [Clock ", SimulatedHour, ":", SimulatedMinute, "] ¡Pauta encontrada para esta hora exacta!: ", DrugToTake);
+         .drop_all_intentions;
          !check_and_take_medicine(DrugToTake, SimulatedHour, SimulatedMinute);
     } else {
-         .println("Owner: [Clock ", SimulatedHour, ":", SimulatedMinute, "] No hay medicina programada para mí a esta hora.");
+         //.println("Owner: [Clock ", SimulatedHour, ":", SimulatedMinute, "] No hay medicina programada para mí a esta hora.");
+    };
+    }else{
+        .println("Owner: La medicacion esta caducada.");
     }.
 
 // Similar change for the 'not free' plan trigger
@@ -412,69 +195,154 @@ orderBeer :- not available(beer, fridge).
 
 // Plan principal: Manos libres, se activa cuando se adopta el objetivo específico
 +!check_and_take_medicine(DrugToTake, SimulatedHour, SimulatedMinute) : .my_name(Ag) & not has(Ag, _) <-
-    .println("Owner [", Ag, "]: [Intent !CheckMeds(",DrugToTake,",",SimulatedHour, SimulatedMinute,")] Iniciando gestión. Manos libres.");
->>>>>>> Stashed changes
+    .println("",DrugToTake,",",SimulatedHour, SimulatedMinute,")] Iniciando gestión. Manos libres.");
     
-
     // --- Decisión Aleatoria ---
     .random([0], Decision); // 0 = Ir a por ella, 1 = Esperar al robot
 
     if (Decision == 0) {
         // --- DECISIÓN: Ir a por la medicina ---
-        .println("Owner [", Ag, "]: [Intent !CheckMeds] Decidí ir yo mismo a por ", DrugToTake, ".");
+        .println("Decidí ir yo mismo a por ", DrugToTake, ".");
         +free[source(self)];
 
         !at(Ag, medCab);
-        .println("Owner [", Ag, "]: [Get Meds] He llegado al botiquín (medCab).");
+        .println("He llegado al botiquín (medCab).");
 
         if (available(DrugToTake, medCab)) {
-            .println("Owner [", Ag, "]: [Get Meds] ", DrugToTake, " parece disponible. Intentando cogerlo...");
+            .println("", DrugToTake, " parece disponible. Intentando cogerlo...");
             open(medCab);
             obtener_medicamento(DrugToTake);
-            .send(enfermera, tell, medicina_recogida_owner(DrugToTake, SimulatedHour, SimulatedMinute)); // <-- LÍNEA MODIFICADA
+            .send(enfermera, tell, medicina_recogida_owner(DrugToTake, SimulatedHour, SimulatedMinute)); 
             close(medCab);
             .abolish(medician(DrugToTake, SimulatedHour, SimulatedMinute));
-            .println("Owner [", Ag, "]: [Take Meds] Pauta para ", DrugToTake, " (", SimulatedHour, SimulatedMinute,"h) eliminada localmente.");
+            .println("Pauta para ", DrugToTake, " (", SimulatedHour, SimulatedMinute,"h) eliminada localmente.");
 
 
-                 .println("Owner [", Ag, "]: [Get Meds] Obtenido ", DrugToTake, " del botiquín.");
+                 .println("Obtenido ", DrugToTake, " del botiquín.");
                  .wait(1000);
-                 .println("Owner [", Ag, "]: [Take Meds] Tomando ", DrugToTake, "...");
-                 .println("Owner [", Ag, "]: [Take Meds] Terminé de tomar ", DrugToTake, ".");
+                 .println("omando ", DrugToTake, "...");
+                 .println("Terminé de tomar ", DrugToTake, ".");
 
                  // Eliminar SÓLO la creencia para esta droga y hora específicas
                  .send(enfermera, tell, medication_consumed(DrugToTake, SimulatedHour, SimulatedMinute));
-                 .println("Owner [", Ag, "]: [Take Meds] Notificado a 'enfermera'.");
+                 .println("Notificado a 'enfermera de que consumi la medicacion.");
 
                  !at(Ag, sofa);
-                 .println("Owner [", Ag, "]: [Take Meds] Volviendo al sofá.");
+                 .println("Volviendo al sofá.");
                  .wait(1000);
-                 .println("Owner [", Ag, "]: [Take Meds] Acción completada para ", DrugToTake, ".");
-        } else {
-             .println("Owner [", Ag, "]: [Get Meds] Llegué al botiquín, pero ", DrugToTake, " ya no estaba disponible.");
-             !at(Ag, sofa);
-             .println("Owner [", Ag, "]: [Get Meds] Volviendo al sofá a esperar (si el robot la cogió).");
+                 .println("Acción completada para ", DrugToTake, ".");
+                 -has(Ag, DrugToTake); // Eliminar creencia de que tiene el medicamento
         }
     } else {
         // --- DECISIÓN: Esperar al robot ---
-        .println("Owner [", Ag, "]: [Intent !CheckMeds] Decidí esperar a que la enfermera me traiga ", DrugToTake, ".");
-        // No hace nada más aquí. El objetivo se considera "logrado" en cuanto a la decisión.
-        // La creencia medician(DrugToTake, SimulatedHour, SimulatedMinute) sigue activa hasta que se consuma o elimine por otra vía.
+        .println("Decidí esperar a que la enfermera me traiga ", DrugToTake, ".");
     }
 .
 
-<<<<<<< Updated upstream
++!do_something: not nurse_delivering <-
+    .wait(500);
+    .println("Owner: [do_something] Libre y enfermera no entrega. Decidiendo qué hacer...");
+    .random([0,1,2,3,4],Tarea);
+
+    if (Tarea == 0) {
+        .println("Owner: [do_something] Decidí ir a abrir la puerta (simulado).");
+        !open; // Este plan marcará -busy al finalizar implícitamente o explícitamente si lo modificas
+    } elif (Tarea == 1) {
+        .println("Owner: [do_something] Decidí ir a sentarme.");
+        !sit;
+    } elif (Tarea == 2) {
+        .println("Owner: [do_something] Decidí ir a dormir.");
+        !sleep_bed;
+    } else {
+        .println("Owner: [do_something] Decidí pedir/tomar una cerveza.");
+        !drunk; // Este plan debe manejar su propio estado busy si es complejo
+    };
+    .wait(100); 
+    !do_something. 
+
+// NUEVO Plan: Esperar si la enfermera está ocupada entregando (aunque el owner esté libre)
++!do_something: nurse_delivering <-
+    .println("Owner: [do_something] Quiero hacer algo, pero la enfermera viene hacia mí. Esperaré...");
+    .wait(2000). 
+
+// Plan cuando owner YA ESTÁ OCUPADO con una acción previa (de !do_something o !take)
++!do_something <-
+    .println("Owner: [do_something] Estoy ocupado con otra cosa. Esperando terminar...");
+    .wait(1000);
+    !do_something. 
+    
+// Este objetivo se centra en abrir la puerta de la casa (simular visitas)
++!open: .my_name(Ag) <-
+    .println("¡¡¡Ohh I have a visit!!! I´m going to open the door, give me a second...");
+    .wait(200);
+    !at(Ag, delivery);
+    .println("Opening the door...");
+    .random(X); 
+    .wait(X*7351+2000); 
+    .println("¡¡Bye, thank you for the visit!!").
+
+// Este objetivo se centra en sentarse en algun sitio disponible (sofa o sillas)
++!sit: .my_name(Ag) <-
+    .println("I´m need to sit...");
+    .random([0,1,2,3,4], Sitio);        // Elegimos aleatoriamente un lugar para sentarse
+    
+    if (Sitio == 0) {
+        .println("I´m going to sit in chair1");
+        !at(Ag, chair1);
+        sit(chair1);
+        .wait(4000);
+    } elif (Sitio == 1) {
+        .println("I´m going to sit in chair2");
+        !at(Ag, chair2);
+        sit(chair2);
+        .wait(4000);
+    } elif (Sitio == 2) {
+        .println("I´m going to sit in chair3");
+        !at(Ag, chair3);
+        sit(chair3);
+        .wait(4000);
+    } elif (Sitio == 3) {
+        .println("I´m going to sit in chair4");
+        !at(Ag, chair4);
+        sit(chair4);
+        .wait(4000);
+    } else {
+        .println("I´m going to sit in sofa");
+        !at(Ag, sofa);
+        sit(sofa);
+        .wait(10000);
+    };
+    .println("Yep, the walls are so clean").
+
+
+// Este objetivo trata de que el owner duerma en una de las camas X tiempo
++!sleep_bed : .my_name(Ag) <-
+    .println("I´m tired...");
+    .random([0,1,2], Bed);      
+    if (Bed == 0) {
+        .println("I´m going to sleep in bed1");
+        !at(Ag, bed1);
+    } elif (Bed == 1) {
+        .println("I´m going to sleep in bed2");
+        !at(Ag, bed2);
+    } else {
+        .println("I´m going to sleep in bed3");
+        !at(Ag, bed3);
+    }
+    .random(X);    
+    .wait(X*2+1000);               // Duerme
+    .println("Whoaaa, I dreamed I was an helicopter").
+
 // Este objetivo trata de obtener y beber una cerveza, SABIENDO QUE HAY EXISTENCIAS 
-+!drunk: .my_name(Ag) & available(beer, fridge) & not(orderBeer) <- // Añadido available(beer, fridge)
++!drunk: .my_name(Ag) & available(beer, fridge) & not(orderBeer) <-
     .println("Ummmm I'm thirsty... I want a beer :)");
     !at(Ag, fridge);        
     open(fridge);
-    get(beer);          // Obtenemos una cerveza
+    get(beer);         
     close(fridge);
-    !at(Ag, sofa);      // Nos vememos a un sitio para sentarnos y beber
+    !at(Ag, sofa);      
     !take(beer). 
 
-//
 +!drunk: .my_name(Ag) & orderBeer <-
     .println("Ummmm I'm thirsty... I want a beer :)");
     !at(Ag, fridge);
@@ -495,7 +363,10 @@ orderBeer :- not available(beer, fridge).
     close(fridge);
     !at(Ag, sofa);
     !take(beer).   
-=======
-+?time : true
-	<-  watchClock.
->>>>>>> Stashed changes
+
+//Se recibe la señal de auxiliar que la caducacion ha sido eliminada y ya se puede operar con tranquilidad
++orden_eliminar_caducaciones[source(auxiliar)] <-
+    .println("Recibida señal de ", auxiliar, " para eliminar la caducacion.");
+    .abolish(ha_caducado(_));
+    .println("Caducacion eliminada.");
+    -orden_eliminar_caducaciones[source(auxiliar)].

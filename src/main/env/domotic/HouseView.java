@@ -15,6 +15,8 @@ import java.util.HashMap;
 import javax.swing.ImageIcon;
 import javax.swing.Timer;
 import java.util.ArrayList;
+import java.awt.FontMetrics; 
+import javax.swing.SwingUtilities;
 
 import domotic.SimulatedClock;
 
@@ -30,6 +32,7 @@ public class HouseView extends GridWorldView {
     int viewSize;
     String currentDirectory;
     private Timer timer;
+    private EnergyStatusPanel energyStatusWindow;
 
     /**
      * Constructor de la vista gráfica de la casa.
@@ -48,6 +51,16 @@ public class HouseView extends GridWorldView {
         defaultFont = new Font("Arial", Font.BOLD, 20);
 
         currentDirectory = Paths.get("").toAbsolutePath().toString();
+
+         // --- NUEVO: Crear la VENTANA de estado de energía ---
+         int initialMaxER = hmodel.getMaxEnergy(HouseModel.ROBOT_AGENT_ID);
+         int initialMaxEA = hmodel.getMaxEnergy(HouseModel.AUXILIAR_AGENT_ID);
+         // Crear la instancia (esto crea y muestra la ventana separada)
+         // Usar SwingUtilities si la creación de HouseView no está en el EDT
+         SwingUtilities.invokeLater(() -> {
+              energyStatusWindow = new EnergyStatusPanel(initialMaxER, initialMaxEA);
+         });
+  
 
         timer = new Timer(400, new ActionListener() {
             @Override
@@ -128,7 +141,8 @@ public class HouseView extends GridWorldView {
 
             case HouseModel.DOOR:
                 g.setColor(Color.lightGray);
-                if (lRobot.equals(loc) || lRobot.isNeigbour(loc) || lOwner.equals(loc) || lOwner.isNeigbour(loc) || lAuxiliar.equals(loc) || lAuxiliar.isNeigbour(loc)) {
+                if (lRobot.equals(loc) || lRobot.isNeigbour(loc) || lOwner.equals(loc) || lOwner.isNeigbour(loc)
+                        || lAuxiliar.equals(loc) || lAuxiliar.isNeigbour(loc)) {
                     drawScaledImage(g, x, y, "/doc/openDoor2.png", 75, 100);
                 } else {
                     drawScaledImage(g, x, y, "/doc/closeDoor2.png", 75, 100);
@@ -144,12 +158,13 @@ public class HouseView extends GridWorldView {
                 }
                 break;
 
-                case HouseModel.FRIDGE:
+            case HouseModel.FRIDGE:
                 g.setColor(Color.lightGray);
-                 // Comprobar si robot, dueño O auxiliar están cerca
+                // Comprobar si robot, dueño O auxiliar están cerca
                 boolean fridgeNear = (lRobot != null && lRobot.isNeigbour(hmodel.lFridge)) ||
-                                     (lOwner != null && lOwner.isNeigbour(hmodel.lFridge)) ||
-                                     (lAuxiliar != null && lAuxiliar.isNeigbour(hmodel.lFridge)); // <-- MODIFICADO: Añadida condición auxiliar
+                        (lOwner != null && lOwner.isNeigbour(hmodel.lFridge)) ||
+                        (lAuxiliar != null && lAuxiliar.isNeigbour(hmodel.lFridge)); // <-- MODIFICADO: Añadida
+                                                                                     // condición auxiliar
 
                 if (fridgeNear) {
                     drawImage(g, x, y, "/doc/openNevera.png");
@@ -161,12 +176,13 @@ public class HouseView extends GridWorldView {
                 drawString(g, x, y, defaultFont, "Fr (" + hmodel.availableBeers + ")");
                 break;
 
-                case HouseModel.MEDCAB:
+            case HouseModel.MEDCAB:
                 g.setColor(Color.lightGray);
-                 // Comprobar si robot, dueño O auxiliar están cerca
+                // Comprobar si robot, dueño O auxiliar están cerca
                 boolean medcabNear = (lRobot != null && lRobot.isNeigbour(hmodel.lMedCab)) ||
-                                     (lOwner != null && lOwner.isNeigbour(hmodel.lMedCab)) ||
-                                     (lAuxiliar != null && lAuxiliar.isNeigbour(hmodel.lMedCab)); // <-- MODIFICADO: Añadida condición auxiliar
+                        (lOwner != null && lOwner.isNeigbour(hmodel.lMedCab)) ||
+                        (lAuxiliar != null && lAuxiliar.isNeigbour(hmodel.lMedCab)); // <-- MODIFICADO: Añadida
+                                                                                     // condición auxiliar
 
                 if (medcabNear) {
                     drawImage(g, x, y, "/doc/MedicalOpenR.png");
@@ -179,87 +195,86 @@ public class HouseView extends GridWorldView {
 
                 // --- Dentro del método drawMedicamentos (o similar) en HouseView.java ---
 
-        int currentHour = this.clock.getTime();
-        int currentMinutes = this.clock.getMinutes(); // Obtener minutos actuales
-        HashMap<String, Integer> contadorMedicamentos = hmodel.getContadorMedicamentos();
-        // Correcto: expiryMap es de tipo HashMap<String, Location>
-        HashMap<String, Location> expiryMap = hmodel.getMedicamentosExpiry();
-        int posX = 4;
-        int posY = 14;
-        int lineWidth = 4; // altura entre líneas, depende del tamaño de fuente
+                int currentHour = this.clock.getTime();
+                int currentMinutes = this.clock.getMinutes(); // Obtener minutos actuales
+                HashMap<String, Integer> contadorMedicamentos = hmodel.getContadorMedicamentos();
+                // Correcto: expiryMap es de tipo HashMap<String, Location>
+                HashMap<String, Location> expiryMap = hmodel.getMedicamentosExpiry();
+                int posX = 4;
+                int posY = 14;
+                int lineWidth = 4; // altura entre líneas, depende del tamaño de fuente
 
-        if (contadorMedicamentos != null) {
-            ArrayList<String> textos = new ArrayList<>();
-            ArrayList<Color> colores = new ArrayList<>();
+                if (contadorMedicamentos != null) {
+                    ArrayList<String> textos = new ArrayList<>();
+                    ArrayList<Color> colores = new ArrayList<>();
 
-            int maxLength = 0;
+                    int maxLength = 0;
 
-            // Primero preparamos los textos
-            for (String medName : contadorMedicamentos.keySet()) {
-                Integer cantidadObj = contadorMedicamentos.get(medName);
-                if (cantidadObj == null) {
-                     System.err.println("Warning: Null count for " + medName + ". Skipping."); // Added warning
-                     continue;
-                }
-                // Correcto: Se declara la variable cantidad
-                int cantidad = cantidadObj;
+                    // Primero preparamos los textos
+                    for (String medName : contadorMedicamentos.keySet()) {
+                        Integer cantidadObj = contadorMedicamentos.get(medName);
+                        if (cantidadObj == null) {
+                            System.err.println("Warning: Null count for " + medName + ". Skipping."); // Added warning
+                            continue;
+                        }
+                        // Correcto: Se declara la variable cantidad
+                        int cantidad = cantidadObj;
 
-                // ***** INICIO: SECCIÓN MODIFICADA PARA MANEJAR LOCATION *****
-                Location expiryLocation = null; // Variable para guardar la Location de caducidad
-                if (expiryMap != null) {
-                    expiryLocation = expiryMap.get(medName); // Obtener la Location del mapa
-                }
+                        // ** INICIO: SECCIÓN MODIFICADA PARA MANEJAR LOCATION **
+                        Location expiryLocation = null; // Variable para guardar la Location de caducidad
+                        if (expiryMap != null) {
+                            expiryLocation = expiryMap.get(medName); // Obtener la Location del mapa
+                        }
 
-                Integer expiryHour = null;     // Variable para la HORA de caducidad
-                Integer expiryMinute = null;   // Variable para el MINUTO de caducidad
+                        Integer expiryHour = null; // Variable para la HORA de caducidad
+                        Integer expiryMinute = null; // Variable para el MINUTO de caducidad
 
-                // Si encontramos una Location, extraemos hora (x) y minuto (y)
-                if (expiryLocation != null) {
-                    expiryHour = expiryLocation.x;
-                    expiryMinute = expiryLocation.y;
-                }
+                        // Si encontramos una Location, extraemos hora (x) y minuto (y)
+                        if (expiryLocation != null) {
+                            expiryHour = expiryLocation.x;
+                            expiryMinute = expiryLocation.y;
+                        }
 
-                // Calcular 'caducado' usando la hora y minuto extraídos
-                boolean caducado = false;
-                if (expiryHour != null && expiryMinute != null) { // Solo si tenemos datos de caducidad
-                    // Comprobar si la hora actual es posterior a la hora de caducidad
-                    if (currentHour > expiryHour) {
-                        caducado = true;
+                        // Calcular 'caducado' usando la hora y minuto extraídos
+                        boolean caducado = false;
+                        if (expiryHour != null && expiryMinute != null) { // Solo si tenemos datos de caducidad
+                            // Comprobar si la hora actual es posterior a la hora de caducidad
+                            if (currentHour > expiryHour) {
+                                caducado = true;
+                            }
+                            // O si es la misma hora, comprobar si el minuto actual es igual o posterior
+                            else if (currentHour == expiryHour && currentMinutes >= expiryMinute) {
+                                caducado = true;
+                            }
+                            // Si no, no está caducado
+                        }
+                        // ** FIN: SECCIÓN MODIFICADA **
+
+                        String textoMostrar = medName + " (" + cantidad + ")"; // Esta línea ya funcionaba
+
+                        if (caducado) { // Usamos la variable 'caducado' calculada correctamente
+                            textoMostrar = "[EXP] " + textoMostrar;
+                        }
+                        textos.add(textoMostrar);
+                        colores.add(caducado ? Color.ORANGE : Color.BLUE); // Usamos 'caducado'
+
+                        if (textoMostrar.length() > maxLength) {
+                            maxLength = textoMostrar.length();
+                        }
+                    } // Fin del for (String medName : ...)
+
+                    // Dibujar los textos (esta parte no necesita cambios)
+                    for (int i = 0; i < textos.size(); i++) {
+                        g.setColor(colores.get(i));
+                        // Ajuste menor: Dibuja cada texto en una nueva línea verticalmente
+                        // Asumiendo que 'posY' es el inicio y 'lineWidth' es el espaciado vertical
+                        drawString(g, posX + (i * lineWidth), posY, defaultFont, textos.get(i));
+                        // Si querías que se dibujaran horizontalmente uno al lado del otro,
+                        // tu línea original estaba bien:
+                        // drawString(g, posX + (i * lineWidth), posY, defaultFont, textos.get(i));
+                        // Elige la que necesites. La vertical parece más común para listas.
                     }
-                    // O si es la misma hora, comprobar si el minuto actual es igual o posterior
-                    else if (currentHour == expiryHour && currentMinutes >= expiryMinute) {
-                        caducado = true;
-                    }
-                    // Si no, no está caducado
                 }
-                // ***** FIN: SECCIÓN MODIFICADA *****
-
-
-                String textoMostrar = medName + " (" + cantidad + ")"; // Esta línea ya funcionaba
-
-                if (caducado) { // Usamos la variable 'caducado' calculada correctamente
-                    textoMostrar = "[EXP] " + textoMostrar;
-                }
-                textos.add(textoMostrar);
-                colores.add(caducado ? Color.ORANGE : Color.BLUE); // Usamos 'caducado'
-
-                if (textoMostrar.length() > maxLength) {
-                    maxLength = textoMostrar.length();
-                }
-            } // Fin del for (String medName : ...)
-
-            // Dibujar los textos (esta parte no necesita cambios)
-            for (int i = 0; i < textos.size(); i++) {
-                g.setColor(colores.get(i));
-                // Ajuste menor: Dibuja cada texto en una nueva línea verticalmente
-                // Asumiendo que 'posY' es el inicio y 'lineWidth' es el espaciado vertical
-                 drawString(g, posX +  (i * lineWidth), posY , defaultFont, textos.get(i));
-                // Si querías que se dibujaran horizontalmente uno al lado del otro,
-                // tu línea original estaba bien:
-                // drawString(g, posX + (i * lineWidth), posY, defaultFont, textos.get(i));
-                // Elige la que necesites. La vertical parece más común para listas.
-            }
-        }
                 g.setColor(Color.BLUE);
                 drawString(g, 1, 14, defaultFont, "MedCab: {");
                 drawString(g, 22, 14, defaultFont, " }");
@@ -267,52 +282,62 @@ public class HouseView extends GridWorldView {
                 break;
 
             case HouseModel.CHARGER:
-                g.setColor(Color.lightGray);
-                // Comprobar si robot, dueño O auxiliar están cerca
-                boolean chargerNear = (lRobot != null && lRobot.isNeigbour(hmodel.lCharger)) ||
-                                      (lOwner != null && lOwner.isNeigbour(hmodel.lCharger)) || // ¿Debería el dueño activar el cargador?
-                                      (lAuxiliar != null && lAuxiliar.isNeigbour(hmodel.lCharger)); 
+            Location chargerLocation = new Location(x, y);
 
+            if (chargerLocation.equals(hmodel.lCargador)) {
+                boolean chargerNear = (lRobot != null && lRobot.isNeigbour(hmodel.lCargador)) ||
+                                              (lOwner != null && lOwner.isNeigbour(hmodel.lCargador)) ||
+                                              (lAuxiliar != null && lAuxiliar.isNeigbour(hmodel.lCargador));
+    
                 if (chargerNear) {
-                    drawImage(g, x, y, "/doc/cargadorOperativo.png");
-                    g.setColor(Color.green);
+                    drawImage(g, x, y, "/doc/cargadorOperativo.png"); 
+                    g.setColor(Color.green);    
                 } else {
-                    drawImage(g, x, y, "/doc/cargador.png");
-                    g.setColor(Color.blue);
-                }
-                break;
-
-            case HouseModel.CHARGER:
-                g.setColor(Color.lightGray);
-                 // Comprobar si robot, dueño O auxiliar están cerca
-                 // (Quizás para el cargador solo debería depender del robot?)
-                boolean chargerNear = (lRobot != null && lRobot.isNeigbour(hmodel.lCharger)) ||
-                                      (lOwner != null && lOwner.isNeigbour(hmodel.lCharger)) || // ¿Debería el dueño activar el cargador?
-                                      (lAuxiliar != null && lAuxiliar.isNeigbour(hmodel.lCharger)); // <-- MODIFICADO: Añadida condición auxiliar
-
-                if (chargerNear) {
-                    drawImage(g, x, y, "/doc/cargadorOperativo.png");
-                    g.setColor(Color.green);
-                } else {
-                    drawImage(g, x, y, "/doc/cargador.png");
-                    g.setColor(Color.blue);
-                }
-                // No se dibuja texto en el cargador por defecto
+                    drawImage(g, x, y, "/doc/cargador.png"); 
+                   
+                }            
+            } else {
+                drawImage(g, x, y, "/doc/cargador.png");
+                g.setColor(Color.lightGray); 
+            }
                 break;
         }
-<<<<<<< Updated upstream
-
-
     }
 
-       /**
-     * Dibuja los agentes (robot, dueño u otros) en sus posiciones actuales dentro
-=======
-    }
+    // En la clase HouseView.java
+
+/**
+ * Actualiza la visualización de energía para un agente específico en el panel.
+ * Este método es público para ser llamado desde fuera (ej. HouseModel).
+ *
+ * @param agentId        ID del agente (0 para Robot, 2 para Auxiliar).
+ * @param currentEnergy  Energía actual.
+ * @param maxEnergy      Energía máxima.
+ */
+public void updateEnergyDisplay(int agentId, int currentEnergy, int maxEnergy) {
+    // Asegúrate de que la actualización se haga en el hilo de eventos de Swing
+    // si existe la posibilidad de que se llame desde otro hilo.
+    // Si se llama desde decrementAgentEnergy -> executeAction (hilo del entorno),
+    // normalmente es seguro, pero usar invokeLater es más robusto.
+    SwingUtilities.invokeLater(() -> {
+        if (energyStatusWindow != null) {
+            energyStatusWindow.updateEnergy(agentId, currentEnergy, maxEnergy);
+        }
+    });
+}
+
+// Opcionalmente, podrías tener un método general si prefieres
+// public void refreshEnergyDisplay() {
+//     SwingUtilities.invokeLater(() -> {
+//         if (energyStatusWindow != null && hmodel != null) {
+//              energyStatusWindow.updatePanelFromModel(hmodel);
+//         }
+//     });
+// }
 
     /**
-     * Dibuja los agentes (robot, dueño, auxiliar u otros) en sus posiciones actuales dentro
->>>>>>> Stashed changes
+     * Dibuja los agentes (robot, dueño, auxiliar u otros) en sus posiciones
+     * actuales dentro
      * del entorno.
      * Utiliza imágenes distintas según el tipo de agente y su estado (por ejemplo,
      * si está cargando objetos).
@@ -323,66 +348,46 @@ public class HouseView extends GridWorldView {
      * @param x  Coordenada X en el grid.
      * @param y  Coordenada Y en el grid.
      * @param c  Color sugerido (puede ser ignorado).
-     * @param id Identificador del agente (0 = robot, 1 = dueño, 2 = auxiliar, >2 = otros).
+     * @param id Identificador del agente (0 = robot, 1 = dueño, 2 = auxiliar, >2 =
+     *           otros).
      */
     @Override
     public void drawAgent(Graphics g, int x, int y, Color c, int id) {
         Location lRobot = hmodel.getAgPos(0);
         Location lOwner = hmodel.getAgPos(1);
-<<<<<<< Updated upstream
-        // Location lAgent = hmodel.getAgPos(id); // Get location based on id if needed
-
-        if (id == 0) { // Robot
-            // Condición original para no dibujar en ciertos lugares.
-            // Considera si realmente quieres este comportamiento. Si el robot debe
-            // ser visible incluso en la ubicación del MedCab, elimina o ajusta este 'if'.
-            if (!lRobot.equals(lOwner) && !lRobot.equals(hmodel.lFridge) && !lRobot.equals(hmodel.lMedCab)) {
-
-                String objPath = "/doc/bot.png"; // Imagen por defecto
-
-                // --- LÓGICA CORREGIDA ---
-                // Prioriza la imagen según lo que lleve.
-                // Si puede llevar ambas cosas (poco probable), decide cuál tiene prioridad.
-                // Aquí asumimos que cerveza tiene prioridad visual sobre medicamento si ambas fueran true.
-                if (hmodel.robotCarryingBeer) {
-                    objPath = "/doc/beerBot.png";
-                } else if (hmodel.robotCarryingDrug) { // Solo comprueba 'carryingDrug' si NO lleva cerveza
-                    objPath = "/doc/drugBot.png";
-                }
-                // No se necesita un 'else' final aquí, ya que 'objPath' tiene un valor por defecto.
-                // --- FIN LÓGICA CORREGIDA ---
-=======
         Location lAuxiliar = hmodel.getAgPos(2);
 
         if (id == 0) { // Robot
             if (!lRobot.equals(lOwner) && !lRobot.equals(hmodel.lFridge) && !lRobot.equals(hmodel.lMedCab)) {
 
-                String objPath = "/doc/bot.png"; 
+                String objPath = "/doc/bot.png";
 
                 if (hmodel.robotCarryingBeer) {
                     objPath = "/doc/beerBot.png";
-                } else if (hmodel.robotCarryingDrug) { 
+                } else if (hmodel.robotCarryingDrug) {
                     objPath = "/doc/drugBot.png";
                 }
->>>>>>> Stashed changes
 
                 drawImage(g, x, y, objPath);
                 super.drawString(g, x, y, defaultFont, "Rob");
-            }
-<<<<<<< Updated upstream
-            // Si eliminaste el 'if' de arriba, la lógica de selección de imagen
-            // y el drawImage/drawString irían aquí directamente.
 
+                // --- NUEVO: Dibujar Energía Robot ---
+                int currentE = hmodel.getCurrentEnergy(id);
+                int maxE = hmodel.getMaxEnergy(id);
+                if (maxE > 0) { // Solo dibujar si hay energía máxima definida
+                    String energyStr = String.format("E:%d/%d", currentE, maxE);
+                    g.setColor(Color.ORANGE); // O un color que cambie según el nivel
+                    // Dibujar debajo del texto "Rob" o de la imagen
+                    FontMetrics fm = g.getFontMetrics(defaultFont);
+                    int energyY = y * cellSizeH + cellSizeH - fm.getDescent(); // Posición Y cerca del fondo de la celda
+                    g.drawString(energyStr, x * cellSizeW + 5, energyY);
+                }
+                // --- FIN NUEVO ---
+            }
         } else if (id == 1) { // Owner
-            Location lAgent = hmodel.getAgPos(id); // Agent's location
-            if (lAgent.equals(hmodel.lChair1)) {
-                drawMan(g, lAgent.x, lAgent.y, "left"); // Use agent's actual coords
-=======
-        } else if (id == 1) { // Owner
-            Location lAgent = hmodel.getAgPos(id); 
+            Location lAgent = hmodel.getAgPos(id);
             if (lAgent.equals(hmodel.lChair1)) {
                 drawMan(g, lAgent.x, lAgent.y, "left");
->>>>>>> Stashed changes
             } else if (lAgent.equals(hmodel.lChair2)) {
                 drawMan(g, lAgent.x, lAgent.y, "down");
             } else if (lAgent.equals(hmodel.lChair4)) {
@@ -392,88 +397,57 @@ public class HouseView extends GridWorldView {
             } else if (lAgent.equals(hmodel.lSofa)) {
                 drawMan(g, lAgent.x, lAgent.y, "up");
             } else if (lAgent.equals(hmodel.lDeliver)) {
-<<<<<<< Updated upstream
-                // Draw door behind the man at delivery location
                 g.setColor(Color.lightGray);
                 String objPath = "/doc/openDoor2.png";
-                drawScaledImage(g, lAgent.x, lAgent.y, objPath, 75, 100); // Draw door at owner's location
-                drawMan(g, lAgent.x, lAgent.y, "down"); // Draw man on top
-            } else {
-                // Draw the owner walking or standing based on last direction
-                drawMan(g, lAgent.x, lAgent.y, hmodel.getLastDirection(id));
-            }
-
-            // Draw interaction hint if robot is near owner
-            if (lRobot != null && lRobot.isNeigbour(lAgent)) {
-                String o = "S"; // Interaction symbol or text
-                if (hmodel.sipCount > 0) { // Assumes sipCount relates to owner interaction state
-=======
-                g.setColor(Color.lightGray);
-                String objPath = "/doc/openDoor2.png";
-                drawScaledImage(g, lAgent.x, lAgent.y, objPath, 75, 100); 
+                drawScaledImage(g, lAgent.x, lAgent.y, objPath, 75, 100);
                 drawMan(g, lAgent.x, lAgent.y, "down");
             } else {
                 drawMan(g, lAgent.x, lAgent.y, hmodel.getLastDirection(id));
             }
 
             if (lRobot != null && lRobot.isNeigbour(lAgent)) {
-                String o = "S"; 
+                String o = "S";
                 if (hmodel.sipCount > 0) {
->>>>>>> Stashed changes
                     o += " (" + hmodel.sipCount + ")";
                 }
-                if (hmodel.drugsCount > 0) { // Assumes drugsCount relates to owner interaction state
+                if (hmodel.drugsCount > 0) {
                     o += " (" + hmodel.drugsCount + ")";
                 }
-<<<<<<< Updated upstream
-                g.setColor(Color.yellow); // Highlight color for text
-                // Draw string near the owner (agent id 1)
-                drawString(g, lAgent.x, lAgent.y, defaultFont, o);
-            }
-
-        } else if (id == 2) { // **** NEW AGENT ****
-            String objPath;
-            // *** IMPORTANT: Replace hmodel.auxCarryingBox with your actual condition ***
-            // *** OR add boolean auxCarryingBox to HouseModel ***
-            boolean isCarrying = hmodel.auxiliarCarryingDrug; // Placeholder condition
-
-            if (isCarrying) {
-                objPath = "/doc/auxiliarCaja.png"; // Image when carrying
-            } else {
-                objPath = "/doc/auxiliar.png"; // Default image
-            }
-            drawImage(g, x, y, objPath); // Draw the agent's image at its location (x,y)
-            g.setColor(Color.blue); // Color for text label
-
-        } else { // Other agents (id > 2), if any
-            // Default representation for other agents
-            drawMan(g, x, y, "stand"); // Or a generic image like a circle
-            g.setColor(Color.darkGray); // Different color for label
-            super.drawString(g, x, y, defaultFont, "Ag" + id); // Label as "Ag3", "Ag4", etc.
-=======
                 g.setColor(Color.yellow);
                 drawString(g, lAgent.x, lAgent.y, defaultFont, o);
             }
 
         } else if (id == 2) { // Auxiliar
             if (!lAuxiliar.equals(lOwner) && !lAuxiliar.equals(hmodel.lFridge) && !lAuxiliar.equals(hmodel.lMedCab)) {
-            String objPath;
-            boolean isCarrying = hmodel.auxiliarCarryingDrug;
+                String objPath;
+                boolean isCarrying = hmodel.auxiliarCarryingDrug;
 
-            if (isCarrying) {
-                objPath = "/doc/auxiliarCaja.png";
-            } else {
-                objPath = "/doc/auxiliar.png"; 
+                if (isCarrying) {
+                    objPath = "/doc/auxiliarCaja.png";
+                } else {
+                    objPath = "/doc/auxiliar.png";
+                }
+                drawImage(g, x, y, objPath);
+                g.setColor(Color.blue);
+
+                // --- NUEVO: Dibujar Energía Auxiliar ---
+               int currentE = hmodel.getCurrentEnergy(id);
+                int maxE = hmodel.getMaxEnergy(id);
+                if (maxE > 0) { // Solo dibujar si hay energía máxima definida
+                    String energyStr = String.format("E:%d/%d", currentE, maxE);
+                    g.setColor(Color.ORANGE); // O un color que cambie según el nivel
+                    // Dibujar debajo del texto "Rob" o de la imagen
+                    FontMetrics fm = g.getFontMetrics(defaultFont);
+                    int energyY = y * cellSizeH + cellSizeH - fm.getDescent(); // Posición Y cerca del fondo de la celda
+                    g.drawString(energyStr, x * cellSizeW + 5, energyY);
+                }
+                // --- FIN NUEVO ---
             }
-            drawImage(g, x, y, objPath);
-            g.setColor(Color.blue); 
-        }
 
         } else {
-            drawMan(g, x, y, "stand"); 
-            g.setColor(Color.darkGray); 
-            super.drawString(g, x, y, defaultFont, "Ag" + id); 
->>>>>>> Stashed changes
+            drawMan(g, x, y, "stand");
+            g.setColor(Color.darkGray);
+            super.drawString(g, x, y, defaultFont, "Ag" + id);
         }
     }
 
@@ -592,9 +566,6 @@ public class HouseView extends GridWorldView {
             case "down":
                 resource = "/doc/sitd.png";
                 break;
-            case "stand":
-                resource = "/doc/sits.png";
-                break;
             case "walkr":
                 resource = "/doc/walklr.png";
                 break;
@@ -628,9 +599,19 @@ public class HouseView extends GridWorldView {
      * Detiene el temporizador de redibujado si se encuentra en ejecución.
      * Este método puede ser llamado al cerrar la ventana o al pausar la simulación.
      */
-    public void stopTimer() {
+      /**
+     * Detiene el temporizador de redibujado Y cierra la ventana de energía.
+     */
+    public void stopTimer() { // Sobrescribimos para añadir dispose
         if (timer != null && timer.isRunning()) {
             timer.stop();
+        }
+        // Añadido: cerrar también la ventana de energía
+        if (energyStatusWindow != null) {
+             // Asegurarse de que se llama desde el EDT si es necesario
+             SwingUtilities.invokeLater(() -> {
+                  energyStatusWindow.dispose();
+             });
         }
     }
 
