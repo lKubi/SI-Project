@@ -34,10 +34,34 @@ orderBeer :- not available(beer, fridge).
 
 /* ----- OBJETIVOS INICIALES DEL DUEÑO (OWNER) ----- */
 
+!lie_once_about_medicine.
 !do_something.
 !check_bored.
 !medical_guides_initial.
 !update_schedule_later.
+
+// Plan para ejecutar la mentira si aún no se ha hecho
++!lie_once_about_medicine : not lied_about_medicine_once <-
+    .println("Owner: [OBJETIVO INICIAL] Voy a MENTIR sobre tomar Paracetamol (sólo esta vez).");
+    -free[source(self)];
+    .wait(1500); 
+
+    // Definimos sobre qué mentimos (ej. Paracetamol a las 0:10)
+    LiedDrug = "Paracetamol";
+    LiedHour = 0;
+    LiedMinute = 10;
+
+    // Enviamos la notificación FALSA a la enfermera
+    .send(enfermera, tell, medication_consumed(LiedDrug, LiedHour, LiedMinute));
+    .println("Owner: Notificada 'enfermera' FALSAMENTE sobre consumo de ", LiedDrug, " (", LiedHour, ":", LiedMinute, "h).");
+    +lied_about_medicine_once;
+    +free[source(self)];
+    .println("Owner: [OBJETIVO INICIAL] Mentira inicial completada.").
+
+// Plan para ignorar el objetivo si ya se ha mentido
++!lie_once_about_medicine : lied_about_medicine_once <-
+    .println("Owner: [OBJETIVO INICIAL] El objetivo '!lie_once_about_medicine' ya se completó (se mintió una vez). No hago nada.").
+
 
 /* ----- NUEVO: PLANES PARA GESTIONAR ESTADO DE LA ENFERMERA/ROBOT ----- */
 
@@ -54,7 +78,7 @@ orderBeer :- not available(beer, fridge).
 /* ----- PLAN PARA ENVIAR PAUTAS INICIALES Y GUARDARLAS LOCALMENTE ----- */
 +!medical_guides_initial : not medical_guides_sent <-
     .println("Owner: Enviando pautas iniciales a la enfermera y guardándolas localmente...");
-    .send(enfermera, tell, medician("Paracetamol", 0, 50)); +medician("Paracetamol", 0, 50);
+    .send(enfermera, tell, medician("Paracetamol", 1, 10)); +medician("Paracetamol", 1, 10);
     .send(enfermera, tell, medician("Amoxicilina", 2,10)); +medician("Amoxicilina", 2, 10);
     .send(enfermera, tell, medician("Ibuprofeno", 2, 40)); +medician("Ibuprofeno", 2,40);
     .send(enfermera, tell, medician("Amoxicilina", 3, 40)); +medician("Amoxicilina", 3,40);
@@ -81,21 +105,27 @@ orderBeer :- not available(beer, fridge).
     .println("Owner: Iniciando actualización de pautas...");
     .send(enfermera, achieve, clear_schedule);
     .println("Owner: Borrando pautas antiguas locales...");
-    .abolish(medician(_, _)); // Borra todas las pautas locales si las hubiera
+    .abolish(medician(_, _, _)); // Borra todas las pautas locales si las hubiera
     !send_new_schedule_random. // Enviar y guardar las nuevas
 
 //Añadir nuevas pautas de forma aleatoria
 +!send_new_schedule_random : true <-
-    .println("Owner: Enviando y guardando NUEVAS pautas ALEATORIAS...");
-    Medications = ["Ibuprofeno", "Omeprazol", "Aspirina 100mg", "Paracetamol"];
+    .println("Owner: Enviando y guardando NUEVAS pautas ALEATORIAS (con minutos)...");
+    Medications = ["Ibuprofeno", "Omeprazol", "Aspirina", "Paracetamol"];
     for (.member(MedName, Medications)) {
         // Genera una hora aleatoria (0-23) para este medicamento
         .random([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23], RandomHour);
-        .print("Owner: Creando pauta aleatoria: [", MedName, ", ", RandomHour, "]");
-        .send(enfermera, tell, medician(MedName, RandomHour));
-        +medician(MedName, RandomHour);
+        // Genera un minuto aleatorio (0-59) para este medicamento
+        .random([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59], RandomMinute);
+
+        // Imprime la pauta con hora y minuto (formato HH:MM podría necesitar ajuste dependiendo de la salida deseada para un solo dígito)
+        .print("Owner: Creando pauta aleatoria: [", MedName, ", ", RandomHour, ":", RandomMinute, "]");
+
+        // Envía y guarda la creencia con ambos, hora y minuto
+        .send(enfermera, tell, medician(MedName, RandomHour, RandomMinute));
+        +medician(MedName, RandomHour, RandomMinute); // Añade la creencia al agente Owner también
     }
-    .println("Owner: NUEVAS pautas ALEATORIAS enviadas y guardadas.").
+    .println("Owner: NUEVAS pautas ALEATORIAS (con minutos) enviadas y guardadas.").
 
 /* ----- OBJETIVO: Ir a un lugar (!at) ----- */
 +!at(Ag, P) : at(Ag, P) <-
@@ -155,7 +185,9 @@ orderBeer :- not available(beer, fridge).
 // Condición de parada: ya no tiene el item (sip lo consumió o se usó para otra cosa)
 +!take(ItemName) : not has(owner, ItemName) <-
     .println("Owner: Terminado de consumir");
-    !do_something.
+    !do_something;
+    -free[source(self)].
+
 /* ----- OBJETIVO: Comprobar aburrimiento (Sin cambios lógicos) ----- */
 +!check_bored : true <-
     .wait(100);
@@ -198,7 +230,7 @@ orderBeer :- not available(beer, fridge).
     .println("",DrugToTake,",",SimulatedHour, SimulatedMinute,")] Iniciando gestión. Manos libres.");
     
     // --- Decisión Aleatoria ---
-    .random([0], Decision); // 0 = Ir a por ella, 1 = Esperar al robot
+    .random([0,1], Decision); // 0 = Ir a por ella, 1 = Esperar al robot
 
     if (Decision == 0) {
         // --- DECISIÓN: Ir a por la medicina ---
@@ -222,24 +254,23 @@ orderBeer :- not available(beer, fridge).
                  .wait(1000);
                  .println("omando ", DrugToTake, "...");
                  .println("Terminé de tomar ", DrugToTake, ".");
-
                  // Eliminar SÓLO la creencia para esta droga y hora específicas
                  .send(enfermera, tell, medication_consumed(DrugToTake, SimulatedHour, SimulatedMinute));
                  .println("Notificado a 'enfermera de que consumi la medicacion.");
-
-                 !at(Ag, sofa);
-                 .println("Volviendo al sofá.");
                  .wait(1000);
                  .println("Acción completada para ", DrugToTake, ".");
                  -has(Ag, DrugToTake); // Eliminar creencia de que tiene el medicamento
         }
+        !do_something;
     } else {
         // --- DECISIÓN: Esperar al robot ---
+        !at(Ag, chair1);
         .println("Decidí esperar a que la enfermera me traiga ", DrugToTake, ".");
+        .println("Esperando a la enfermera en el salón...");
     }
 .
 
-+!do_something: not nurse_delivering <-
++!do_something: not nurse_delivering & free[source(self)] <-
     .wait(500);
     .println("Owner: [do_something] Libre y enfermera no entrega. Decidiendo qué hacer...");
     .random([0,1,2,3,4],Tarea);

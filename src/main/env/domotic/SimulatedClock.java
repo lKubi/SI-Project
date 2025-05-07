@@ -32,7 +32,7 @@ public class SimulatedClock {
     private static final int TICK_INTERVAL_MS = 500; // <-- VALOR CAMBIADO (antes 333)
 
     // Segundos simulados que avanzan en cada tick del Timer.
-    private static final int SIMULATED_SECONDS_PER_TICK = 60; // <-- SE MANTIENE IGUAL
+    private static final int SIMULATED_SECONDS_PER_TICK = 60; 
 
     /**
      * Constructor del reloj simulado.
@@ -49,16 +49,15 @@ public class SimulatedClock {
         initClockWindow();
 
         // Dentro del constructor de SimulatedClock
-        timer = new Timer(TICK_INTERVAL_MS, new ActionListener() { // <--- CORREGIDO: Usa TICK_INTERVAL_MS
+        timer = new Timer(TICK_INTERVAL_MS, new ActionListener() { 
             @Override
             public void actionPerformed(ActionEvent e) {
                 updateTime(); // <--- CORREGIDO: Llama a updateTime()
     
-                // --- NUEVO: Llamar al modelo para aplicar la carga ---
+                // --- Llamar al modelo para aplicar la carga ---
                 if (model != null) {
                     model.applyChargeEnergy(); // Llama al método del modelo
                 }
-                // --- FIN NUEVO ---
     
                 // La notificación al entorno ahora está dentro de updateTime() en tu código,
                 // así que la llamada aquí podría ser redundante si updateTime() ya llama a
@@ -108,8 +107,7 @@ public class SimulatedClock {
     /**
      * Actualiza internamente la hora simulada avanzando SIMULATED_SECONDS_PER_TICK
      * (60)
-     * segundos simulados en cada llamada (cada 500ms). Actualiza la pantalla del //
-     * <-- COMENTARIO ACTUALIZADO
+     * segundos simulados en cada llamada (cada 500ms). Actualiza la pantalla del 
      * reloj (HH:MM).
      * Notifica al entorno SÓLO cuando la hora (el valor de 'hours') cambia.
      */

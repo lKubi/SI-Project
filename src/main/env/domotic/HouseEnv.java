@@ -68,7 +68,6 @@ public class HouseEnv extends Environment {
             "deliverdrug",  // Simulación de colocar droga tras entrega (interacción física)
             "deliverbeer"   // Simulación de colocar cerveza tras entrega (interacción física)
     // Acciones como 'sip', 'watchClock', 'start_charging', 'stop_charging', 'test_stop_charge' NO consumen energía aquí.
-    // Las acciones internas de planes (println, findall, etc.) no pasan por aquí directamente.
     ));
 
     static Logger logger = Logger.getLogger(HouseEnv.class.getName());

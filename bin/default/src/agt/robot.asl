@@ -22,9 +22,9 @@ connect(livingroom, hallway, doorSal2).
 
 /* ----- ESTADO INICIAL DEL ROBOT ----- */
 // El robot comienza libre, es decir, no tiene ninguna tarea asignada al principio.
-free.
+free[source(self)].
 
-/* ----- DISPONIBILIDAD INICIAL DE PRODUCTOS (Específica) ----- */
+/* ----- DISPONIBILIDAD INICIAL DE PRODUCTOS ----- */
 // Estas creencias deben reflejar el estado inicial en HouseModel o ser actualizadas por percepciones.
 available("Paracetamol", medCab).
 available("Ibuprofeno", medCab).
@@ -32,33 +32,38 @@ available("Amoxicilina", medCab).
 available("Omeprazol", medCab).
 available("Loratadina", medCab).
 
-// Al inicio de enfermera.asl
-
-// Umbral para ir a cargar
-low_energy_threshold(250). // Por ejemplo, ir a cargar cuando baje de 150
-
-
-
 available(beer, fridge).
 
-/* ----- LÍMITES DE CONSUMO (Específicos) ----- */
-// Establecer límites para cada cerveza.
+// Estas creencias reflejan la cantidad inicial de cada producto y son percibidas por el robot al inicio del programa.
+note("Paracetamol", 3).
+note("Ibuprofeno", 4).
+note("Amoxicilina", 8).
+note("Omeprazol", 0).
+note("Loratadina", 4).
 
+// Umbral para ir a cargar
+low_energy_threshold(250). // Por ejemplo, ir a cargar cuando baje de 250
+
+/* ----- LÍMITES DE CONSUMO ----- */
+// Establecer límites para cada cerveza.
 limit(beer, 5).
 
-/*
-limit("Paracetamol", 4).
-limit("Ibuprofeno", 3).
-limit("Amoxicilina", 2).
-limit("Omeprazol", 1).
-limit("Loratadina", 1).
-*/
+// Establecer límites para cada medicamento. Actualmente comentado, pero se puede activar si es necesario.
+//limit("Paracetamol", 4).
+//limit("Ibuprofeno", 3).
+//limit("Amoxicilina", 2).
+//limit("Omeprazol", 1).
+//limit("Loratadina", 1).
 
 
+/* ----- REGLA DE VERIFICACIÓN DE MEDICAMENTO ----- */
+checkMedCab(Drug, N) :-
+	N>0 &                 // La cantidad anotada debe ser > 0
+	note(Drug, N) &       // Debe existir la anotación interna de la enfermera
+	stock(Drug, Quantity) & // Debe existir la creencia del stock actual (¡viene del entorno!)
+	N-1 = Quantity.       // El stock actual debe ser exactamente 1 menos que el anotado
 
-
-//LO QUITAMOS O NO LO QUITAMOS
-/* ----- REGLA DE CONSUMO EXCESIVO (Verifica droga específica 'B') ----- */
+/* ----- REGLA DE CONSUMO EXCESIVO ----- */
 // Esta regla verifica si el dueño ha consumido más de un tipo específico de medicamento ('B') de los permitidos en un día.
 too_much(B, Ag) :-
     .date(YY, MM, DD) &
@@ -67,103 +72,62 @@ too_much(B, Ag) :-
     .println(Ag," ha consumido ", QtdB, " unidades de ", B, ". Su límite es: ", Limit) &
     QtdB >= Limit. 
 
-/* ----- RESPUESTAS A MENSAJES (Sin cambios) ----- */
+/* ----- RESPUESTAS A MENSAJES ----- */
 answer(Request, "It will be nice to check the weather forecast, don't?.") :-
     .substring("tiempo", Request).
 answer(Request, "I don't understand what are you talking about.").
 
-/* ----- REGLAS PARA TRAER/PEDIR (Necesitan ser específicas) ----- */
+/* ----- REGLAS PARA TRAER/PEDIR ----- */
 // Deberían verificar disponibilidad y límites del medicamento específico
 
 // Verifica si un medicamento específico está disponible y no se ha superado el límite
-bringDrug(DrugName, Ag) :-
-    available(DrugName, medCab) & 
-    not too_much(DrugName, Ag). 
+bringDrug(DrugName, Ag) :- available(DrugName, medCab) & not too_much(DrugName, Ag). 
 
 // Verifica si un medicamento específico NO está disponible y no se ha superado el límite
-orderDrug(DrugName, Ag) :-
-    not available(DrugName, medCab) & 
-    not too_much(DrugName, Ag). 
+orderDrug(DrugName, Ag) :- not available(DrugName, medCab) & not too_much(DrugName, Ag). 
 
-// Reglas para cerveza (sin cambios, asumiendo 'beer' es el único tipo)
+// Reglas para cerveza (asumiendo 'beer' es el único tipo)
 bringBeer(Ag) :- available(beer, fridge) & not too_much(beer, Ag).
 orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 
-//!run_charge_test.
-//!run_charge_stop_test.
-//!run_partial_charge_penalty_test.
+/* ----- PLANES----- */
+!check_energy.         // Iniciar el chequeo de energía
+!check_schedule.       // Iniciar el chequeo de la pauta de medicación
 
-!check_energy. // <-- AÑADE ESTA LÍNEA (Para iniciar el bucle de chequeo)
-
-
-/*
-+!run_charge_stop_test
-   <- .print("Agente: Iniciando prueba Start/Stop...");
-      start_charging;      // Ejecuta start
-      .wait(2000);            // Espera 2 segundos (tiempo real, solo para separar las acciones)
-      .print("Agente: Intentando detener carga...");
-      stop_charging;       // Ejecuta stop
-      .print("Agente: Prueba Start/Stop completada.").
-
-+!run_charge_test
-   <- start_charging.
-
-
-+!run_partial_charge_penalty_test
-   <- .print("--- INICIO TEST PENALIZACIÓN ---");
-      // Ciclo 1
-      .print("Test: Ciclo Parcial 1");
-      start_charging; .wait(1000); stop_charging; .wait(500);
-      // Ciclo 2
-      .print("Test: Ciclo Parcial 2");
-      start_charging; .wait(1000); stop_charging; .wait(500);
-      // Ciclo 3
-      .print("Test: Ciclo Parcial 3");
-      start_charging; .wait(1000); stop_charging; .wait(500);
-      // Ciclo 4 (Aquí debería aplicarse la penalización)
-      .print("Test: Ciclo Parcial 4 - Esperando penalización");
-      start_charging; .wait(1000); stop_charging; .wait(500);
-      // Ciclo 5 (Para ver si se mantiene penalizado)
-       .print("Test: Ciclo Parcial 5 - Verificando");
-      start_charging; .wait(1000);
-      .print("--- FIN TEST PENALIZACIÓN ---").
-*/
 // Plan para reaccionar a baja energía
 // Se activa si la energía actual (CE) es menor que el umbral (T)
-// y si NO tenemos el objetivo de cargar activo (evita lanzarlo múltiples veces)
-// Plan Bucle: Energía BAJA, está LIBRE y NO está ya intentando cargar
-+!check_energy
-   : current_energy(CE) & low_energy_threshold(T) & CE < T & // Energía baja
-     free[source(self)] // Está libre
-<-
++!check_energy : current_energy(CE) & low_energy_threshold(T) & CE < T & free[source(self)] <-
    .print("¡Energía baja (", CE, "/", T, ")! [Bucle Check] Necesito cargar.");
-   !charge_battery;          // <-- Lanza el objetivo de carga
-   .wait(300);              // Espera 5 segundos (ajusta si quieres)
-   !check_energy.             // Continúa el bucle
+   !charge_battery.       
 
 // Plan Bucle: Energía OK, o está OCUPADO, o YA está intentando cargar
-+!check_energy
-   : current_energy(CE) & low_energy_threshold(T) & // Necesitamos saber la energía y umbral
-     ( CE >= T | not free[source(self)] ) // Condición: E OK, O No libre, O Ya cargando
-<-
-   // .print("DEBUG: Check energía OK/Ocupado/Cargando. Esperando..."); // Log opcional
-   .wait(300);  // Espera 5 segundos (ajusta si quieres)
-   !check_energy. // Continúa el bucle
++!check_energy : current_energy(CE) & low_energy_threshold(T) & ( CE >= T | not free[source(self)] ) <-
+   //.print("[ENERGÍA OK o AGENTE OCUPADO: CE=", CE, "] Esperando...");
+   .wait(100);  
+   !check_energy.
 
+-!check_energy : true <- 
+   //.print("⚠️ Falló el objetivo por alguna razón desconocida, reintentando...");
+   .wait(100);  
+   !check_energy.
 
 // Plan para lograr el objetivo de cargar la batería
-+!charge_battery : free[source(self)] // Necesitamos saber dónde está el cargador
-    <- .print("Iniciando secuencia de carga hacia el cargador...");
-       // PASO 1: Ir a la zona del cargador
++!charge_battery : free[source(self)] & .my_name(Ag) <-
+       .print("Iniciando secuencia de carga hacia el cargador...");
        .print("Navegando hacia la zona del cargador...");
-       !at(auxiliar, cargador); // Intentar ir a la ubicación del cargador
-
-       // PASO 2: Una vez allí, iniciar la carga
+       !at(Ag, cargador);
        .print("Cerca del cargador, iniciando carga...");
-       start_charging; // Ejecutar la acción en el entorno
+       start_charging; 
+       .print("Carga iniciada, comenzando monitorización...");  
+       !wait_for_full_charge. // Monitorizar
 
-       // *** PASO 3: INICIAR MONITORIZACIÓN *** <--- AÑADIR ESTO
-       .print("Carga iniciada, comenzando monitorización...").
+// Plan para monitorizar la carga y detenerla cuando esté llena
+// *** MODIFICADO: Añade 'free' al terminar ***
++!wait_for_full_charge : current_energy(CE) & max_energy(ME) & CE >= ME
+<-
+    .print("¡Batería llena (", CE, "/", ME, ")! Deteniendo carga.");
+    stop_charging;
+    .print("CARGA: Carga completada y detenida. Agente libre.").
 
 
 /* ----- PLANES PARA TRAER MEDICAMENTO O CERVEZA (Modificados para ser específicos) ----- */
@@ -233,7 +197,7 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 		+available(DrugName, medCab); 
 		+free[source(self)];
 		.println("Trying to bring drug after order it");
-		!has(Ag, DrugName)[source(Ag)]. 
+		!has(Ag, DrugName)[source(Ag)].
 
 // Si la cerveza no está disponible, el robot lo pide al repartidor.
 // Después de que el reparto se realice, el robot recoge la cerveza y lo pone en la nevera.
@@ -397,62 +361,51 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 +chat(Msg)[source(Ag)] : answer(Msg, Answ) <-  
 	.println("El agente ", Ag, " me ha chateado: ", Msg);
 	.send(Ag, tell, msg(Answ)). 
-
-
 	
 /* ----- ##### GESTIÓN DE NOTIFICACIÓN DE CONSUMO (MODIFICADO CON VERIFICACIÓN SIMULADA) ##### ----- */
 
-// Cuando el dueño informa que ha consumido un medicamento ESPECÍFICO y el robot está libre:
-// Robot actualiza pauta y lanza la verificación (simulada) para ese medicamento.
+//OBJETIVOS PARA COMPROBAR VERACIDAD OWNER TOMA MEDICAMENTOS
+
+// Objetivo para comprobar medicamentos, en caso de que owner hubiera consumido uno
 +medication_consumed(DrugName, SimulatedHour, SimulatedMinute)[source(Ag)] : free[source(self)] <-
-    .println("Notificación recibida: ", Ag, " dice haber tomado ", DrugName, " (pauta de las ", SimulatedHour, SimulatedMinute, "h).");
-    -free[source(self)]; // <-- Robot se ocupa para ir a verificar
-    // Acción Inmediata: Eliminar la pauta correspondiente de las creencias del robot
-    .abolish(medician(DrugName, SimulatedHour, SimulatedMinute));
-    .println("Robot: Pauta para ", DrugName, " a las ", SimulatedHour, SimulatedMinute, "h eliminada de mi horario.");
-    .println("Robot: Iniciando plan para verificar el consumo de '", DrugName, "' en medCab."); // Log usa nombre específico
-    // Disparar la verificación específica para DrugName
-    !verify_consumption(Ag, DrugName). // <-- Pasa DrugName específico al plan de verificación
+    -free;     
+	.println("I received a message from owner tell me he take '", DrugName, "', so let´s comprobate");
+    .abolish(medician(DrugName, SimulatedHour, SimulatedMinute)); // Eliminar pauta local de la enfermera
+    !at(enfermera, medCab); 
+	open(medCab);
+	!checkVericity(DrugName, SimulatedHour, SimulatedMinute);
+    +free. 
 
-// Si el robot está ocupado cuando recibe la notificación ESPECÍFICA:
-// Actualiza la pauta inmediatamente pero informa al dueño que verificará más tarde.
-+medication_consumed(DrugName, SimulatedHour, SimulatedMinute)[source(Ag)] : not free[source(self)] <-
-    .println("Recibí notificación de consumo de ", DrugName, " (pauta de las ", SimulatedHour, SimulatedMinute, "h) por ", Ag, ", pero estoy ocupado con otra tarea.");
-    // Acción Inmediata: Eliminar la pauta de las creencias del robot, incluso estando ocupado
-    .abolish(medician(DrugName, SimulatedHour, SimulatedMinute));
-    .println("Robot: Pauta para ", DrugName, " a las ", SimulatedHour, SimulatedMinute, "h eliminada de mi horario (mientras estaba ocupado).");
-    // Informar al dueño que se recibió y actualizó, pero la verificación será más tarde.
-    .send(Ag, tell, msg("Recibí tu notificación sobre ", DrugName, " de las ", SimulatedHour, SimulatedMinute, "h y actualicé mi horario. Verificaré el consumo en el botiquín cuando termine mi tarea actual.")).
-    // NOTA: No llamamos a !verify_consumption aquí porque está ocupado.
-    // Se podría añadir opcionalmente !!verify_consumption(Ag, DrugName) para ponerlo en cola si se desea.
+// En caso de que robot este ocupado, lo intenta de nuevo mas adelante
++medication_consumed(DrugName, SimulatedHour, SimulatedMinute)[source(owner)]: not free[source(self)] <-
+    .println("I received a message from owner who tell me he consumed '", DrugName, "' but I´m busy... I will try later");
+	.wait(500);
+	!medication_consumed(DrugName, SimulatedHour, SimulatedMinute).
 
-/* ----- ##### PLAN PARA VERIFICAR EL CONSUMO (MODIFICADO) ##### ----- */
-// Plan AHORA recibe el nombre específico del medicamento (DrugName)
-+!verify_consumption(Ag, DrugName) <- // <-- Trigger modificado, recibe DrugName
-    .println("Verificando consumo de '", DrugName, "' en ", medCab, " solicitado por ", Ag); // <-- Log actualizado
-    .println("Llegué a ", medCab, ". Realizando verificación de stock de '", DrugName,"'."); // <-- Log actualizado
+// POSIBLES OPCIONES DE COMPROBACION
+//1.-VERACIDAD
 
-    // --- Inicio: Simulación/Acción de Verificación ---
-    // ESTA PARTE SIGUE SIENDO UNA SIMULACIÓN. NO COMPRUEBA REALMENTE EL STOCK.
-    // Para una verificación real, necesitarías interactuar con el entorno aquí.
-    .println("Robot: [Simulación] Buscando/Contando unidades de ", DrugName, "...");
-    .wait(3000); // Simula tiempo de chequeo
-    .println("Verificación de stock simulada para '", DrugName, "' completada."); // <-- Log actualizado
-    // --- Fin: Simulación/Acción de Verificación ---
+// Este objetivo actualiza su libreta en caso de que se haya DECREMENTADO las dosis
++!checkVericity(DrugName, SimulatedHour, SimulatedMinute): note(DrugName, N) & checkMedCab(DrugName, N) <-
+	.println("Ummm, looks like the owner is telling the truth and he take the drug. I´m going to update me!!!");
+	-note(DrugName, N);
+	+note(DrugName, N - 1);
+	.concat("Looks like you tell me the truth and take '",DrugName,"' of ", SimulatedHour, SimulatedMinute,"... Thanks for help me!!! :)", M);
+	.send("owner", tell, message(M));
+	close(medCab).
 
-    .println("Verificación finalizada para ", DrugName, ". Enviando confirmación a ", Ag);
-    // Mensaje de confirmación final (ahora menciona el medicamento verificado)
-    .send(Ag, tell, msg("He verificado en el estante de medicación respecto a ", DrugName, ". ¡Gracias por informarme!")); // <-- Mensaje actualizado
-    +free[source(self)]; // <-- Libera robot DESPUÉS de verificar
-    .println("Robot libre después de verificar consumo de ", DrugName, ".").
 
-// Plan de fallo para la verificación (MODIFICADO)
-// Ahora también usa DrugName
--!verify_consumption(Ag, DrugName)[error(E)] <- // <-- Trigger modificado
-    .println("¡ERROR al verificar el consumo de ", DrugName, " para ", Ag, "! Error: ", E); // <-- Log actualizado
-    .send(Ag, tell, msg("Tuve un problema al intentar verificar el consumo de ", DrugName, ". Por favor, revisa manualmente.")); // <-- Mensaje actualizado
-    +free[source(self)]. // <-- Asegura liberar robot en caso de error
-
+//2.-FALSEDAD
+// Este objetivo, al no haber suministrado owner el medicamento, lo suministra robot
++!checkVericity(DrugName, SimulatedHour, SimulatedMinute): note(DrugName, N) & not checkMedCab(DrugName, N) <-
+	.println("HE LIES ME!!!! He didn´t take '", DrugName, "'.... okay, let's bring the medician");
+    obtener_medicamento(DrugName);
+    close(medCab);
+    .send(owner, tell, medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute));
+    !at(enfermera, owner);
+    hand_in(owner, DrugName);
+	.concat("Let this be the last time you lie. Are you understand??", M);
+	.send("owner", tell, message(M)).
 
 // Este plan ahora espera DrugName y SimulatedHour, SimulatedMinute enviados por el owner
 +medicina_recogida_owner(DrugName, SimulatedHour, SimulatedMinute)[source(owner)] <-
@@ -474,53 +427,54 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
     : true // Condición de contexto: siempre aplicable cuando se recibe el objetivo
 <-
     .println("Enfermera: Recibida orden para borrar el horario de medicación.");
-
-    .abolish(medician(_, _));
-
+    .abolish(medician(_, _, _));
     .println("Enfermera: Todas las pautas de medicación (creencias 'medician') han sido eliminadas.").
 
 
-// Plan para revisar periódicamente la pauta de medicación (USA HORA SIMULADA)
-+clock(SimulatedHour, SimulatedMinute)[source(Source)] : free[source(self)] <-
++!check_schedule
+   : clock(H, M) & free[source(self)] & 
+     current_energy(CE) & low_energy_threshold(T) & CE >= T 
+<-
     //.println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): Revisando pauta...");
 
  if (not ha_caducado(DrugToDeliver)) {
-    if (medician(DrugToDeliver, SimulatedHour, SimulatedMinute)) {
-       // .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): Pauta encontrada: Entregar ", DrugToDeliver, " a owner.");
-    
+    if (medician(DrugToDeliver, H, M)) {
+       // .println("PLAN REACTIVO (Clock ", H, M, "): Pauta encontrada: Entregar ", DrugToDeliver, " a owner.");
 
         if (not too_much(DrugToDeliver, owner)) {
-                .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): Intentando iniciar entrega de ", DrugToDeliver);
+                .println("PLAN REACTIVO (Clock ", H, M, "): Intentando iniciar entrega de ", DrugToDeliver);
                 // Lanzar el objetivo de entrega estándar. Los planes +!has / -!has se encargarán del resto.
                 !has(owner, DrugToDeliver)[source(self)];
                 // <<< YA NO SE ABOLISH NI SEND DESDE AQUÍ >>>
         }else{
-            .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): No se puede entregar ", DrugToDeliver, ": Límite de consumo alcanzado.");
+            .println("PLAN REACTIVO (Clock ", H, M, "): No se puede entregar ", DrugToDeliver, ": Límite de consumo alcanzado.");
         }
      
     } else {
-        //.println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): No hay medicación pautada para esta hora.");
+        //.println("PLAN REACTIVO (Clock ", H, M, "): No hay medicación pautada para esta hora.");
     };
     } else {
         //.println("Enfermera: La medicacion esta caducada.");
-    }.
-    
+    };
+   .wait(100);
+   !check_schedule. 
 
-// Plan alternativo si no está libre (SIN CAMBIOS)
-+clock(SimulatedHour, SimulatedMinute)[source(Source)] : not free[source(self)] <-
-     .wait(1000); // Espera un poco si está ocupado
-     +clock(SimulatedHour, SimulatedMinute)[source(Source)]. // Reintenta revisar el reloj (o +!check_schedule si usas ese patrón)
+// Plan Bucle: Si está OCUPADO o la Energía está BAJA, simplemente esperar
++!check_schedule
+   : ( not free[source(self)] | (current_energy(CE) & low_energy_threshold(T) & CE < T) ) <-
+   // .print("DEBUG: [Bucle Check Schedule] Ocupado o Energía Baja, esperando..."); // Log opcional
+   .wait(100); 
+   !check_schedule.
 
-
-/* ----- ACTUALIZACIÓN DE LA HORA ----- */
-// El robot puede verificar la hora actual.                  
-+?time : true
-	<-  watchClock.
-
+// Plan Bucle: Si falta la hora 
++!check_schedule : not clock(_, _) <-
+   .print("WARN: [Bucle Check Schedule] No se encontró la creencia clock(H,M). Esperando...");
+   .wait(100); 
+   !check_schedule.
 
 +orden_eliminar_caducaciones[source(auxiliar)] <-
-    .println("Agente B: Recibida señal de ", auxiliar, " para eliminar la caducacion.");
+    .println("Recibida señal de ", auxiliar, " para eliminar la caducacion.");
     .abolish(ha_caducado(_));
-    .println("Agente B: Caducacion eliminada.");
+    .println("Caducacion eliminada.");
     -orden_eliminar_caducaciones[source(auxiliar)]; // Limpia la creencia señal
     .

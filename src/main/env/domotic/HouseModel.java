@@ -1061,15 +1061,7 @@ public class HouseModel extends GridWorldModel {
         return true;
     }
 
-    /**
-     * Rellena el botiquín poniendo una cantidad fija para cada tipo de medicamento
-     * existente
-     * y elimina su estado de caducidad anterior.
-     *
-     * @return true si la operación se completó (incluso si no había nada que
-     *         rellenar),
-     *         false si ocurrió un error crítico (mapas nulos).
-     */
+
     /**
      * Rellena un medicamento específico a la cantidad objetivo y elimina su
      * registro de caducidad.
@@ -1115,8 +1107,7 @@ public class HouseModel extends GridWorldModel {
             this.contadorMedicamentos.put(drugNameToRefill, TARGET_QUANTITY);
             System.out.println("   - Refilled '" + drugNameToRefill + "': " + oldCount + " -> " + TARGET_QUANTITY);
 
-            // 2. Eliminar la entrada de caducidad SOLO para este medicamento
-            // ----- LÍNEA CORREGIDA: Cambiar el tipo de la variable -----
+            // 2. Eliminar la entrada de caducidad SOLO para este medicamento<
             Location oldExpiry = this.medicamentosExpiry.remove(drugNameToRefill); // Ahora oldExpiry es de tipo
                                                                                    // Location
 
@@ -1167,11 +1158,9 @@ public class HouseModel extends GridWorldModel {
             agentCurrentEnergy.put(agentId, newEnergy);
 
             // --- NUEVO: Actualizar la ventana de energía ---
-            if (view != null) { // Ya no necesitas comprobar si energyStatusWindow es null aquí
+            if (view != null) { 
                 // Llama al método público de HouseView
                 view.updateEnergyDisplay(agentId, newEnergy, getMaxEnergy(agentId));
-                // Si usaste la versión refreshEnergyDisplay():
-                // view.refreshEnergyDisplay();
             }
             // --- FIN NUEVO ---
 

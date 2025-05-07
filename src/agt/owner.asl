@@ -62,16 +62,6 @@ orderBeer :- not available(beer, fridge).
 +!lie_once_about_medicine : lied_about_medicine_once <-
     .println("Owner: [OBJETIVO INICIAL] El objetivo '!lie_once_about_medicine' ya se completó (se mintió una vez). No hago nada.").
 
-// Al recibir el MENSAJE 'nurse_delivering' de la enfermera, AÑADE la CREENCIA
-+nurse_delivering[source(enfermera)] <-
-  .println("Owner: Recibido aviso de que la enfermera está entregando. Añadiendo creencia +nurse_delivering.");
-  +nurse_delivering. // Añade la creencia que usa !do_something
-
-// Al recibir el MENSAJE 'untell, nurse_delivering' (o similar) para indicar fin de entrega, QUITA la CREENCIA
-// Nota: La enfermera necesita enviar este mensaje de fin de entrega.
--nurse_delivering[source(enfermera)] <- // Esto reacciona a un '.send(owner, untell, nurse_delivering)'
-  .println("Owner: Recibido aviso de que la enfermera terminó la entrega. Eliminando creencia -nurse_delivering.");
-  -nurse_delivering. // Elimina la creencia
 
 /* ----- NUEVO: PLANES PARA GESTIONAR ESTADO DE LA ENFERMERA/ROBOT ----- */
 
@@ -120,16 +110,22 @@ orderBeer :- not available(beer, fridge).
 
 //Añadir nuevas pautas de forma aleatoria
 +!send_new_schedule_random : true <-
-    .println("Owner: Enviando y guardando NUEVAS pautas ALEATORIAS...");
-    Medications = ["Ibuprofeno", "Omeprazol", "Aspirina 100mg", "Paracetamol"];
+    .println("Owner: Enviando y guardando NUEVAS pautas ALEATORIAS (con minutos)...");
+    Medications = ["Ibuprofeno", "Omeprazol", "Aspirina", "Paracetamol"];
     for (.member(MedName, Medications)) {
         // Genera una hora aleatoria (0-23) para este medicamento
         .random([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23], RandomHour);
-        .print("Owner: Creando pauta aleatoria: [", MedName, ", ", RandomHour, "]");
-        .send(enfermera, tell, medician(MedName, RandomHour));
-        +medician(MedName, RandomHour);
+        // Genera un minuto aleatorio (0-59) para este medicamento
+        .random([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59], RandomMinute);
+
+        // Imprime la pauta con hora y minuto (formato HH:MM podría necesitar ajuste dependiendo de la salida deseada para un solo dígito)
+        .print("Owner: Creando pauta aleatoria: [", MedName, ", ", RandomHour, ":", RandomMinute, "]");
+
+        // Envía y guarda la creencia con ambos, hora y minuto
+        .send(enfermera, tell, medician(MedName, RandomHour, RandomMinute));
+        +medician(MedName, RandomHour, RandomMinute); // Añade la creencia al agente Owner también
     }
-    .println("Owner: NUEVAS pautas ALEATORIAS enviadas y guardadas.").
+    .println("Owner: NUEVAS pautas ALEATORIAS (con minutos) enviadas y guardadas.").
 
 /* ----- OBJETIVO: Ir a un lugar (!at) ----- */
 +!at(Ag, P) : at(Ag, P) <-
@@ -234,7 +230,7 @@ orderBeer :- not available(beer, fridge).
     .println("",DrugToTake,",",SimulatedHour, SimulatedMinute,")] Iniciando gestión. Manos libres.");
     
     // --- Decisión Aleatoria ---
-    .random([0], Decision); // 0 = Ir a por ella, 1 = Esperar al robot
+    .random([0,1], Decision); // 0 = Ir a por ella, 1 = Esperar al robot
 
     if (Decision == 0) {
         // --- DECISIÓN: Ir a por la medicina ---
@@ -258,20 +254,19 @@ orderBeer :- not available(beer, fridge).
                  .wait(1000);
                  .println("omando ", DrugToTake, "...");
                  .println("Terminé de tomar ", DrugToTake, ".");
-
                  // Eliminar SÓLO la creencia para esta droga y hora específicas
                  .send(enfermera, tell, medication_consumed(DrugToTake, SimulatedHour, SimulatedMinute));
                  .println("Notificado a 'enfermera de que consumi la medicacion.");
-
                  .wait(1000);
                  .println("Acción completada para ", DrugToTake, ".");
                  -has(Ag, DrugToTake); // Eliminar creencia de que tiene el medicamento
         }
         !do_something;
-
     } else {
         // --- DECISIÓN: Esperar al robot ---
+        !at(Ag, chair1);
         .println("Decidí esperar a que la enfermera me traiga ", DrugToTake, ".");
+        .println("Esperando a la enfermera en el salón...");
     }
 .
 
