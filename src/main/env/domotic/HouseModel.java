@@ -45,7 +45,9 @@ public class HouseModel extends GridWorldModel {
     public static final int MEDCAB = 4096;
 
     // --- Constantes de Carga ---
-    public static final int FULL_CHARGE_MINUTES = 60; // 1 hora simulada
+    private static final int ROBOT_CHARGE_DURATION_MINS = 60;
+    private static final int AUXILIAR_CHARGE_DURATION_MINS = 30;
+    private static final int DEFAULT_CHARGE_DURATION_MINS = 60; // Un valor por si acaso
     public static final int PARTIAL_CHARGE_LIMIT = 3; // Permitidas 3, la 4ta penaliza
     public static final double MAX_ENERGY_PENALTY_FACTOR = 0.95; // Reducción del 5%
 
@@ -238,7 +240,7 @@ public class HouseModel extends GridWorldModel {
         contadorMedicamentos.put("Omeprazol", 0);
         contadorMedicamentos.put("Loratadina", 4);
 
-        medicamentosExpiry.put("Paracetamol", new Location(0, 30));
+        medicamentosExpiry.put("Paracetamol", new Location(18, 05));
         medicamentosExpiry.put("Amoxicilina", new Location(1, 30));
         medicamentosExpiry.put("Omeprazol", new Location(2, 30));
         medicamentosExpiry.put("Ibuprofeno", new Location(3, 30));
@@ -351,15 +353,18 @@ public class HouseModel extends GridWorldModel {
      *
      * @return true si el botiquín fue abierto, false si ya estaba abierto.
      */
-    boolean openMedCab() {
-        if (!medCabOpen) {
-            medCabOpen = true;
-            return true;
-        } else {
-            System.out.println("MedCab already open.");
-            return false;
-        }
+    // En HouseModel.java
+boolean openMedCab() { // Podrías cambiarlo a int para devolver más estados
+    if (!medCabOpen) {
+        medCabOpen = true;
+        System.out.println("MedCab se ha abierto."); // Éxito, se abrió
+        return true;
+    } else {
+        System.out.println("MedCab ya estaba abierto."); // No es un error, es un estado
+        return true; // Considera esto un éxito también desde la perspectiva del agente, ya que el objetivo (que esté abierto) se cumple.
+                     // O devuelve un código especial si quieres diferenciar.
     }
+}
 
     /**
      * Cierra el botiquín si está abierto.
@@ -1034,12 +1039,6 @@ public class HouseModel extends GridWorldModel {
             return false;
         }
 
-        // 3. Verificar si está en la ubicación correcta (lDoorHome)
-        if (!agentPos.equals(lDoorHome)) {
-            System.out.println("Auxiliar Agent is not at the home door (lDoorHome: " + lDoorHome
-                    + "). Current position: " + agentPos + ". Cannot pick up delivery.");
-            return false;
-        }
 
         // 4. Verificar si ya está cargando algo
         if (auxiliarCarryingDrug) {
@@ -1218,34 +1217,24 @@ public class HouseModel extends GridWorldModel {
      *         cargando.
      */
     public synchronized boolean startCharging(int agentId) {
-        if (agentId != ROBOT_AGENT_ID && agentId != AUXILIAR_AGENT_ID) {
-            /* ... */ return false;
+        // ... (verificaciones iniciales de agentId, isAgentCharging, agentLoc, cercanía al cargador...) ...
+   
+        int chargeDuration;
+        if (agentId == ROBOT_AGENT_ID) {
+            chargeDuration = ROBOT_CHARGE_DURATION_MINS;
+        } else if (agentId == AUXILIAR_AGENT_ID) {
+            chargeDuration = AUXILIAR_CHARGE_DURATION_MINS;
+        } else {
+            // Qué hacer si un agente inesperado intenta cargar? Usar default o error.
+            System.err.println("Advertencia: Agente inesperado " + agentId + " intentando cargar. Usando duración por defecto.");
+            chargeDuration = DEFAULT_CHARGE_DURATION_MINS;
         }
-        if (isAgentCharging(agentId)) {
-            /* Ya está cargando */ return true;
-        } // Usa el método isAgentCharging existente
-
-        Location agentLoc = getAgPos(agentId);
-        if (agentLoc == null) {
-            /* ... */ return false;
-        }
-
-        // Comprobar cercanía al ÚNICO cargador lCargador
-        if (!(agentLoc.equals(lCargador) || agentLoc.isNeigbour(lCargador))) {
-            System.out.println("Error: Agente " + agentId + " no está cerca del cargador (" + lCargador
-                    + ") para iniciar carga. Posición: " + agentLoc);
-            return false; // No está cerca
-        }
-
-        // --- Iniciar la carga (SIN chequeo de ocupación) ---
-        agentRemainingChargeTimeMinutes.put(agentId, FULL_CHARGE_MINUTES); // Iniciar tiempo
-
-        System.out.println("Agente " + agentId + " ha iniciado la carga cerca de " + lCargador
-                + ". Tiempo restante inicial: " + FULL_CHARGE_MINUTES + " mins.");
-
-        if (view != null) {
-            view.updateEnergyDisplay(agentId, getCurrentEnergy(agentId), getMaxEnergy(agentId));
-        }
+   
+        agentRemainingChargeTimeMinutes.put(agentId, chargeDuration);
+        System.out.println("Agente " + agentId + " ha iniciado la carga. Tiempo restante inicial: " + chargeDuration + " mins.");
+   
+        // ... (actualizar vista, return true) ...
+        if (view != null) { view.updateEnergyDisplay(agentId, getCurrentEnergy(agentId), getMaxEnergy(agentId)); }
         return true;
     }
 
@@ -1257,92 +1246,139 @@ public class HouseModel extends GridWorldModel {
      * @param agentId ID del agente (0 o 2).
      * @return true si estaba cargando y se detuvo, false si no.
      */
-    public synchronized boolean stopCharging(int agentId) {
-        if (agentId != ROBOT_AGENT_ID && agentId != AUXILIAR_AGENT_ID) {
-            /* ... */ return false;
-        }
-        if (!agentRemainingChargeTimeMinutes.containsKey(agentId)) {
-             System.out.println("[PENALTY DEBUG] Agent " + agentId + ": stopCharging called but agent was not in remainingTime map."); // DEBUG
-            return false;
-        }
-    
-        int remainingTime = agentRemainingChargeTimeMinutes.getOrDefault(agentId, 0);
-        boolean wasPartial = remainingTime > 0; // Check if it WAS partial before removing
-    
-        if (wasPartial) { // Es carga parcial
-            System.out.println("[PENALTY DEBUG] Agent " + agentId + ": Partial stop detected! Remaining time was: " + remainingTime); // DEBUG
-            int currentPartialCount = agentPartialChargeCount.getOrDefault(agentId, 0);
-            currentPartialCount++;
-            agentPartialChargeCount.put(agentId, currentPartialCount);
-            System.out.println("[PENALTY DEBUG] Agent " + agentId + ": Counter incremented to " + currentPartialCount); // DEBUG
-            System.out.println("Agente " + agentId + ": Carga parcial detectada. Contador: " + currentPartialCount + "/" + PARTIAL_CHARGE_LIMIT);
-    
-            if (currentPartialCount > PARTIAL_CHARGE_LIMIT) { // Aplica penalización
-                System.out.println("[PENALTY DEBUG] Agent " + agentId + ": Counter > Limit (" + currentPartialCount + " > " + PARTIAL_CHARGE_LIMIT + "). Applying penalty."); // DEBUG
-                int currentMaxEnergy = getMaxEnergy(agentId);
-                int originalMaxEnergy = agentOriginalMaxEnergy.getOrDefault(agentId, currentMaxEnergy);
-                int newMaxEnergy = (int) Math.round(originalMaxEnergy * MAX_ENERGY_PENALTY_FACTOR);
-                agentMaxEnergy.put(agentId, newMaxEnergy);
-                agentCurrentEnergy.put(agentId, Math.min(getCurrentEnergy(agentId), newMaxEnergy));
-                agentPartialChargeCount.put(agentId, 0); // Reset counter AFTER penalty
-                System.out.println("¡PENALIZACIÓN APLICADA! Agente " + agentId + ": " + currentPartialCount + " cargas parciales > " + PARTIAL_CHARGE_LIMIT + ". Energía máxima reducida a " + newMaxEnergy);
-                System.out.println("[PENALTY DEBUG] Agent " + agentId + ": Penalty applied! New Max Energy: " + newMaxEnergy + ". Counter reset to 0."); // DEBUG
-            }
-        } else { // Carga completa (remainingTime <= 0)
-             System.out.println("[PENALTY DEBUG] Agent " + agentId + ": Full charge detected upon stopping (remainingTime=" + remainingTime + ")"); // DEBUG
-            // Consider resetting counter here if needed (See Point 4)
-            // if (agentPartialChargeCount.containsKey(agentId) && agentPartialChargeCount.get(agentId) > 0) {
-            //     System.out.println("[PENALTY DEBUG] Agent " + agentId + ": Resetting partial charge counter due to full charge.");
-            //     agentPartialChargeCount.put(agentId, 0);
-            // }
-        }
-    
-        // Limpieza SIEMPRE se hace después de chequear si fue parcial o no
-        agentRemainingChargeTimeMinutes.remove(agentId);
-        System.out.println("Agente " + agentId + " ha detenido la carga.");
-    
-        if (view != null) {
+    // Dentro de tu clase HouseModel.java
+
+public synchronized boolean stopCharging(int agentId) {
+    // 1. Verificaciones básicas (ID de agente válido, si realmente estaba en el mapa de carga)
+    if (agentId != ROBOT_AGENT_ID && agentId != AUXILIAR_AGENT_ID) {
+        System.err.println("Error: stopCharging llamado para ID de agente inválido: " + agentId);
+        return false;
+    }
+    if (!agentRemainingChargeTimeMinutes.containsKey(agentId)) {
+        // Esto significa que el agente no estaba en la lista de "cargando actualmente".
+        // Podría ser porque ya se detuvo, o el agente llamó a stop_charging sin haber empezado formalmente.
+        System.out.println("[MODELO] Agente " + agentId + ": stopCharging llamado, pero el agente no estaba en el mapa de tiempo restante de carga (quizás ya se detuvo o nunca empezó).");
+        if (view != null) { // Solo actualiza la vista
             view.updateEnergyDisplay(agentId, getCurrentEnergy(agentId), getMaxEnergy(agentId));
         }
-        return true;
+        return false; // No estaba en el mapa de carga
     }
 
-    /**
+    // 2. Obtener datos relevantes
+    int remainingTimeInMap = agentRemainingChargeTimeMinutes.getOrDefault(agentId, 0); // Tiempo que quedaba según el planificador de carga
+    int currentEnergy = getCurrentEnergy(agentId);
+    int maxEnergy = getMaxEnergy(agentId); // Energía máxima actual (podría estar ya penalizada)
+
+    // 3. Determinar si la carga se considera completa o parcial CON PENALIZACIÓN
+    boolean isEffectivelyFull = (currentEnergy >= maxEnergy);
+
+    // UNA PARADA SE CONSIDERA PARCIAL Y SUJETA A POSIBLE PENALIZACIÓN SI Y SOLO SI:
+    // - La energía NO está llena (currentEnergy < maxEnergy)
+    // - Y el agente se fue ANTES de que el tiempo de carga nominal terminara (remainingTimeInMap > 0)
+    boolean isConsideredPenaltyPartialStop = !isEffectivelyFull && (remainingTimeInMap > 0);
+
+    if (isConsideredPenaltyPartialStop) {
+        // SÍ, es una parada parcial que podría llevar a penalización
+        System.out.println("[MODELO] Agente " + agentId + ": DETECTADA PARADA PARCIAL (CON POSIBLE PENALIZACIÓN). Energía: " + currentEnergy + "/" + maxEnergy + ", Tiempo restante en mapa: " + remainingTimeInMap);
+        
+        int currentPartialCount = agentPartialChargeCount.getOrDefault(agentId, 0) + 1;
+        agentPartialChargeCount.put(agentId, currentPartialCount);
+        System.out.println("Agente " + agentId + ": Contador de cargas parciales incrementado a: " + currentPartialCount + "/" + PARTIAL_CHARGE_LIMIT);
+
+        if (currentPartialCount > PARTIAL_CHARGE_LIMIT) {
+            // Se superó el límite, aplicar penalización
+            System.out.println("[MODELO] Agente " + agentId + ": ¡PENALIZACIÓN APLICADA! (" + currentPartialCount + " cargas parciales > límite de " + PARTIAL_CHARGE_LIMIT + ")");
+            
+            int originalMaxEnergyVal = agentOriginalMaxEnergy.getOrDefault(agentId, maxEnergy); // Usa la original para calcular
+            int newMaxEnergy = (int) Math.round(originalMaxEnergyVal * MAX_ENERGY_PENALTY_FACTOR);
+            agentMaxEnergy.put(agentId, newMaxEnergy); // Actualiza la energía máxima del agente (ahora penalizada)
+            
+            // Ajusta la energía actual si supera la nueva máxima penalizada
+            if (getCurrentEnergy(agentId) > newMaxEnergy) {
+                agentCurrentEnergy.put(agentId, newMaxEnergy);
+            }
+            
+            agentPartialChargeCount.put(agentId, 0); // Resetea el contador DESPUÉS de aplicar la penalización
+            System.out.println("Energía máxima del Agente " + agentId + " reducida a " + newMaxEnergy + ". Contador de cargas parciales reseteado.");
+        }
+    } else {
+        // NO es una parada parcial sujeta a penalización. Esto cubre:
+        // a) La batería está llena (isEffectivelyFull == true).
+        // b) La batería NO está llena, PERO el tiempo de carga nominal ya había terminado (remainingTimeInMap <= 0).
+        
+        if (isEffectivelyFull) {
+            System.out.println("[MODELO] Agente " + agentId + ": DETENIDA CARGA COMPLETA (Energía: " + currentEnergy + "/" + maxEnergy + "). Tiempo restante en mapa era: " + remainingTimeInMap + ".");
+        } else {
+            // No estaba llena, pero el tiempo del mapa era <= 0.
+            // Esto significa que cargó durante toda la duración asignada pero no se llenó (ej. cargador lento o empezó muy bajo).
+            System.out.println("[MODELO] Agente " + agentId + ": DETENIDA CARGA POR FIN DE DURACIÓN (Energía: " + currentEnergy + "/" + maxEnergy + "). Tiempo restante en mapa era: " + remainingTimeInMap + ".");
+        }
+        
+        // En cualquier caso de parada no penalizada (completa o por fin de duración), se resetea el contador de cargas parciales.
+        if (agentPartialChargeCount.getOrDefault(agentId, 0) > 0) {
+            System.out.println("[MODELO] Agente " + agentId + ": Reseteando contador de cargas parciales (actual: " + agentPartialChargeCount.get(agentId) + ") debido a parada no penalizada.");
+            agentPartialChargeCount.put(agentId, 0);
+        }
+    }
+
+    // 4. Limpieza final y actualización
+    agentRemainingChargeTimeMinutes.remove(agentId); // Siempre se quita del mapa de "cargando"
+    System.out.println("Agente " + agentId + " ha detenido la carga formalmente. Energía final: " + getCurrentEnergy(agentId) + "/" + getMaxEnergy(agentId));
+
+    if (view != null) {
+        view.updateEnergyDisplay(agentId, getCurrentEnergy(agentId), getMaxEnergy(agentId));
+    }
+    return true;
+}
+
+   /**
      * Aplica un 'tick' de carga. Verifica si el agente sigue cerca del cargador
-     * único.
-     * PERMITE USO SIMULTÁNEO.
+     * único. PERMITE USO SIMULTÁNEO.
      */
-    public synchronized void applyChargeEnergy() {
+     public synchronized void applyChargeEnergy() {
+        // Verifica si hay agentes cargando para evitar trabajo innecesario
         if (agentRemainingChargeTimeMinutes.isEmpty()) {
             return;
         }
+
         Set<Integer> chargingAgentIds = new HashSet<>(agentRemainingChargeTimeMinutes.keySet());
 
         for (int agentId : chargingAgentIds) {
-            Location agentLoc = getAgPos(agentId);
-
-            // --- MODIFICADO: VERIFICAR UBICACIÓN ANTES DE CARGAR (contra lCargador fijo)
-            // ---
-            // Si la ubicación no es válida o ya no está en/junto al cargador único...
-            if (agentLoc == null || lCargador == null || // Añadida comprobación lCargador por si acaso
-                    !(agentLoc.equals(lCargador) || agentLoc.isNeigbour(lCargador))) {
-
-                System.out.println("[MODEL] Agente " + agentId + " ya no está cerca del cargador (" + lCargador
-                        + "). Pos: " + agentLoc + ". Deteniendo carga automáticamente.");
-                stopCharging(agentId); // Detener y limpiar (llamará a la versión simplificada de stopCharging)
-                continue; // Siguiente agente
-            }
-            // --- FIN VERIFICACIÓN UBICACIÓN ---
-
-            // --- Lógica de aplicar energía (igual que antes) ---
-            int remainingTime = agentRemainingChargeTimeMinutes.getOrDefault(agentId, 0); // Re-obtener por si
-                                                                                          // stopCharging fue llamado
             if (!agentRemainingChargeTimeMinutes.containsKey(agentId)) {
                 continue;
-            } // Ya fue detenido
-            if (remainingTime <= 0) {
-                stopCharging(agentId);
-                continue;
+            }
+
+            Location agentLoc = getAgPos(agentId);
+            Location chargerLoc = getChargerLocationForAgent(agentId); // Use the helper
+
+            // Verifica la ubicación y cercanía al cargador
+            // ESTA LÓGICA DEBE PERMANECER para detener la carga si el agente se aleja
+            if (agentLoc == null || chargerLoc == null ||
+                    !(agentLoc.equals(chargerLoc) || agentLoc.isNeigbour(chargerLoc))) {
+                System.out.println("[MODEL] Agente " + agentId + " ya no está cerca del cargador (" + chargerLoc
+                        + "). Pos: " + agentLoc + ". Deteniendo carga automáticamente.");
+                stopCharging(agentId); // Detener y limpiar si se aleja
+                continue; // Siguiente agente
+            }
+
+            int remainingTime = agentRemainingChargeTimeMinutes.getOrDefault(agentId, 0);
+
+            if (remainingTime <= 0 || !agentRemainingChargeTimeMinutes.containsKey(agentId)) {
+                 if(agentRemainingChargeTimeMinutes.containsKey(agentId)){
+                     // Si el tiempo ya era <=0 al INICIO del tick, significa que la carga
+                     // ya debería haberse completado en un tick anterior y el agente ASL
+                     // debería haber llamado a stopCharging.
+                     // Si aún está aquí, es una situación anómala o el ASL aún no ha reaccionado.
+                     // No llamamos a stopCharging aquí para dejar que el ASL lo haga.
+                     // Simplemente no aplicamos más energía.
+                     System.out.println("[MODEL DEBUG] Carga de Agente " + agentId + " con remainingTime <=0 al inicio del tick. Esperando a que el ASL detenga.");
+                 }
+                // No aplicamos más energía si el tiempo ya se agotó.
+                // Actualizamos la vista con la energía actual (que debería ser la máxima).
+                if (view != null) {
+                     view.updateEnergyDisplay(agentId, getCurrentEnergy(agentId), getMaxEnergy(agentId));
+                }
+                continue; // Pasar al siguiente agente, no aplicar más carga.
             }
 
             remainingTime--;
@@ -1350,22 +1386,106 @@ public class HouseModel extends GridWorldModel {
 
             int maxEnergy = getMaxEnergy(agentId);
             int originalMaxEnergy = agentOriginalMaxEnergy.getOrDefault(agentId, maxEnergy);
-            double energyPerMinute = (FULL_CHARGE_MINUTES > 0) ? (double) originalMaxEnergy / FULL_CHARGE_MINUTES : 0;
+
+            int totalChargeDuration;
+            if (agentId == ROBOT_AGENT_ID) {
+                totalChargeDuration = ROBOT_CHARGE_DURATION_MINS;
+            } else if (agentId == AUXILIAR_AGENT_ID) {
+                totalChargeDuration = AUXILIAR_CHARGE_DURATION_MINS;
+            } else {
+                totalChargeDuration = DEFAULT_CHARGE_DURATION_MINS;
+            }
+
+            if (totalChargeDuration <= 0) {
+                System.err.println("Error: Duración de carga total para agente " + agentId + " es inválida (" + totalChargeDuration + "). No se añadirá energía.");
+                continue;
+            }
+
+            double energyPerMinute = (double) originalMaxEnergy / totalChargeDuration;
             int currentEnergy = getCurrentEnergy(agentId);
             int energyToAdd = (int) Math.round(energyPerMinute);
-            int newEnergy = Math.min(maxEnergy, currentEnergy + energyToAdd);
+            int newEnergy = Math.min(maxEnergy, currentEnergy + energyToAdd); // No superar maxEnergy
             agentCurrentEnergy.put(agentId, newEnergy);
 
-            if (remainingTime <= 0) { // Carga completada por tiempo
-                System.out.println("¡Carga completa para Agente " + agentId + " en " + lCargador + "! Energía final: "
-                        + newEnergy + "/" + maxEnergy);
-                stopCharging(agentId); // Limpieza completa
-            } else {
-                if (view != null) {
-                    view.updateEnergyDisplay(agentId, newEnergy, maxEnergy);
-                }
+            // --- MODIFICACIÓN CLAVE ---
+            // Ya NO llamamos a stopCharging(agentId) aquí cuando remainingTime <= 0.
+            // El agente ASL lo hará cuando current_energy >= max_energy.
+            if (remainingTime <= 0) {
+                System.out.println("[MODEL] Tiempo de carga agotado para Agente " + agentId + ". Energía actual: "
+                                     + newEnergy + "/" + maxEnergy + ". El agente ASL debería detener la carga pronto.");
+                // La energía ya está al máximo (o lo que pudo cargar en el tiempo).
+                // La vista se actualizará de todas formas.
             }
-        } // Fin for
+            // Siempre actualiza la vista si existe (incluso si remainingTime es 0, para reflejar el último estado)
+            if (view != null) {
+                view.updateEnergyDisplay(agentId, newEnergy, maxEnergy);
+            }
+        } // Fin del bucle for
+    } 
+
+    // *** NUEVO MÉTODO: Transferir energía del Auxiliar al Robot ***
+    public synchronized boolean transferEnergyFromAuxiliarToRobot() {
+        // IDs correctos
+        int auxiliarAgentId = AUXILIAR_AGENT_ID;
+        int robotAgentId = ROBOT_AGENT_ID;
+
+        int auxiliarEnergy = getCurrentEnergy(auxiliarAgentId);
+        int robotEnergy = getCurrentEnergy(robotAgentId);
+        int robotMaxEnergy = getMaxEnergy(robotAgentId); // El robot sí tiene energía máxima
+
+        if (auxiliarEnergy <= 0) {
+            System.out.println("[MODEL] Auxiliar has no energy to transfer.");
+            return false; // El auxiliar no puede dar lo que no tiene
+        }
+
+        // Calcula la mitad de la energía del Auxiliar
+        int energyToTransfer = auxiliarEnergy / 2;
+         if (energyToTransfer <= 0 && auxiliarEnergy > 0) { // Asegurar transferencia mínima si hay algo
+            energyToTransfer = 1;
+        }
+         if (energyToTransfer == 0) { // Si sigue siendo 0 (energía del auxiliar muy baja)
+            System.out.println("[MODEL] Auxiliar energy too low ("+ auxiliarEnergy +") to transfer a meaningful amount.");
+            return false;
+        }
+
+
+        // Actualizar energía del Auxiliar (la reduce)
+        int newAuxiliarEnergy = auxiliarEnergy - energyToTransfer;
+        agentCurrentEnergy.put(auxiliarAgentId, Math.max(0, newAuxiliarEnergy)); // Asegura que no baje de 0
+        System.out.println("[MODEL] Auxiliar transferred " + energyToTransfer + " energy. Auxiliar new energy: " + newAuxiliarEnergy);
+
+        // Actualizar energía del Robot (la aumenta, con límite)
+        int newRobotEnergy = robotEnergy + energyToTransfer;
+        // No puede superar la energía máxima del robot
+        agentCurrentEnergy.put(robotAgentId, Math.min(newRobotEnergy, robotMaxEnergy));
+        System.out.println("[MODEL] Robot received " + energyToTransfer + " energy. Robot new energy: " + agentCurrentEnergy.get(robotAgentId) + "/" + robotMaxEnergy);
+
+        // Actualizar la vista de energía para ambos (si existe)
+        if (view != null) {
+            // Asegurarse de que updateEnergyDisplay maneja bien los IDs
+            view.updateEnergyDisplay(auxiliarAgentId, getCurrentEnergy(auxiliarAgentId), getMaxEnergy(auxiliarAgentId));
+            view.updateEnergyDisplay(robotAgentId, getCurrentEnergy(robotAgentId), getMaxEnergy(robotAgentId));
+        }
+        return true; // Transferencia realizada
     }
+
+    public synchronized boolean transferDrugAuxToNurse(String drugName) {
+    // Asegúrate de que 'auxiliarCarryingDrug' y 'robotCarryingDrug' son campos booleanos existentes en HouseModel
+    if (auxiliarCarryingDrug) {
+        auxiliarCarryingDrug = false; // El auxiliar ya no lo tiene
+        robotCarryingDrug = true;    // La enfermera (robot) ahora lo tiene
+        System.out.println("[MODELO] Medicamento (" + drugName + ") transferido del Auxiliar a la Enfermera (Robot).");
+        // Actualizar la vista si es necesario
+        if (view != null) {
+            view.update(); // O una actualización más específica si está disponible
+        }
+        return true;
+    } else {
+        System.out.println("[MODELO] Falló la transferencia de medicamento del Auxiliar a la Enfermera: Auxiliar no lleva medicamento.");
+        return false;
+    }
+    }
+
+    
 
 }

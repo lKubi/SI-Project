@@ -34,8 +34,20 @@ free[source(self)].
 
 !check_energy. 
 !check_schedule.
+!process_pending_replenishments.
 
-// Plan para reaccionar a baja energía
+// Este plan ahora espera DrugName y SimulatedHour, SimulatedMinute (si es posible enviarlos)
++cargando_robot[source(enfermera)]<-
+    .print("El robot esta cargando.");
+    .drop_intention(check_energy);
+    -cargando_robot[source(enfermera)]; 
+    +free[source(self)].
+
++robot_cargado[source(enfermera)]<-
+    .print("El robot ha terminado de cargar.");
+    -robot_cargado[source(enfermera)];
+    !check_energy.
+
 // Se activa si la energía actual (CE) es menor que el umbral (T)
 +!check_energy : current_energy(CE) & low_energy_threshold(T) & CE < T & free[source(self)] <-
    .print("¡Energía baja (", CE, "/", T, ")! [Bucle Check] Necesito cargar.");
@@ -52,23 +64,57 @@ free[source(self)].
    .wait(100);  
    !check_energy.
 
-// Plan para lograr el objetivo de cargar la batería
+// Plan para lograr el objetivo de cargar la batería (Revisado)
 +!charge_battery : free[source(self)] & .my_name(Ag) <-
-       .print("Iniciando secuencia de carga hacia el cargador...");
-       .print("Navegando hacia la zona del cargador...");
-       !at(Ag, cargador);
-       .print("Cerca del cargador, iniciando carga...");
-       start_charging; 
-       .print("Carga iniciada, comenzando monitorización...");  
-       !wait_for_full_charge. // Monitorizar
-
+    -free[source(self)]; // *** MARCARSE COMO OCUPADO ***
+    .print("Iniciando secuencia de carga hacia el cargador (Agente ocupado)...");
+    .print("Navegando hacia la zona del cargador...");
+    !at(Ag, cargador);
+        .send(enfermera, tell, cargando_auxiliar);
+        .print("Confirmado en/junto al cargador, iniciando carga...");
+        start_charging;
+        .print("Carga iniciada, comenzando monitorización...");
+        !wait_for_full_charge; // Este subobjetivo se encargará de la espera
+        // El plan +!wait_for_full_charge debe añadir +free[source(self)] al final
+.
 // Plan para monitorizar la carga y detenerla cuando esté llena
-// *** MODIFICADO: Añade 'free' al terminar ***
-+!wait_for_full_charge : current_energy(CE) & max_energy(ME) & CE >= ME
-<-
-    .print("¡Batería llena (", CE, "/", ME, ")! Deteniendo carga.");
++!wait_for_full_charge : current_energy(CE) & max_energy(ME) & CE >= ME <-
+    .my_name(MySelf);
+    .print(MySelf, ": ¡Batería llena (", CE, "/", ME, ")! Deteniendo carga.");
     stop_charging;
-    .print("CARGA: Carga completada y detenida. Agente libre.").
+    .print(MySelf, ": CARGA: Carga completada y detenida. Agente libre.");
+    .send(enfermera, tell, auxiliar_cargado);
+    +free[source(self)];
+    // Ensure !check_energy is re-activated if it was the one that led to charging
+    // This depends on your agent's main loop structure. If !check_energy is a persistent goal, it might resume.
+    // Or you might need to explicitly re-post it if it's not part of a larger recurring goal.
+    // For now, let's assume the agent's main loops (!check_energy, !check_schedule) will naturally resume
+    // once 'free[source(self)]' is true.
+    .print(MySelf, ": Retomando bucles principales post-carga.");
+    !check_schedule.
+
+// Plan de depuración: Sigue esperando la carga completa
++!wait_for_full_charge : current_energy(CE) & max_energy(ME) & CE < ME <-
+    .my_name(MySelf);
+    .print(MySelf, ": [!wait_for_full_charge DEBUG] Esperando carga completa. Energía actual: ", CE, "/", ME, ". Libre: ", free[source(self)]);
+    .wait(500); // Espera un poco antes de re-evaluar
+    !wait_for_full_charge. // Re-envía el objetivo para seguir monitorizando
+
+// Plan de depuración: Faltan creencias de energía o el objetivo es perseguido incorrectamente
++!wait_for_full_charge
+    : .my_name(MySelf) & (not current_energy(_) | not max_energy(_))
+<-
+    .print(MySelf, ": [!wait_for_full_charge DEBUG] ERROR: Faltan creencias current_energy o max_energy. Reintentando en breve.");
+    .wait(1000);
+    !wait_for_full_charge.
+
+// Plan de depuración: Fallback si !wait_for_full_charge se atasca por alguna otra razón
+// Este es un plan de último recurso y debería activarse si los otros no lo hacen y el objetivo persiste.
+// El 'true' como contexto lo hace muy general, así que úsalo con cuidado o añade más condiciones.
++!wait_for_full_charge : .my_name(MySelf) <-
+    .print(MySelf, ": [!wait_for_full_charge DEBUG] Fallback genérico. Energía: ", current_energy(CE), "/", max_energy(ME), ". Libre: ", free[source(self)]);
+    .wait(1500);
+    !wait_for_full_charge.
 
 
 /* ----- OBJETIVO: Ir a un lugar (!at) ----- */
@@ -137,10 +183,10 @@ free[source(self)].
 +msg(M)[source(Ag)] : .my_name(Name) <-
     .print(Ag, " envió a ", Name, " el mensaje: '", M, "'").
    
+ 
 // Plan Bucle: Comprobar horario/caducidades si está LIBRE y la Energía está OK
 +!check_schedule
-   : clock(H, M) & free[source(self)] & 
-     current_energy(CE) & low_energy_threshold(T) & CE >= T 
+   : clock(H, M) 
 <-
    // .print("DEBUG: [Bucle Check Schedule] Hora ", H, ":", M, ". Energía OK. Comprobando caducidades..."); 
    .findall(Drug, caduca(Drug, H, M), ExpiringDrugs); // Busca caducidades
@@ -160,7 +206,7 @@ free[source(self)].
 
 // Plan Bucle: Si está OCUPADO o la Energía está BAJA, simplemente esperar
 +!check_schedule
-   : ( not free[source(self)] | (current_energy(CE) & low_energy_threshold(T) & CE < T) ) <-
+   : ( not free[source(self)] ) <-
    // .print("DEBUG: [Bucle Check Schedule] Ocupado o Energía Baja, esperando..."); // Log opcional
    .wait(100); 
    !check_schedule.
@@ -179,9 +225,46 @@ free[source(self)].
     -esta_caducada(NombreMedicina, HoraDetectada, MinutoDetectado);
     !reponer_medicamento(NombreMedicina, HoraDetectada, MinutoDetectado).
 
+// Plan Bucle: Si está LIBRE, con ENERGÍA OK, y hay una tarea de reposición, la ejecuta.
++!process_pending_replenishments
+    : free[source(self)] & esta_caducada(NombreMedicina, HoraVencimiento, MinutoVencimiento) &
+      current_energy(CE) & low_energy_threshold(T) & CE >= T
+<-
+    .my_name(Me);
+    .print(Me, ": Libre y con tarea pendiente de reponer ", NombreMedicina, " (detectada a las ", HoraVencimiento, ":", MinutoVencimiento,"). Iniciando...");
+    -caduca(NombreMedicina, HoraVencimiento, MinutoVencimiento);
+    -esta_caducada(NombreMedicina, HoraVencimiento, MinutoVencimiento); // Consume esta tarea específica
+    !reponer_medicamento(NombreMedicina, HoraVencimiento, MinutoVencimiento); // Esto marcará al agente como ocupado
+    .wait(100); // Pequeña espera antes de volver a ciclar por si hay más tareas inmediatamente.
+    !process_pending_replenishments.
+
+// Plan Bucle: Si está LIBRE y con ENERGÍA OK, pero NO hay tareas pendientes, espera.
++!process_pending_replenishments : free[source(self)] & not esta_caducada(_,_,_) &
+      current_energy(CE) & low_energy_threshold(T) & CE >= T
+<-
+    // .print("DEBUG: [Bucle Process Repositions] Libre, energía OK, sin reposiciones pendientes. Esperando...");
+    .wait(100); // Espera más tiempo si no hay nada que hacer
+    !process_pending_replenishments.
+
+// Plan Bucle: Si está OCUPADO o la Energía está BAJA, espera.
++!process_pending_replenishments
+    : not free[source(self)] | (current_energy(CE) & low_energy_threshold(T) & CE < T)
+<-
+    // .print("DEBUG: [Bucle Process Repositions] Ocupado o Energía Baja, esperando para procesar reposiciones...");
+    .wait(100); // Está ocupado o con baja energía, espera a que la situación cambie
+    !process_pending_replenishments.
+
+
+// Fallback para el bucle de procesamiento de reposiciones
+-!process_pending_replenishments : true <-
+    .print("ERROR: [Bucle Process Repositions] Falló el cuerpo del plan. Reintentando...");
+    .wait(100);
+    !process_pending_replenishments.
+
 // Plan para realizar la acción de reponer Y reprogramar la siguiente pauta
 +!reponer_medicamento(NombreMedicina, HoraVencimiento, MinutoVencimiento) <-
    -free[source(self)];
+   .drop_intention(check_energy);
    .my_name(Ag);
    .println("Procediendo a reponer medicamento: ", NombreMedicina);
 	!at(Ag, delivery);
@@ -197,3 +280,55 @@ free[source(self)].
    .send(enfermera, tell, orden_eliminar_caducaciones);
    .send(owner, tell, orden_eliminar_caducaciones); 
    +free[source(self)].
+   
+// --- Planes para ayudar al Robot sin batería ---
+
+// Plan que se activa al recibir la señal del robot
+// Asume que el Auxiliar está libre y tiene energía suficiente para ayudar
++robot_needs_energy(RobotName)[source(RobotName)] : free[source(self)] & current_energy(MyE) & MyE > 1 <- // Requiere > 1 para poder dar algo
+    -free[source(self)]; // Se marca como ocupado
+    .my_name(Me);
+    .print("AUXILIAR (", Me, "): Recibido aviso de '", RobotName, "'. Mi energía: ", MyE, ". ¡Voy a ayudar!");
+
+    // Ir hacia el robot. Asume que !at puede manejar "enfermera" como destino
+    // gracias a la modificación sugerida en HouseEnv para move_towards.
+    // Si no, necesitarías obtener las coords X,Y de 'enfermera' (si las percibes)
+    // y usar !at(Me, loc(X,Y)) o similar.
+    !at(Me, enfermera); // Objetivo: ir a la ubicación del robot
+
+    .print("AUXILIAR (", Me, "): He llegado donde '", RobotName, "'. Transfiriendo energía...");
+
+    // Ejecuta la acción del entorno para transferir energía
+    transfer_energy_to_robot;
+    -robot_needs_energy(enfermera)[source(enfermera)]; // Elimina la creencia de que el robot necesita energía
+
+    .print("AUXILIAR (", Me, "): Transferencia de energía intentada.");
+
+    // Ya no necesita la señal, la elimina (aunque es una creencia externa, puede ser útil quitarla localmente si no se usa más)
+    // Opcional: -robot_needs_energy(RobotName)[source(RobotName)];
+    +free[source(self)]; // Se marca como libre de nuevo
+
+    // Reanuda sus bucles
+    !check_energy;
+    !check_schedule.
+
+
+// Plan si el Auxiliar recibe la señal pero NO tiene energía suficiente para dar
++robot_needs_energy(RobotName)[source(RobotName)] : free[source(self)] & current_energy(MyE) & MyE <= 1 <-
+    .my_name(Me);
+    .print("AUXILIAR (", Me, "): Recibido aviso de '", RobotName, "', pero tengo muy poca energía (", MyE, ") para ayudar.");
+    // Decide qué hacer: ¿ignorar? ¿intentar cargar él mismo primero?
+    // Por ahora, solo lo ignora y sigue con sus tareas.
+    // Opcional: podrías quitar la creencia para no volver a reaccionar inmediatamente
+    // -robot_needs_energy(RobotName)[source(RobotName)];
+    // Sigue sus bucles normales
+    !check_energy;
+    !check_schedule.
+
+
+// Plan si el Auxiliar está ocupado cuando recibe la señal
++robot_needs_energy(RobotName)[source(RobotName)] : not free[source(self)] <-
+    .my_name(Me);
+    .print("AUXILIAR (", Me, "): Recibido aviso de '", RobotName, "', pero estoy ocupado. Lo intentaré más tarde.");
+    // Espera un poco y confía en que la creencia persistirá o se reenviará
+    .wait(5000).

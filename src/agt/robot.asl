@@ -42,7 +42,7 @@ note("Omeprazol", 0).
 note("Loratadina", 4).
 
 // Umbral para ir a cargar
-low_energy_threshold(250). // Por ejemplo, ir a cargar cuando baje de 250
+low_energy_threshold(360). // Por ejemplo, ir a cargar cuando baje de 250
 
 /* ----- LÍMITES DE CONSUMO ----- */
 // Establecer límites para cada cerveza.
@@ -90,9 +90,23 @@ orderDrug(DrugName, Ag) :- not available(DrugName, medCab) & not too_much(DrugNa
 bringBeer(Ag) :- available(beer, fridge) & not too_much(beer, Ag).
 orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 
-/* ----- PLANES----- */
-!check_energy.         // Iniciar el chequeo de energía
-!check_schedule.       // Iniciar el chequeo de la pauta de medicación
+free[source(self)].
+
+!check_energy. 
+!check_schedule.
+
+// Este plan ahora espera DrugName y SimulatedHour, SimulatedMinute (si es posible enviarlos)
++cargando_auxiliar[source(auxiliar)]<-
+    .print("El auxiliar esta cargando.");
+    .drop_intention(check_energy);
+    !at(enfermera, cargador);
+    -cargando_robot[source(auxiliar)]; 
+    +free[source(self)].
+
++auxiliar_cargado[source(auxiliar)]<-
+    .print("El auxiliar ha terminado de cargar.");
+    -robot_cargado[source(auxiliar)]; 
+    !check_energy.
 
 // Plan para reaccionar a baja energía
 // Se activa si la energía actual (CE) es menor que el umbral (T)
@@ -111,23 +125,59 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
    .wait(100);  
    !check_energy.
 
-// Plan para lograr el objetivo de cargar la batería
+// Plan para lograr el objetivo de cargar la batería (Revisado)
 +!charge_battery : free[source(self)] & .my_name(Ag) <-
-       .print("Iniciando secuencia de carga hacia el cargador...");
-       .print("Navegando hacia la zona del cargador...");
-       !at(Ag, cargador);
-       .print("Cerca del cargador, iniciando carga...");
-       start_charging; 
-       .print("Carga iniciada, comenzando monitorización...");  
-       !wait_for_full_charge. // Monitorizar
+    -free[source(self)]; // *** MARCARSE COMO OCUPADO ***
+    .print("Iniciando secuencia de carga hacia el cargador (Agente ocupado)...");
+    .print("Navegando hacia la zona del cargador...");
+    !at(Ag, cargador);
+        .send(auxiliar, tell, cargando_robot);
+        .print("Confirmado en/junto al cargador, iniciando carga...");
+        start_charging;
+        .print("Carga iniciada, comenzando monitorización...");
+        !wait_for_full_charge; // Este subobjetivo se encargará de la espera
+        // El plan +!wait_for_full_charge debe añadir +free[source(self)] al final
+.
 
 // Plan para monitorizar la carga y detenerla cuando esté llena
-// *** MODIFICADO: Añade 'free' al terminar ***
-+!wait_for_full_charge : current_energy(CE) & max_energy(ME) & CE >= ME
-<-
-    .print("¡Batería llena (", CE, "/", ME, ")! Deteniendo carga.");
++!wait_for_full_charge : current_energy(CE) & max_energy(ME) & CE >= ME <-
+    .my_name(MySelf);
+    .print(MySelf, ": ¡Batería llena (", CE, "/", ME, ")! Deteniendo carga.");
     stop_charging;
-    .print("CARGA: Carga completada y detenida. Agente libre.").
+    .print(MySelf, ": CARGA: Carga completada y detenida. Agente libre.");
+    .send(auxiliar, tell, robot_cargado);
+    +free[source(self)];
+    // Ensure !check_energy is re-activated if it was the one that led to charging
+    // This depends on your agent's main loop structure. If !check_energy is a persistent goal, it might resume.
+    // Or you might need to explicitly re-post it if it's not part of a larger recurring goal.
+    // For now, let's assume the agent's main loops (!check_energy, !check_schedule) will naturally resume
+    // once 'free[source(self)]' is true.
+    .print(MySelf, ": Retomando bucles principales post-carga.");
+    !check_schedule.
+
+// Plan de depuración: Sigue esperando la carga completa
++!wait_for_full_charge : current_energy(CE) & max_energy(ME) & CE < ME <-
+    .my_name(MySelf);
+    .print(MySelf, ": [!wait_for_full_charge DEBUG] Esperando carga completa. Energía actual: ", CE, "/", ME, ". Libre: ", free[source(self)]);
+    .wait(500); // Espera un poco antes de re-evaluar
+    !wait_for_full_charge. // Re-envía el objetivo para seguir monitorizando
+
+// Plan de depuración: Faltan creencias de energía o el objetivo es perseguido incorrectamente
++!wait_for_full_charge
+    : .my_name(MySelf) & (not current_energy(_) | not max_energy(_))
+<-
+    .print(MySelf, ": [!wait_for_full_charge DEBUG] ERROR: Faltan creencias current_energy o max_energy. Reintentando en breve.");
+    .wait(1000);
+    !wait_for_full_charge.
+
+// Plan de depuración: Fallback si !wait_for_full_charge se atasca por alguna otra razón
+// Este es un plan de último recurso y debería activarse si los otros no lo hacen y el objetivo persiste.
+// El 'true' como contexto lo hace muy general, así que úsalo con cuidado o añade más condiciones.
++!wait_for_full_charge : .my_name(MySelf) <-
+    .print(MySelf, ": [!wait_for_full_charge DEBUG] Fallback genérico. Energía: ", current_energy(CE), "/", max_energy(ME), ". Libre: ", free[source(self)]);
+    .wait(1500);
+    !wait_for_full_charge.
+
 
 
 /* ----- PLANES PARA TRAER MEDICAMENTO O CERVEZA (Modificados para ser específicos) ----- */
@@ -136,13 +186,16 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 +!has(Ag, DrugName)[source(Source)] :
     bringDrug(DrugName, Ag) & free[source(self)] <-
     .println("REGLA 1 (Traer Específico): Intentando llevar ", DrugName, " a ", Ag, " (solicitado por ", Source, ")");
-    +free[source(self)];
+    -free[source(self)]; // <<<<< CORREGIDO AQUÍ: Hace que el agente esté ocupado
     if (Ag == owner) { .send(owner, tell, nurse_delivering) };
     !at(enfermera, medCab);
     open(medCab);
-    obtener_medicamento(DrugName);  
-    if (Ag == owner) { .send(owner, tell, medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)) };
-    .println("ENTREGA PROGRAMADA ÉXITO: Eliminando pauta para ", DrugName, " a las ", SimulatedHour, SimulatedMinute, "h.");
+    obtener_medicamento(DrugName);
+    // ... (resto del plan, incluyendo la hora simulada si es necesaria para el mensaje)
+    // Ejemplo si SimulatedHour, SimulatedMinute son necesarias para el mensaje:
+    // .time(SimulatedHour, SimulatedMinute, _); // Obtiene la hora actual si no se pasa
+    if (Ag == owner) { .send(owner, tell, medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)) }; // Asegúrate de que SimulatedHour/Minute estén definidas
+    .println("ENTREGA PROGRAMADA ÉXITO: Eliminando pauta para ", DrugName, " a las ", SimulatedHour, SimulatedMinute, "h."); // Asegúrate de que SimulatedHour/Minute estén definidas
     .abolish(medician(DrugName, SimulatedHour, SimulatedMinute)); // Elimina creencia local de la enfermera
     close(medCab);
     !at(enfermera, Ag);
@@ -153,9 +206,9 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
     +consumed(YY, MM, DD, HH, NN, SS, DrugName, Ag);
     .println("Registrado consumo de ", DrugName, " por ", Ag);
 
-    if (Ag == owner) { .send(owner, untell, nurse_delivering) };
-    +free[source(self)];
+    +free[source(self)]; // Correctamente establece libre al final.
     .println("Robot libre después de entregar ", DrugName).
+
 
 // Plan para traer CERVEZA de la nevera
 +!has(Ag, beer)[source(Source)] : // <-- Añadido Source para consistencia si lo pide el robot
@@ -325,6 +378,7 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
 // Plan de llegada
 -!go(P) <-
    .println("[Enfermera] He llegado a ", P, "."). // <-- Corregido/Aclarado
+   
    																		
 /* ----- MANEJO DE ENTREGA ----- */
 // Cuando el repartidor realiza una entrega, el robot actualiza su estado y vuelve a intentar cumplir la tarea.
@@ -435,15 +489,16 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
    : clock(H, M) & free[source(self)] & 
      current_energy(CE) & low_energy_threshold(T) & CE >= T 
 <-
-    //.println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): Revisando pauta...");
+    .println("PLAN REACTIVO (Clock ", SimulatedHour, SimulatedMinute, "): Revisando pauta...");
 
  if (not ha_caducado(DrugToDeliver)) {
     if (medician(DrugToDeliver, H, M)) {
-       // .println("PLAN REACTIVO (Clock ", H, M, "): Pauta encontrada: Entregar ", DrugToDeliver, " a owner.");
+       .println("PLAN REACTIVO (Clock ", H, M, "): Pauta encontrada: Entregar ", DrugToDeliver, " a owner.");
 
         if (not too_much(DrugToDeliver, owner)) {
                 .println("PLAN REACTIVO (Clock ", H, M, "): Intentando iniciar entrega de ", DrugToDeliver);
                 // Lanzar el objetivo de entrega estándar. Los planes +!has / -!has se encargarán del resto.
+                //.send(auxiliar, tell, traer_medicamento(DrugToDeliver));
                 !has(owner, DrugToDeliver)[source(self)];
                 // <<< YA NO SE ABOLISH NI SEND DESDE AQUÍ >>>
         }else{
@@ -472,9 +527,41 @@ orderBeer(Ag) :- not available(beer, fridge) & not too_much(beer, Ag).
    .wait(100); 
    !check_schedule.
 
+-!check_schedule : true <-
+    .print("La ejecución del cuerpo de un plan para !check_schedule falló. Reintentando...");
+    .wait(200); // Pequeña espera
+    !check_schedule.
+
 +orden_eliminar_caducaciones[source(auxiliar)] <-
     .println("Recibida señal de ", auxiliar, " para eliminar la caducacion.");
     .abolish(ha_caducado(_));
     .println("Caducacion eliminada.");
     -orden_eliminar_caducaciones[source(auxiliar)]; // Limpia la creencia señal
     .
+
+// Plan que se activa cuando la energía llega a 0
++current_energy(E) : E == 0 & .my_name(Me) & not out_of_battery_signal_sent <-
+    .print("ROBOT (", Me, "): ¡Energía crítica (0)! Avisando al Auxiliar...");
+    // Envía señal al agente 'auxiliar'
+    .send(auxiliar, tell, robot_needs_energy(Me));
+    +out_of_battery_signal_sent; // Marca que la señal se ha enviado
+    // Detiene otras tareas para esperar ayuda
+    .drop_all_intentions;
+    .print("ROBOT (", Me, "): Deteniendo actividad, esperando ayuda del Auxiliar.");
+    +free[source(self)]. // Se marca como libre para recibir ayuda
+
+// Plan para resetear la señal cuando la energía se recupera
+// En el archivo .asl de la enfermera
+
+// Plan para resetear la señal CUANDO la energía se recupera (REVISADO)
++current_energy(E) : E > 0 & .my_name(Me) & out_of_battery_signal_sent <-
+    .print("ROBOT (", Me, "): ¡Energía recuperada (", E, ")! Reiniciando operaciones.");
+    -out_of_battery_signal_sent; // Elimina la marca de señal enviada
+
+    +free[source(self)]; // Asegurarse de que el agente se marque como libre
+    .print("DEBUG: Estado fijado a 'free' en recuperación.");
+
+    // Reactiva los bucles principales
+    .print("DEBUG: Reiniciando bucles. PRIMERO !check_energy, LUEGO !check_schedule.");
+    !check_energy;   // <--- LANZAR PRIMERO
+    !check_schedule. // <--- LANZAR DESPUÉS

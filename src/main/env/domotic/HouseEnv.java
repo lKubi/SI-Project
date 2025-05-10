@@ -9,11 +9,39 @@ import domotic.SimulatedClock;
 import domotic.HouseModel;
 import domotic.HouseView;
 
-import java.util.Set;      // <--- Añade esta línea si falta
-import java.util.HashSet;  // <--- Añade esta línea si falta
-import java.util.Arrays;   // <--- Añade esta línea si falta
+import java.util.Set; // <--- Añade esta línea si falta
+import java.util.HashSet; // <--- Añade esta línea si falta
+import java.util.Arrays; // <--- Añade esta línea si falta
+import java.util.Map; // <--- Línea añadida
+import java.util.HashMap; // <--- Línea añadida
+import java.util.Collections; // <--- Línea añadida
 
 public class HouseEnv extends Environment {
+
+    // --- NUEVO: Mapa de Costes de Energía por Acción ---
+    private static final Map<String, Integer> ACTION_ENERGY_COSTS;
+    static {
+        Map<String, Integer> costs = new HashMap<>();
+        // --- ¡¡AJUSTA ESTOS VALORES SEGÚN TUS NECESIDADES!! ---
+        costs.put("move_towards", 1); // Moverse cuesta 2
+        costs.put("sit", 1); // Sentarse cuesta 1
+        costs.put("open", 3); // Abrir (nevera/botiquín) cuesta 3
+        costs.put("close", 1); // Cerrar cuesta 1
+        costs.put("get", 2); // Coger cerveza (si la acción se llama "get")
+        costs.put("obtener_medicamento", 3); // Coger medicamento específico cuesta 3
+        costs.put("hand_in", 1); // Entregar cuesta 1
+        costs.put("cargar_medicamento", 2); // Auxiliar recogiendo entrega cuesta 2
+        costs.put("reponer_medicamento", 5); // Auxiliar reponiendo botiquín cuesta 5 (más trabajo)
+        costs.put("deliverdrug", 1); // Colocar droga tras entrega (simulación)
+        costs.put("deliverbeer", 1); // Colocar cerveza tras entrega (simulación)
+        // Añade aquí cualquier otra acción que deba costar energía con su coste
+        // respectivo
+        // Las acciones NO listadas aquí tendrán coste 0 por defecto en la lógica de
+        // abajo.
+
+        // Hacemos el mapa inmutable una vez inicializado
+        ACTION_ENERGY_COSTS = Collections.unmodifiableMap(costs);
+    }
 
     // common literals
     public static final Literal omc = Literal.parseLiteral("open(medCab)");
@@ -35,11 +63,10 @@ public class HouseEnv extends Environment {
     public static final Literal ed = Literal.parseLiteral("at(enfermera,delivery)");
     public static final Literal ec = Literal.parseLiteral("at(enfermera,cargador)");
 
-
-
     public static final Literal amc = Literal.parseLiteral("at(auxiliar, medCab)");
     public static final Literal af = Literal.parseLiteral("at(auxiliar,fridge)");
     public static final Literal ao = Literal.parseLiteral("at(auxiliar,owner)");
+    public static final Literal ae = Literal.parseLiteral("at(auxiliar,enfermera)");
     public static final Literal ad = Literal.parseLiteral("at(auxiliar,delivery)");
     public static final Literal ac = Literal.parseLiteral("at(auxiliar,cargador)");
 
@@ -54,21 +81,6 @@ public class HouseEnv extends Environment {
     public static final Literal aob2 = Literal.parseLiteral("at(owner,bed2)");
     public static final Literal aob3 = Literal.parseLiteral("at(owner,bed3)");
     public static final Literal oad = Literal.parseLiteral("at(owner,delivery)");
-
-    private static final Set<String> ACTION_COSTING_ENERGY = new HashSet<>(Arrays.asList(
-            "move_towards", // Moverse físicamente
-            "sit",          // Cambiar a estado sentado (movimiento físico)
-            "open",         // Abrir nevera o botiquín (interacción física)
-            "close",        // Cerrar nevera o botiquín (interacción física)
-            "get",          // Coger cerveza (genérico 'get(beer)')
-            "obtener_medicamento", // Coger medicamento específico
-            "hand_in",      // Entregar objeto (cerveza o medicamento)
-            "cargar_medicamento", // Auxiliar recoge entrega (interacción física)
-            "reponer_medicamento", // Auxiliar rellena botiquín (interacción física)
-            "deliverdrug",  // Simulación de colocar droga tras entrega (interacción física)
-            "deliverbeer"   // Simulación de colocar cerveza tras entrega (interacción física)
-    // Acciones como 'sip', 'watchClock', 'start_charging', 'stop_charging', 'test_stop_charge' NO consumen energía aquí.
-    ));
 
     static Logger logger = Logger.getLogger(HouseEnv.class.getName());
 
@@ -240,12 +252,9 @@ public class HouseEnv extends Environment {
             addPercept("enfermera", ec);
         }
 
-
-
         if (lAuxiliar.distance(model.lCargador) < 2) {
             addPercept("auxiliar", ac);
         }
-
 
         if (lOwner.distance(model.lFridge) < 2) {
             addPercept("owner", oaf);
@@ -261,6 +270,10 @@ public class HouseEnv extends Environment {
 
         if (lAuxiliar.distance(lOwner) == 1) {
             addPercept("auxiliar", ao);
+        }
+
+        if (lAuxiliar.distance(lRobot) == 1) {
+            addPercept("auxiliar", ae);
         }
 
         if (lRobot.distance(model.lDeliver) == 1) {
@@ -478,6 +491,12 @@ public class HouseEnv extends Environment {
                 case "owner":
                     dest = model.getAgPos(1);
                     break;
+                case "enfermera":
+                    dest = model.getAgPos(0);
+                    break;
+                case "auxiliar":
+                    dest = model.getAgPos(2);
+                    break;
                 case "delivery":
                     dest = model.lDeliver;
                     break;
@@ -551,6 +570,20 @@ public class HouseEnv extends Environment {
                 e.printStackTrace();
             }
 
+        } else if (action.getFunctor().equals("transfer_energy_to_robot")) {
+            // SOLO el auxiliar puede ejecutar esta acción
+            if (ag.equals("auxiliar")) {
+                // Llama al nuevo método en el modelo
+                result = model.transferEnergyFromAuxiliarToRobot();
+                if (!result) {
+                    logger.info("Auxiliar tried to transfer energy but failed (likely no energy).");
+                    // El resultado ya es false, no es necesario hacer más aquí
+                }
+            } else {
+                logger.warning("Agent " + ag + " (not auxiliar) cannot perform 'transfer_energy_to_robot'.");
+                result = false; // Falla si no es el auxiliar
+            }
+
         } else if (action.equals(gd)) {
             result = model.getDrug();
 
@@ -579,6 +612,20 @@ public class HouseEnv extends Environment {
         } else if (action.equals(sb)) {
             result = model.sipBeer();
 
+        } else if (action.getFunctor().equals("transferir_medicamento_enfermera")) { 
+            String drugName = "";
+            if (action.getArity() > 0 && action.getTerm(0) instanceof StringTerm) {
+                drugName = ((StringTerm) action.getTerm(0)).getString();
+            } else if (action.getArity() > 0) {
+                drugName = action.getTerm(0).toString().replace("\"", "");
+            }
+
+            if (ag.equals("auxiliar")) { // Solo el auxiliar puede iniciar esta transferencia
+                result = model.transferDrugAuxToNurse(drugName);
+            } else {
+                logger.warning("El agente " + ag + " (no es auxiliar) no puede realizar 'transfer_drug_aux_to_nurse'.");
+                result = false;
+            }
         } else if (action.getFunctor().equals("watchClock")) {
             result = true;
             getClock(); // Prints the time, doesn't change state
@@ -653,35 +700,44 @@ public class HouseEnv extends Environment {
             logger.info("Agent " + ag + " tried to execute unknown or failed action: " + action);
         }
 
-      // REEMPLAZA EL BLOQUE ANTERIOR CON ESTE
-      if (result) { // Si la acción se ejecutó con éxito (sintaxis, método del modelo OK)
-        String functor = action.getFunctor(); // <-- OBTENER NOMBRE DE LA ACCIÓN
+        // --- Lógica de decremento de energía (MODIFICADA) ---
+        if (result) { // Si la acción se ejecutó con éxito en el modelo
+            String functor = action.getFunctor();
 
-        // --- INICIO: DECREMENTAR ENERGÍA (MODIFICADO) ---
-        // Comprueba ID agente, si NO está cargando, Y si la acción está en la lista de coste
-        if ((agentId == HouseModel.ROBOT_AGENT_ID || agentId == HouseModel.AUXILIAR_AGENT_ID)
-                && !model.isAgentCharging(agentId)
-                && ACTION_COSTING_ENERGY.contains(functor)) { // <-- *** ESTA ES LA CONDICIÓN MODIFICADA ***
+            // Verifica si el agente consume energía y no está cargando
+            if ((agentId == HouseModel.ROBOT_AGENT_ID || agentId == HouseModel.AUXILIAR_AGENT_ID)
+                    && !model.isAgentCharging(agentId)) {
 
-            // Opcional: Añadir un log para depurar cuándo se resta energía
-            // logger.fine("[ENV] Action '" + functor + "' costs 1 energy for agent " + agentId);
-            model.decrementAgentEnergy(agentId, 1); // Resta 1 de energía
+                // Busca el coste en el mapa
+                if (ACTION_ENERGY_COSTS.containsKey(functor)) {
+                    int cost = ACTION_ENERGY_COSTS.get(functor); // Obtiene el coste específico
+                    if (cost > 0) {
+                        // logger.fine("[ENV] Action '" + functor + "' costs " + cost + " energy for
+                        // agent " + agentId);
+                        model.decrementAgentEnergy(agentId, cost); // Resta el coste específico
+                    }
+                } else {
+                    // Opcional: Registrar si una acción no tiene coste definido
+                    // logger.finer("[ENV] Action '" + functor + "' executed by " + ag + " has no
+                    // defined energy cost.");
+                }
+            }
+            // --- Fin lógica de decremento ---
+
+            updatePercepts(); // Actualiza percepciones para todos los agentes
+            try {
+                Thread.sleep(250); // Pausa corta para simular tiempo de acción y visualización
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt(); // Restablecer estado interrumpido
+                logger.warning("Environment sleep interrupted.");
+            } catch (Exception e) {
+                logger.log(java.util.logging.Level.SEVERE, "Error during post-action sleep", e);
+            }
+        } else {
+            // Log opcional si la acción falló
+            // logger.warning("Action " + action + " for agent " + ag + " failed or returned
+            // false.");
         }
-        // --- FIN: DECREMENTAR ENERGÍA (MODIFICADO) ---
-
-        updatePercepts(); // Actualiza percepciones para todos los agentes
-        try {
-            Thread.sleep(250); // Pausa corta para simular tiempo de acción y visualización
-        } catch (InterruptedException e) {
-             Thread.currentThread().interrupt(); // Restablecer estado interrumpido
-             logger.warning("Environment sleep interrupted.");
-        } catch (Exception e) {
-             logger.log(java.util.logging.Level.SEVERE,"Error during post-action sleep", e);
-        }
-    } else {
-         // Log opcional si la acción falló
-         // logger.warning("Action " + action + " for agent " + ag + " failed or returned false.");
-    }
 
         return result;
     }
