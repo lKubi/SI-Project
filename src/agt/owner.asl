@@ -73,8 +73,7 @@ orderBeer :- not available(beer, fridge).
     .println("Owner: Pauta para ", DrugName, " (", SimulatedHour, SimulatedMinute,"h) eliminada localmente (enfermera fue más rápida).");
     -medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)[source(enfermera)]; 
     +nurse_delivering;
-    +free[source(self)];
-    !update_schedule_later.
+    +free[source(self)].
 
 /* ----- PLAN PARA ENVIAR PAUTAS INICIALES Y GUARDARLAS LOCALMENTE ----- */
 +!medical_guides_initial : not medical_guides_sent <-
@@ -320,6 +319,7 @@ orderBeer :- not available(beer, fridge).
         }
         +free[source(self)];
     };
+    !check_schedule; // Revisa el horario después de tomar la medicina
 .
 
 +!do_something: not nurse_delivering & free[source(self)] <-

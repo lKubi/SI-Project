@@ -21,11 +21,11 @@ connect(hallway, livingroom, doorSal2).
 connect(livingroom, hallway, doorSal2).
 
 //Si queremos añadir mas creencias caduca, hay que añadirlas tambien en HouseModel, para poder verlas visualmente
-caduca("Amoxicilina", 1, 30).
-caduca("Omeprazol", 2, 30).
-caduca("Ibuprofeno",3, 30).
-caduca("Loratadina", 4, 30).
-caduca("Paracetamol", 18, 05).
+caduca("Amoxicilina", 1, 00).
+caduca("Omeprazol", 2, 00).
+caduca("Ibuprofeno",3, 00).
+caduca("Loratadina", 4, 00).
+caduca("Paracetamol", 18, 00).
 
 
 // Umbral para ir a cargar Por ejemplo, ir a cargar cuando baje de 360
@@ -36,6 +36,14 @@ free[source(self)].
 !check_energy. 
 !check_schedule.
 
++!enfermera_cargando[source(enfermera)] <-
+      +enfermera_cargando;
+      .drop_intention(check_energy).
+
++!enfermera_cargado[source(enfermera)] <-
+      -enfermera_cargando;
+      !check_energy;
+      .println("Enfermera: El enfermera ha terminado de cargar, reactivando bucles principales.").
 
 
 +!traer_medicamento(DrugName)[source(enfermera)] <- // ¡Cambiado de + a +!
@@ -50,12 +58,13 @@ free[source(self)].
      .send(enfermera, tell, medicamento_traido_auxiliar(DrugName));
      // No es necesario -traer_medicamento(DrugName) para objetivos de logro,
      // ya que se eliminan automáticamente al completarse o fallar el plan.
-     +free[source(self)].
+     +free[source(self)];
+     !check_energy.
 
     
 
 // Se activa si la energía actual (CE) es menor que el umbral (T)
-+!check_energy : current_energy(CE) & low_energy_threshold(T) & CE < T & free[source(self)] <-
++!check_energy : current_energy(CE) & low_energy_threshold(T) & CE < T & free[source(self)] & not enfermera_cargando <-
    .print("¡Energía baja (", CE, "/", T, ")! [Bucle Check] Necesito cargar.");
    !charge_battery.       
 
@@ -71,25 +80,25 @@ free[source(self)].
    !check_energy.
 
 // Plan para lograr el objetivo de cargar la batería (Revisado)
-+!charge_battery : free[source(self)] & .my_name(Ag) <-
++!charge_battery : free[source(self)] & .my_name(Ag) & not enfermera_cargando <-
     -free[source(self)]; // *** MARCARSE COMO OCUPADO ***
     .print("Iniciando secuencia de carga hacia el cargador (Agente ocupado)...");
     .print("Navegando hacia la zona del cargador...");
     !at(Ag, cargador);
-        .send(enfermera, tell, cargando_auxiliar);
         .print("Confirmado en/junto al cargador, iniciando carga...");
         start_charging;
+        .send(enfermera, achieve, auxiliar_cargando); // Informa al auxiliar que cargue el robot
         .print("Carga iniciada, comenzando monitorización...");
         !wait_for_full_charge; // Este subobjetivo se encargará de la espera
         // El plan +!wait_for_full_charge debe añadir +free[source(self)] al final
 .
 // Plan para monitorizar la carga y detenerla cuando esté llena
-+!wait_for_full_charge : current_energy(CE) & max_energy(ME) & CE >= ME <-
++!wait_for_full_charge : current_energy(CE) & max_energy(ME) & CE >= ME & not enfermera_cargando <-
     .my_name(MySelf);
     .print(MySelf, ": ¡Batería llena (", CE, "/", ME, ")! Deteniendo carga.");
     stop_charging;
     .print(MySelf, ": CARGA: Carga completada y detenida. Agente libre.");
-    .send(enfermera, tell, auxiliar_cargado);
+    .send(enfermera, achieve, auxiliar_cargado); // Informa al auxiliar que cargue el robot
     +free[source(self)];
     // Ensure !check_energy is re-activated if it was the one that led to charging
     // This depends on your agent's main loop structure. If !check_energy is a persistent goal, it might resume.
@@ -231,25 +240,58 @@ free[source(self)].
     -caduca(NombreMedicina, HoraDetectada, MinutoDetectado);
     !reponer_medicamento(NombreMedicina, HoraDetectada, MinutoDetectado).
 
-// Plan para realizar la acción de reponer Y reprogramar la siguiente pauta
+// En auxiliar.asl
 +!reponer_medicamento(NombreMedicina, HoraVencimiento, MinutoVencimiento) <-
-   -free[source(self)];
-   .drop_intention(check_energy);
-   .my_name(Ag);
-   .println("Procediendo a reponer medicamento: ", NombreMedicina);
-	!at(Ag, delivery);
-	cargar_medicamento; 
-	.println("Agente ", Ag, " recogiendo la medicacion de entrega.");
-	.wait(1000);
-   !at(Ag, medCab);
-   open(medCab);
-	reponer_medicamento(NombreMedicina);
-   close(medCab);
-   .wait(1000); 
-   .println("Medicamento ", NombreMedicina, " repuesto.");
-   .send(enfermera, tell, orden_eliminar_caducaciones);
-   .send(owner, tell, orden_eliminar_caducaciones); 
-   +free[source(self)].   
+    .print("AUXILIAR: === DENTRO DE +!reponer_medicamento para ", NombreMedicina, " ===");
+    .print("AUXILIAR: 'free' ANTES de -free: ", free[source(self)]);
+    -free[source(self)]; 
+    if (free[source(self)]) { // Esta condición debería ser falsa
+        .print("AUXILIAR: ¡¡¡ERROR CRÍTICO!!! 'free[source(self)]' SIGUE PRESENTE después de '-free'.");
+        +free[source(self)]; // Para asegurar que no se bloquee si hay error
+        .fail_goal(reponer_medicamento(NombreMedicina, HoraVencimiento, MinutoVencimiento)); 
+    } else {
+        .print("AUXILIAR: BIEN. 'free[source(self)]' fue eliminada. El agente está OCUPADO.");
+        .print("AUXILIAR: Ahora probando .intend(check_energy, II)...");
+        if (.intend(check_energy, II)) { 
+            .print("AUXILIAR: .intend(check_energy, II) ÉXITO. ID Intención: ", II);
+            .print("AUXILIAR: Ahora probando .drop_intention(check_energy)...");
+            if (.drop_intention(check_energy)) {
+                .print("AUXILIAR: .drop_intention(check_energy) ÉXITO (intención eliminada).");
+            } else {
+                .print("AUXILIAR: .drop_intention(check_energy) DEVOLVIÓ FALSE (no se eliminó o no existía).");
+            }
+        } else {
+            .print("AUXILIAR: .intend(check_energy, II) DEVOLVIÓ FALSE (o falló con ia_failed, revisa logs).");
+        };
+        .print("AUXILIAR: Pruebas de .intend/.drop completadas.");
+        
+        // Ahora reintroduce el resto del plan original:
+        .my_name(Ag);
+        .println("AUXILIAR: Procediendo a reponer medicamento (interno del plan): ", NombreMedicina); 
+        !at(Ag, delivery);
+        cargar_medicamento; 
+        .println("Agente ", Ag, " recogiendo la medicacion de entrega.");
+        .wait(1000);
+        !at(Ag, medCab);
+        open(medCab);
+        reponer_medicamento(NombreMedicina);
+        close(medCab);
+        .wait(1000); 
+        .println("Medicamento ", NombreMedicina, " repuesto.");
+        .send(enfermera, tell, orden_eliminar_caducaciones);
+        .send(owner, tell, orden_eliminar_caducaciones); 
+        // +free[source(self)]; // Esta línea debería estar al final después de todas las acciones.
+    };
+
+    // Asegurar que el agente se libere al final del plan, sea cual sea el camino
+    if (not bel(free[source(self)])) { 
+        +free[source(self)];
+        .print("AUXILIAR: +free[source(self)] AÑADIDO al final de +!reponer_medicamento.");
+    } else {
+        .print("AUXILIAR: Agente ya estaba 'free' al final de +!reponer_medicamento (inesperado si -free funcionó y el plan no se completó antes).");
+    }
+    .print("AUXILIAR: === FIN COMPLETO DE +!reponer_medicamento ===");
+    !check_energy.
 // --- Planes para ayudar al Robot sin batería ---
 
 // Plan que se activa al recibir la señal del robot
