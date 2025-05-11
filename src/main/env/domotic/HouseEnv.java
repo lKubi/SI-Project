@@ -587,19 +587,27 @@ public class HouseEnv extends Environment {
         } else if (action.equals(gd)) {
             result = model.getDrug();
 
-        } else if (action.getFunctor().equals("hand_in")) { // Compara el nombre/functor de la acción
-
-            Term drugTerm = action.getTerm(0);
-            String drugName = "";
-            if (drugTerm instanceof StringTerm) {
-                drugName = ((StringTerm) drugTerm).getString();
+        } else if (action.getFunctor().equals("hand_in")) {
+            if (action.getArity() == 2) { // Para hand_in(AgenteDestino, NombreDroga)
+                // Term targetAgentTerm = action.getTerm(0); // Este es el AgenteDestino (ej.
+                // owner)
+                Term drugTerm = action.getTerm(1); // Este es el NombreDroga
+                String drugNameStr = "";
+                if (drugTerm instanceof StringTerm) {
+                    drugNameStr = ((StringTerm) drugTerm).getString();
+                } else {
+                    // Para átomos como Paracetamol (sin comillas dobles en ASL)
+                    drugNameStr = drugTerm.toString().replace("\"", "");
+                }
+                // agentId es el agente que ejecuta la acción (enfermera o auxiliar)
+                result = model.handInDrug(agentId, drugNameStr);
+            } else if (action.getArity() == 1 && action.getTerm(0).toString().equals("beer")) {
+                // Para compatibilidad con tu plan de entregar cerveza: hand_in(beer)
+                result = model.handInBeer();
             } else {
-                // Remove quotes if it's parsed as an atom containing quotes
-                drugName = drugTerm.toString().replace("\"", "");
+                logger.warning("Acción hand_in llamada con aridad o argumentos inesperados: " + action);
+                result = false;
             }
-
-            result = model.handInDrug(agentId, drugName);
-
         } else if (action.equals(sd)) {
             result = model.sipDrug();
 
@@ -612,7 +620,7 @@ public class HouseEnv extends Environment {
         } else if (action.equals(sb)) {
             result = model.sipBeer();
 
-        } else if (action.getFunctor().equals("transferir_medicamento_enfermera")) { 
+        } else if (action.getFunctor().equals("transferir_medicamento_enfermera")) {
             String drugName = "";
             if (action.getArity() > 0 && action.getTerm(0) instanceof StringTerm) {
                 drugName = ((StringTerm) action.getTerm(0)).getString();

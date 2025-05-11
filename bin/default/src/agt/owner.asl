@@ -78,7 +78,7 @@ orderBeer :- not available(beer, fridge).
 /* ----- PLAN PARA ENVIAR PAUTAS INICIALES Y GUARDARLAS LOCALMENTE ----- */
 +!medical_guides_initial : not medical_guides_sent <-
     .println("Owner: Enviando pautas iniciales a la enfermera y guardándolas localmente...");
-    .send(enfermera, tell, medician("Paracetamol", 1, 10)); +medician("Paracetamol", 1, 10);
+    .send(enfermera, tell, medician("Paracetamol", 1, 15)); +medician("Paracetamol", 1, 15);
     .send(enfermera, tell, medician("Amoxicilina", 2,10)); +medician("Amoxicilina", 2, 10);
     .send(enfermera, tell, medician("Ibuprofeno", 2, 40)); +medician("Ibuprofeno", 2,40);
     .send(enfermera, tell, medician("Amoxicilina", 3, 40)); +medician("Amoxicilina", 3,40);
@@ -230,7 +230,7 @@ orderBeer :- not available(beer, fridge).
     .println("",DrugToTake,",",SimulatedHour, SimulatedMinute,")] Iniciando gestión. Manos libres.");
     
     // --- Decisión Aleatoria ---
-    .random([0,1], Decision); // 0 = Ir a por ella, 1 = Esperar al robot
+    .random([1], Decision); // 0 = Ir a por ella, 1 = Esperar al robot
 
     if (Decision == 0) {
         // --- DECISIÓN: Ir a por la medicina ---
@@ -264,7 +264,7 @@ orderBeer :- not available(beer, fridge).
         !do_something;
     } else {
         // --- DECISIÓN: Esperar al robot ---
-        !at(Ag, chair1);
+        !at(Ag, chair2);
         .println("Decidí esperar a que la enfermera me traiga ", DrugToTake, ".");
         .println("Esperando a la enfermera en el salón...");
     }

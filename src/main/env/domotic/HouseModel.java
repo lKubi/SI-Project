@@ -181,9 +181,9 @@ public class HouseModel extends GridWorldModel {
 
         // Inicializar energía para enfermera y auxiliar (Usa la variable calculada
         // arriba)
-        agentCurrentEnergy.put(ROBOT_AGENT_ID, initialEnergy);
+        agentCurrentEnergy.put(ROBOT_AGENT_ID, 150);
         agentMaxEnergy.put(ROBOT_AGENT_ID, initialEnergy);
-        agentCurrentEnergy.put(AUXILIAR_AGENT_ID, initialEnergy);
+        agentCurrentEnergy.put(AUXILIAR_AGENT_ID, 150);
         agentMaxEnergy.put(AUXILIAR_AGENT_ID, initialEnergy);
 
         // Inicializar contadores y energía original (Usa la variable calculada arriba)

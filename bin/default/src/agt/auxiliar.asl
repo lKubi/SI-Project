@@ -21,11 +21,12 @@ connect(hallway, livingroom, doorSal2).
 connect(livingroom, hallway, doorSal2).
 
 //Si queremos añadir mas creencias caduca, hay que añadirlas tambien en HouseModel, para poder verlas visualmente
-caduca("Paracetamol", 0, 30).
 caduca("Amoxicilina", 1, 30).
 caduca("Omeprazol", 2, 30).
 caduca("Ibuprofeno",3, 30).
 caduca("Loratadina", 4, 30).
+caduca("Paracetamol", 18, 05).
+
 
 // Umbral para ir a cargar Por ejemplo, ir a cargar cuando baje de 360
 low_energy_threshold(360). 
@@ -34,19 +35,24 @@ free[source(self)].
 
 !check_energy. 
 !check_schedule.
-!process_pending_replenishments.
 
-// Este plan ahora espera DrugName y SimulatedHour, SimulatedMinute (si es posible enviarlos)
-+cargando_robot[source(enfermera)]<-
-    .print("El robot esta cargando.");
-    .drop_intention(check_energy);
-    -cargando_robot[source(enfermera)]; 
-    +free[source(self)].
 
-+robot_cargado[source(enfermera)]<-
-    .print("El robot ha terminado de cargar.");
-    -robot_cargado[source(enfermera)];
-    !check_energy.
+
++!traer_medicamento(DrugName)[source(enfermera)] <- // ¡Cambiado de + a +!
+     -free[source(self)];
+     .println("AUXILIAR: Recibido objetivo !traer_medicamento('", DrugName, "') de enfermera."); // Log para confirmar
+     !at(auxiliar, medCab);
+     open(medCab);
+     obtener_medicamento(DrugName);
+     close(medCab);
+     !at(auxiliar, enfermera);
+     transferir_medicamento_enfermera(DrugName);
+     .send(enfermera, tell, medicamento_traido_auxiliar(DrugName));
+     // No es necesario -traer_medicamento(DrugName) para objetivos de logro,
+     // ya que se eliminan automáticamente al completarse o fallar el plan.
+     +free[source(self)].
+
+    
 
 // Se activa si la energía actual (CE) es menor que el umbral (T)
 +!check_energy : current_energy(CE) & low_energy_threshold(T) & CE < T & free[source(self)] <-
@@ -188,7 +194,7 @@ free[source(self)].
 +!check_schedule
    : clock(H, M) 
 <-
-   // .print("DEBUG: [Bucle Check Schedule] Hora ", H, ":", M, ". Energía OK. Comprobando caducidades..."); 
+    //.print("DEBUG: [Bucle Check Schedule] Hora ", H, ":", M, ". Energía OK. Comprobando caducidades..."); 
    .findall(Drug, caduca(Drug, H, M), ExpiringDrugs); // Busca caducidades
    if (.length(ExpiringDrugs) > 0) {
        for ( .member(DrugToReponer, ExpiringDrugs) ) {
@@ -221,45 +227,9 @@ free[source(self)].
     : caduca(NombreMedicina, HoraDetectada, MinutoDetectado) <-
     .println("¡Detectada caducidad para: ", NombreMedicina, " a la hora ", HoraDetectada, MinutoDetectado, "!");
     .println("Procediendo a iniciar reposición...");
-    -caduca(NombreMedicina, HoraDetectada, MinutoDetectado);
     -esta_caducada(NombreMedicina, HoraDetectada, MinutoDetectado);
+    -caduca(NombreMedicina, HoraDetectada, MinutoDetectado);
     !reponer_medicamento(NombreMedicina, HoraDetectada, MinutoDetectado).
-
-// Plan Bucle: Si está LIBRE, con ENERGÍA OK, y hay una tarea de reposición, la ejecuta.
-+!process_pending_replenishments
-    : free[source(self)] & esta_caducada(NombreMedicina, HoraVencimiento, MinutoVencimiento) &
-      current_energy(CE) & low_energy_threshold(T) & CE >= T
-<-
-    .my_name(Me);
-    .print(Me, ": Libre y con tarea pendiente de reponer ", NombreMedicina, " (detectada a las ", HoraVencimiento, ":", MinutoVencimiento,"). Iniciando...");
-    -caduca(NombreMedicina, HoraVencimiento, MinutoVencimiento);
-    -esta_caducada(NombreMedicina, HoraVencimiento, MinutoVencimiento); // Consume esta tarea específica
-    !reponer_medicamento(NombreMedicina, HoraVencimiento, MinutoVencimiento); // Esto marcará al agente como ocupado
-    .wait(100); // Pequeña espera antes de volver a ciclar por si hay más tareas inmediatamente.
-    !process_pending_replenishments.
-
-// Plan Bucle: Si está LIBRE y con ENERGÍA OK, pero NO hay tareas pendientes, espera.
-+!process_pending_replenishments : free[source(self)] & not esta_caducada(_,_,_) &
-      current_energy(CE) & low_energy_threshold(T) & CE >= T
-<-
-    // .print("DEBUG: [Bucle Process Repositions] Libre, energía OK, sin reposiciones pendientes. Esperando...");
-    .wait(100); // Espera más tiempo si no hay nada que hacer
-    !process_pending_replenishments.
-
-// Plan Bucle: Si está OCUPADO o la Energía está BAJA, espera.
-+!process_pending_replenishments
-    : not free[source(self)] | (current_energy(CE) & low_energy_threshold(T) & CE < T)
-<-
-    // .print("DEBUG: [Bucle Process Repositions] Ocupado o Energía Baja, esperando para procesar reposiciones...");
-    .wait(100); // Está ocupado o con baja energía, espera a que la situación cambie
-    !process_pending_replenishments.
-
-
-// Fallback para el bucle de procesamiento de reposiciones
--!process_pending_replenishments : true <-
-    .print("ERROR: [Bucle Process Repositions] Falló el cuerpo del plan. Reintentando...");
-    .wait(100);
-    !process_pending_replenishments.
 
 // Plan para realizar la acción de reponer Y reprogramar la siguiente pauta
 +!reponer_medicamento(NombreMedicina, HoraVencimiento, MinutoVencimiento) <-
@@ -279,8 +249,7 @@ free[source(self)].
    .println("Medicamento ", NombreMedicina, " repuesto.");
    .send(enfermera, tell, orden_eliminar_caducaciones);
    .send(owner, tell, orden_eliminar_caducaciones); 
-   +free[source(self)].
-   
+   +free[source(self)].   
 // --- Planes para ayudar al Robot sin batería ---
 
 // Plan que se activa al recibir la señal del robot
@@ -332,3 +301,30 @@ free[source(self)].
     .print("AUXILIAR (", Me, "): Recibido aviso de '", RobotName, "', pero estoy ocupado. Lo intentaré más tarde.");
     // Espera un poco y confía en que la creencia persistirá o se reenviará
     .wait(5000).
+
+   // Plan para asegurar que los bucles principales estén activos cuando el agente queda libre.
+// Este plan se ejecuta CADA VEZ que se añade la creencia `free[source(self)]`.
+
++free[source(self)]
+  // No se necesita un contexto específico más allá del evento en sí.
+<-
+  .my_name(MyAg); // Obtiene el nombre del agente actual
+  .print(MyAg, ": ** Me he quedado LIBRE. Verificando bucles principales (!check_energy, !check_schedule). **");
+
+  // Verificar e iniciar !check_energy si no está ya como una intención activa.
+  // La función interna .intend(nombre_meta) comprueba si ya hay una intención para esa meta.
+  if (not .intend(check_energy)) {
+    .print(MyAg, ": El objetivo !check_energy no parece estar activo. Reiniciándolo AHORA.");
+    !check_energy;
+  } else {
+    .print(MyAg, ": El objetivo !check_energy ya está activo o pendiente de ejecución.");
+  };
+
+  // Verificar e iniciar !check_schedule si no está ya como una intención activa.
+  if (not .intend(check_schedule)) {
+    .print(MyAg, ": El objetivo !check_schedule no parece estar activo. Reiniciándolo AHORA.");
+    !check_schedule;
+  } else {
+    .print(MyAg, ": El objetivo !check_schedule ya está activo o pendiente de ejecución.");
+  };
+.

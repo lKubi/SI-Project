@@ -34,11 +34,11 @@ orderBeer :- not available(beer, fridge).
 
 /* ----- OBJETIVOS INICIALES DEL DUEÑO (OWNER) ----- */
 
-!lie_once_about_medicine.
 !do_something.
 !check_bored.
 !medical_guides_initial.
 !update_schedule_later.
+!check_schedule.
 
 // Plan para ejecutar la mentira si aún no se ha hecho
 +!lie_once_about_medicine : not lied_about_medicine_once <-
@@ -73,17 +73,18 @@ orderBeer :- not available(beer, fridge).
     .println("Owner: Pauta para ", DrugName, " (", SimulatedHour, SimulatedMinute,"h) eliminada localmente (enfermera fue más rápida).");
     -medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)[source(enfermera)]; 
     +nurse_delivering;
-    +free[source(self)].
+    +free[source(self)];
+    !update_schedule_later.
 
 /* ----- PLAN PARA ENVIAR PAUTAS INICIALES Y GUARDARLAS LOCALMENTE ----- */
 +!medical_guides_initial : not medical_guides_sent <-
     .println("Owner: Enviando pautas iniciales a la enfermera y guardándolas localmente...");
-    .send(enfermera, tell, medician("Paracetamol", 1, 15)); +medician("Paracetamol", 1, 15);
-    .send(enfermera, tell, medician("Amoxicilina", 2,10)); +medician("Amoxicilina", 2, 10);
+    .send(enfermera, tell, medician("Paracetamol", 0, 40)); +medician("Paracetamol", 0, 40);
+    .send(enfermera, tell, medician("Amoxicilina", 1,40)); +medician("Amoxicilina", 1, 40);
     .send(enfermera, tell, medician("Ibuprofeno", 2, 40)); +medician("Ibuprofeno", 2,40);
     .send(enfermera, tell, medician("Amoxicilina", 3, 40)); +medician("Amoxicilina", 3,40);
-    .send(enfermera, tell, medician("Omeprazol", 4, 20)); +medician("Omeprazol", 4,20);
-    .send(enfermera, tell, medician("Loratadina", 6, 20)); +medician("Loratadina 10mg", 6, 20);
+    .send(enfermera, tell, medician("Omeprazol", 4, 40)); +medician("Omeprazol", 4,40);
+    .send(enfermera, tell, medician("Loratadina", 6, 40)); +medician("Loratadina 10mg", 6, 40);
     .send(enfermera, tell, medician("Omeprazol", 12, 40)); +medician("Omeprazol", 12, 40);
     .send(enfermera, tell, medician("Paracetamol", 20, 40)); +medician("Paracetamol", 20, 40);
     .send(enfermera, tell, medician("Omeprazol", 23, 40)); +medician("Omeprazol", 23, 40);
@@ -202,7 +203,10 @@ orderBeer :- not available(beer, fridge).
 
 
 // Triggered by the new percept format
-+clock(SimulatedHour, SimulatedMinute)[source(Source)] : free[source(self)] <-
++!check_schedule
+   : clock(SimulatedHour, SimulatedMinute) 
+<-
+    .println("Owner: [Clock ", SimulatedHour, ":", SimulatedMinute, "] Hora actual recibida.");
     if (not ha_caducado(DrugToDeliver)) {
 
     if (medician(DrugToTake, SimulatedHour, SimulatedMinute)) { // Ahora busca HORA y MINUTO
@@ -214,13 +218,28 @@ orderBeer :- not available(beer, fridge).
     };
     }else{
         .println("Owner: La medicacion esta caducada.");
-    }.
+    }
+    .wait(100);
+    !check_schedule.
 
-// Similar change for the 'not free' plan trigger
-+clock(SimulatedHour, SimulatedMinute)[source(Source)] : not free[source(self)] <-
-     .wait(1000);
-     .println("Owner: [Clock ", SimulatedHour, ":", SimulatedMinute, "] Reintentando procesamiento de tick (estaba ocupado).");
-     +clock(SimulatedHour, SimulatedMinute)[source(Source)].
+
+// Plan Bucle: Si está OCUPADO o la Energía está BAJA, simplemente esperar
++!check_schedule
+   : ( not free[source(self)]) <-
+   // .print("DEBUG: [Bucle Check Schedule] Ocupado o Energía Baja, esperando..."); // Log opcional
+   .wait(100); 
+   !check_schedule.
+
+// Plan Bucle: Si falta la hora 
++!check_schedule : not clock(_, _) <-
+   .print("WARN: [Bucle Check Schedule] No se encontró la creencia clock(H,M). Esperando...");
+   .wait(100); 
+   !check_schedule.
+
+-!check_schedule : true <-
+    .print("La ejecución del cuerpo de un plan para !check_schedule falló. Reintentando...");
+    .wait(200); // Pequeña espera
+    !check_schedule.
 
 
 // ----- OWNER: Planes para lograr el Objetivo !check_and_take_medicine -----
@@ -230,12 +249,51 @@ orderBeer :- not available(beer, fridge).
     .println("",DrugToTake,",",SimulatedHour, SimulatedMinute,")] Iniciando gestión. Manos libres.");
     
     // --- Decisión Aleatoria ---
-    .random([1], Decision); // 0 = Ir a por ella, 1 = Esperar al robot
+    .random([0], Decision); // 0 = Ir a por ella, 1 = Esperar al robot
 
     if (Decision == 0) {
-        // --- DECISIÓN: Ir a por la medicina ---
+        // --- DECISIÓN: Ir a por la medicina y el robot al mismo tiempo carrera ---
         .println("Decidí ir yo mismo a por ", DrugToTake, ".");
+        .send(enfermera, tell, ir_medicina);
+        -free[source(self)];
+
+        !at(Ag, medCab);
+        .println("He llegado al botiquín (medCab).");
+
+        if (available(DrugToTake, medCab)) {
+            .println("", DrugToTake, " parece disponible. Intentando cogerlo...");
+            open(medCab);
+            obtener_medicamento(DrugToTake);
+            .send(enfermera, tell, medicina_recogida_owner(DrugToTake, SimulatedHour, SimulatedMinute)); 
+            close(medCab);
+            .abolish(medician(DrugToTake, SimulatedHour, SimulatedMinute));
+            .println("Pauta para ", DrugToTake, " (", SimulatedHour, SimulatedMinute,"h) eliminada localmente.");
+            .println("Obtenido ", DrugToTake, " del botiquín.");
+            .wait(1000);
+            .println("omando ", DrugToTake, "...");
+            .println("Terminé de tomar ", DrugToTake, ".");
+            // Eliminar SÓLO la creencia para esta droga y hora específicas
+            .send(enfermera, tell, medication_consumed(DrugToTake, SimulatedHour, SimulatedMinute));
+            .println("Notificado a 'enfermera de que consumi la medicacion.");
+            .wait(1000);
+            .println("Acción completada para ", DrugToTake, ".");
+            -has(Ag, DrugToTake); // Eliminar creencia de que tiene el medicamento
+        }
         +free[source(self)];
+    }
+    
+    if(Decision == 1) {
+        // --- DECISIÓN: Esperar al robot ---
+        .send(enfermera, tell, esperar_medicina);
+        !at(Ag, chair2);
+        .println("Decidí esperar a que la enfermera me traiga ", DrugToTake, ".");
+        .println("Esperando a la enfermera en el salón...");
+    }
+    
+    if(Decision == 2) {
+        // --- DECISIÓN: Ir a por la medicina ---
+       .println("Decidí ir yo mismo a por ", DrugToTake, ".");
+        -free[source(self)];
 
         !at(Ag, medCab);
         .println("He llegado al botiquín (medCab).");
@@ -249,25 +307,19 @@ orderBeer :- not available(beer, fridge).
             .abolish(medician(DrugToTake, SimulatedHour, SimulatedMinute));
             .println("Pauta para ", DrugToTake, " (", SimulatedHour, SimulatedMinute,"h) eliminada localmente.");
 
-
-                 .println("Obtenido ", DrugToTake, " del botiquín.");
-                 .wait(1000);
-                 .println("omando ", DrugToTake, "...");
-                 .println("Terminé de tomar ", DrugToTake, ".");
-                 // Eliminar SÓLO la creencia para esta droga y hora específicas
-                 .send(enfermera, tell, medication_consumed(DrugToTake, SimulatedHour, SimulatedMinute));
-                 .println("Notificado a 'enfermera de que consumi la medicacion.");
-                 .wait(1000);
-                 .println("Acción completada para ", DrugToTake, ".");
-                 -has(Ag, DrugToTake); // Eliminar creencia de que tiene el medicamento
+            .println("Obtenido ", DrugToTake, " del botiquín.");
+            .wait(1000);
+            .println("Tomando ", DrugToTake, "...");
+            .println("Terminé de tomar ", DrugToTake, ".");
+            // Eliminar SÓLO la creencia para esta droga y hora específicas
+            .send(enfermera, tell, medication_consumed(DrugToTake, SimulatedHour, SimulatedMinute));
+            .println("Notificado a 'enfermera de que consumi la medicacion.");
+            .wait(1000);
+            .println("Acción completada para ", DrugToTake, ".");
+            -has(Ag, DrugToTake); // Eliminar creencia de que tiene el medicamento
         }
-        !do_something;
-    } else {
-        // --- DECISIÓN: Esperar al robot ---
-        !at(Ag, chair2);
-        .println("Decidí esperar a que la enfermera me traiga ", DrugToTake, ".");
-        .println("Esperando a la enfermera en el salón...");
-    }
+        +free[source(self)];
+    };
 .
 
 +!do_something: not nurse_delivering & free[source(self)] <-
