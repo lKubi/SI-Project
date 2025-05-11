@@ -21,11 +21,9 @@ connect(hallway, livingroom, doorSal2).
 connect(livingroom, hallway, doorSal2).
 
 /* ----- ESTADO INICIAL DEL ROBOT ----- */
-// El robot comienza libre, es decir, no tiene ninguna tarea asignada al principio.
 free[source(self)].
 
 /* ----- DISPONIBILIDAD INICIAL DE PRODUCTOS ----- */
-// Estas creencias deben reflejar el estado inicial en HouseModel o ser actualizadas por percepciones.
 available("Paracetamol", medCab).
 available("Ibuprofeno", medCab).
 available("Amoxicilina", medCab).
@@ -42,7 +40,7 @@ note("Omeprazol", 0).
 note("Loratadina", 4).
 
 // Umbral para ir a cargar
-low_energy_threshold(360). // Por ejemplo, ir a cargar cuando baje de 250
+low_energy_threshold(360).
 
 /* ----- LÍMITES DE CONSUMO ----- */
 // Establecer límites para cada cerveza.
@@ -95,6 +93,7 @@ free[source(self)].
 !check_energy. 
 !check_schedule.
 
+// Cargador ocupado por el auxiliar
 +!auxiliar_cargando[source(auxiliar)] <-
       +auxiliar_cargando;
       .drop_intention(check_energy).
@@ -113,12 +112,10 @@ free[source(self)].
 
 // Plan Bucle: Energía OK, o está OCUPADO, o YA está intentando cargar
 +!check_energy : current_energy(CE) & low_energy_threshold(T) & ( CE >= T | not free[source(self)] ) <-
-   //.print("[ENERGÍA OK o AGENTE OCUPADO: CE=", CE, "] Esperando...");
    .wait(110);  
    !check_energy.
 
 -!check_energy : true <- 
-   .print("⚠️ Falló el objetivo por alguna razón desconocida, reintentando...");
    .wait(100);  
    !check_energy.
 
@@ -127,13 +124,11 @@ free[source(self)].
     .print("Iniciando secuencia de carga hacia el cargador (Agente ocupado)...");
     .print("Navegando hacia la zona del cargador...");
     !at(Ag, cargador);
-     .send(auxiliar, achieve, enfermera_cargando); // Informa al auxiliar que cargue el robot
-        .print("Confirmado en/junto al cargador, iniciando carga...");
-        start_charging;
-        .print("Carga iniciada, comenzando monitorización...");
-        !wait_for_full_charge; // Este subobjetivo se encargará de la espera
-        // El plan +!wait_for_full_charge debe añadir +free[source(self)] al final
-.
+    .send(auxiliar, achieve, enfermera_cargando); 
+    .print("Confirmado en/junto al cargador, iniciando carga...");
+    start_charging;
+    .print("Carga iniciada, comenzando monitorización...");
+    !wait_for_full_charge.
 
 // Plan para monitorizar la carga y detenerla cuando esté llena
 +!wait_for_full_charge : current_energy(CE) & max_energy(ME) & CE >= ME  & not auxiliar_cargando <-
@@ -141,35 +136,24 @@ free[source(self)].
     .print(MySelf, ": ¡Batería llena (", CE, "/", ME, ")! Deteniendo carga.");
     stop_charging;
     .print(MySelf, ": CARGA: Carga completada y detenida. Agente libre.");
-    .send(auxiliar, achieve, enfermera_cargado); // Informa al auxiliar que cargue el robot
-    // Ensure !check_energy is re-activated if it was the one that led to charging
-    // This depends on your agent's main loop structure. If !check_energy is a persistent goal, it might resume.
-    // Or you might need to explicitly re-post it if it's not part of a larger recurring goal.
-    // For now, let's assume the agent's main loops (!check_energy, !check_schedule) will naturally resume
-    // once 'free[source(self)]' is true.
+    .send(auxiliar, achieve, enfermera_cargado); 
     .print(MySelf, ": Retomando bucles principales post-carga.");
     !check_schedule.
 
-// Plan de depuración: Sigue esperando la carga completa
 +!wait_for_full_charge : current_energy(CE) & max_energy(ME) & CE < ME  & not auxiliar_cargando <-
     .my_name(MySelf);
-    .print(MySelf, ": [!wait_for_full_charge DEBUG] Esperando carga completa. Energía actual: ", CE, "/", ME, ". Libre: ", free[source(self)]);
-    .wait(500); // Espera un poco antes de re-evaluar
-    !wait_for_full_charge. // Re-envía el objetivo para seguir monitorizando
+    .print(MySelf, ": Esperando carga completa. Energía actual: ", CE, "/", ME, ". Libre: ", free[source(self)]);
+    .wait(500);
+    !wait_for_full_charge. 
 
-// Plan de depuración: Faltan creencias de energía o el objetivo es perseguido incorrectamente
 +!wait_for_full_charge
-    : .my_name(MySelf) & (not current_energy(_) | not max_energy(_))
-<-
-    .print(MySelf, ": [!wait_for_full_charge DEBUG] ERROR: Faltan creencias current_energy o max_energy. Reintentando en breve.");
+    : .my_name(MySelf) & (not current_energy(_) | not max_energy(_)) <-
+    //.print(MySelf, ": ERROR: Faltan creencias current_energy o max_energy. Reintentando en breve.");
     .wait(1000);
     !wait_for_full_charge.
 
-// Plan de depuración: Fallback si !wait_for_full_charge se atasca por alguna otra razón
-// Este es un plan de último recurso y debería activarse si los otros no lo hacen y el objetivo persiste.
-// El 'true' como contexto lo hace muy general, así que úsalo con cuidado o añade más condiciones.
 +!wait_for_full_charge : .my_name(MySelf) <-
-    .print(MySelf, ": [!wait_for_full_charge DEBUG] Fallback genérico. Energía: ", current_energy(CE), "/", max_energy(ME), ". Libre: ", free[source(self)]);
+    //.print(MySelf, ": Fallback genérico. Energía: ", current_energy(CE), "/", max_energy(ME), ". Libre: ", free[source(self)]);
     .wait(1500);
     !wait_for_full_charge.
 
@@ -181,21 +165,18 @@ free[source(self)].
 +!has(Ag, DrugName)[source(Source)] :
     bringDrug(DrugName, Ag) & free[source(self)] <-
     .println("REGLA 1 (Traer Específico): Intentando llevar ", DrugName, " a ", Ag, " (solicitado por ", Source, ")");
-    -free[source(self)]; // <<<<< CORREGIDO AQUÍ: Hace que el agente esté ocupado
+    -free[source(self)]; 
     if (Ag == owner) { .send(owner, tell, nurse_delivering) };
     !at(enfermera, medCab);
     open(medCab);
     obtener_medicamento(DrugName);
-    // ... (resto del plan, incluyendo la hora simulada si es necesaria para el mensaje)
-    // Ejemplo si SimulatedHour, SimulatedMinute son necesarias para el mensaje:
-    // .time(SimulatedHour, SimulatedMinute, _); // Obtiene la hora actual si no se pasa
-    if (Ag == owner) { .send(owner, tell, medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)) }; // Asegúrate de que SimulatedHour/Minute estén definidas
-    .println("ENTREGA PROGRAMADA ÉXITO: Eliminando pauta para ", DrugName, " a las ", SimulatedHour, SimulatedMinute, "h."); // Asegúrate de que SimulatedHour/Minute estén definidas
-    .abolish(medician(DrugName, SimulatedHour, SimulatedMinute)); // Elimina creencia local de la enfermera
+    if (Ag == owner) { .send(owner, tell, medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)) }; 
+    .println("ENTREGA PROGRAMADA ÉXITO: Eliminando pauta para ", DrugName, " a las ", SimulatedHour, SimulatedMinute, "h."); 
+    .abolish(medician(DrugName, SimulatedHour, SimulatedMinute));
     close(medCab);
     !at(enfermera, Ag);
     hand_in(Ag, DrugName);
-    -self_delivering(DrugToDeliver, H, M); // Marca que está auto-entregando esta pauta
+    -self_delivering(DrugToDeliver, H, M);
 
     // Registrar consumo
     .date(YY, MM, DD); .time(HH, NN, SS);
@@ -205,31 +186,6 @@ free[source(self)].
     +free[source(self)]; // Correctamente establece libre al final.
     .println("Robot libre después de entregar ", DrugName);
 
-    !check_energy.
-
-
-// Plan para traer CERVEZA de la nevera
-+!has(Ag, beer)[source(Source)] : // <-- Añadido Source para consistencia si lo pide el robot
-    bringBeer(Ag) & free[source(self)] <-
-    .println("REGLA 1 (Traer Cerveza): Intentando llevar cerveza a ", Ag);
-    -free[source(self)];
-    // <<< ===== NUEVO: AVISO INICIO ENTREGA ===== >>>
-    if (Ag == owner) { .send(owner, untell, nurse_delivering) };
-    // <<< ====================================== >>>
-    !at(enfermera, fridge);
-    open(fridge);
-    get(beer); // Asume que 'get' añade 'beer' al inventario de la enfermera
-    close(fridge);
-    !at(enfermera, Ag);
-    hand_in(beer);
-    // ?has(Ag, beer); // Esta línea parece ser una consulta interna, puede ser innecesaria aquí
-    .date(YY, MM, DD); .time(HH, NN, SS);
-    +consumed(YY, MM, DD, HH, NN, SS, beer, Ag);
-
-    // <<< ===== NUEVO: AVISO FIN ENTREGA ===== >>>
-    if (Ag == owner) { .send(owner, untell, nurse_delivering) };
-    // <<< ==================================== >>>
-    +free[source(self)];
     !check_energy.
 
 /* ----- PLANES PARA PEDIR AL REPARTIDOR UN MEDICAMENTO O UNA CERVEZA ----- */
@@ -251,24 +207,6 @@ free[source(self)].
 		.println("Trying to bring drug after order it");
 		!has(Ag, DrugName)[source(Ag)].
 
-// Si la cerveza no está disponible, el robot lo pide al repartidor.
-// Después de que el reparto se realice, el robot recoge la cerveza y lo pone en la nevera.
-+!has(Ag, beer)[source(Ag)] :
-	orderBeer(Ag) & free[source(self)] <- 
-		.println("SECOND RULE ====================================");
-		.wait(1000);
-		-free[source(self)]; 
-		!at(enfermera, fridge);
-		.send(repartidor, achieve, order(beer, 5)); 
-		!at(enfermera, delivery);     // go to deliver area and wait there.
-		.wait(delivered);
-		!at(enfermera, fridge);      
-		deliverbeer(Product,5);
-		+available(beer, fridge); 
-		+free[source(self)];
-		.println("Trying to bring beer after order it");
-		!has(Ag, beer)[source(Ag)].                
-
 /* ----- MANEJO DE CONFLICTOS DE PEDIDOS ----- */
 // Si el robot está ocupado y no puede atender la solicitud, informa al dueño.
 +!has(Ag, DrugName)[source(Ag)] :
@@ -277,13 +215,6 @@ free[source(self)].
 		.println("The robot is busy and cann't attend the order now."); 
 		.wait(4000);
 		!has(Ag, DrugName).   
-
-+!has(Ag, beer)[source(Ag)] :
-	not free[source(self)] <- 
-		.println("THIRD RULE ====================================");
-		.println("The robot is busy and cann't attend the order now."); 
-		.wait(4000);
-		!has(Ag, beer).   
 
 /* ----- CONTROL DE LÍMITE DE PRODUCTOS ----- */
 // Si el dueño ha alcanzado el límite de medicamentos diarios, el robot informa que no puede dar más.
@@ -295,41 +226,28 @@ free[source(self)].
 				" drugs a day! I am very sorry about that!", M);
 		.send(Ag, tell, msg(M)).
 
-// Si el dueño ha alcanzado el límite de cervezas diarias, el robot informa que no puede dar más.
-+!has(Ag, beer)[source(Ag)] 
-:  too_much(beer, Ag) & limit(beer, L) <-
-		.println("FOURTH RULE ====================================");
-		.wait(1000);
-		.concat("The Department of Health does not allow me to give you more than ", L,
-				" beers a day! I am very sorry about that!", M);
-		.send(Ag, tell, msg(M)).
-
 /* ----- GESTIÓN DE FALLOS EN OBJETIVOS ----- */
 // Si alguna intención falla, se informa del error y de la intención actual.
 -!has(Name, P)[error(E)] <-
     .println("FIFTH RULE ====================================");
-    // .wait(1000); // Espera opcional
     .current_intention(I);
     .println("Failed to achieve goal: !has(", Name, " , ", P, "). Error: ", E);
     .println("Current intention is: ", I);
-    // Asegurarse de notificar al owner que la enfermera ya no está ocupada (si lo estaba)
     if (Name == owner) { .send(owner, untell, nurse_delivering) };
-    -self_delivering(DrugToDeliver, H, M); // Marca que está auto-entregando esta pauta
-    +free[source(self)]. // Asegurarse de que la enfermera queda libre
+    -self_delivering(DrugToDeliver, H, M);
+    +free[source(self)]. 
 
-
-/* ----- ACTUALIZACIÓN DE LA LOCALIZACIÓN DEL ROBOT ----- */ // (O OBJETIVO: Ir a un lugar (!at))
-
+// Plan para ir a un lugar específico (P) y confirmar que el agente (Ag) está allí.
 // Plan si ya está en el lugar
 +!at(Ag, P) : at(Ag, P) <-
-    //.println(Ag, " is at ",P); // Mensaje opcional
-    .wait(10). // Espera mínima
+    //.println(Ag, " is at ",P);
+    .wait(10).
 
 // Plan si no está en el lugar Y TIENE energía
-+!at(Ag, P) : not at(Ag, P) & current_energy(CE) & CE > 0 // <-- AÑADIDO chequeo energía
-   <- .println("[Enfermera] Yendo a ", P, "..."); // <-- Corregido/Aclarado
-      !go(P); // Lanza el sub-objetivo de navegación
-      !at(Ag, P). // Vuelve a intentar !at para confirmar llegada
++!at(Ag, P) : not at(Ag, P) & current_energy(CE) & CE > 0 
+   <- .println("[Enfermera] Yendo a ", P, "..."); 
+      !go(P); 
+      !at(Ag, P).
 
 // Plan si intenta !at con 0 energía
 +!at(Ag, P) : not at(Ag, P) & current_energy(0)
@@ -339,36 +257,36 @@ free[source(self)].
 /* ----- OBJETIVO: Navegar a un lugar (!go) ----- */
 
 // Plan para ir dentro de la misma habitación
-+!go(P) : atRoom(RoomAg) & atRoom(P, RoomAg) & current_energy(CE) & CE > 0 // <-- AÑADIDO chequeo energía
++!go(P) : atRoom(RoomAg) & atRoom(P, RoomAg) & current_energy(CE) & CE > 0
    <- move_towards(P).
 
 // Plan para ir a otra habitación, conectada directamente, estando ya en la puerta
 +!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
-          connect(RoomAg, RoomP, Door) & atDoor & current_energy(CE) & CE > 0 // <-- AÑADIDO chequeo energía
+          connect(RoomAg, RoomP, Door) & atDoor & current_energy(CE) & CE > 0
    <- move_towards(P).
 
 // Plan para ir a otra habitación, conectada directamente, SIN estar en la puerta
 +!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
-          connect(RoomAg, RoomP, Door) & not atDoor & current_energy(CE) & CE > 0 // <-- AÑADIDO chequeo energía
+          connect(RoomAg, RoomP, Door) & not atDoor & current_energy(CE) & CE > 0
    <- move_towards(Door);
       !go(P).
 
 // Plan para ir a otra habitación, NO conectada directamente, SIN estar en la puerta intermedia
 +!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
           not connect(RoomAg, RoomP, _) & connect(RoomAg, Room, DoorR) &
-          connect(Room, RoomP, DoorP) & not atDoor & current_energy(CE) & CE > 0 // <-- AÑADIDO chequeo energía
+          connect(Room, RoomP, DoorP) & not atDoor & current_energy(CE) & CE > 0
    <- move_towards(DoorR);
       !go(P).
 
 // Plan para ir a otra habitación, NO conectada directamente, ESTANDO en la puerta intermedia
 +!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP &
           not connect(RoomAg, RoomP, _) & connect(RoomAg, Room, DoorR) &
-          connect(Room, RoomP, DoorP) & atDoor & current_energy(CE) & CE > 0 // <-- AÑADIDO chequeo energía
+          connect(Room, RoomP, DoorP) & atDoor & current_energy(CE) & CE > 0
    <- move_towards(DoorP);
       !go(P).
 
 // Plan Fallback (si los otros fallan pero las habitaciones son distintas)
-+!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP & current_energy(CE) & CE > 0 // <-- AÑADIDO chequeo energía
++!go(P) : atRoom(RoomAg) & atRoom(P, RoomP) & not RoomAg == RoomP & current_energy(CE) & CE > 0
    <- move_towards(P).
 
 // Plan de fallo si no puede moverse por falta de energía
@@ -416,15 +334,12 @@ free[source(self)].
 	.println("El agente ", Ag, " me ha chateado: ", Msg);
 	.send(Ag, tell, msg(Answ)). 
 	
-/* ----- ##### GESTIÓN DE NOTIFICACIÓN DE CONSUMO (MODIFICADO CON VERIFICACIÓN SIMULADA) ##### ----- */
-
-//OBJETIVOS PARA COMPROBAR VERACIDAD OWNER TOMA MEDICAMENTOS
 
 // Objetivo para comprobar medicamentos, en caso de que owner hubiera consumido uno
 +medication_consumed(DrugName, SimulatedHour, SimulatedMinute)[source(Ag)] : free[source(self)] <-
-    -free[source(self)]; // Marcarse como ocupado 
+    -free[source(self)]; 
 	.println("I received a message from owner tell me he take '", DrugName, "', so let´s comprobate");
-    .abolish(medician(DrugName, SimulatedHour, SimulatedMinute)); // Eliminar pauta local de la enfermera
+    .abolish(medician(DrugName, SimulatedHour, SimulatedMinute)); 
     !at(enfermera, medCab); 
 	open(medCab);
 	!checkVericity(DrugName, SimulatedHour, SimulatedMinute);
@@ -466,9 +381,9 @@ free[source(self)].
     .print("DEBUG: Creencia medicina_recogida_owner(", DrugName, ",", SimulatedHour, SimulatedMinute, ") RECIBIDA de ", owner);
     .println("El owner ha sido mas rapido que yo con ", DrugName, ", asi que procedo a retirar mi accion");
     .drop_all_intentions;
-    .abolish(medician(DrugName, SimulatedHour, SimulatedMinute)); // <-- ¡¡ELIMINAR LA PAUTA LOCAL DE LA ENFERMERA!!
+    .abolish(medician(DrugName, SimulatedHour, SimulatedMinute)); 
     .println("Enfermera: Pauta para ", DrugName, " a las ", SimulatedHour, SimulatedMinute, "h eliminada de mi horario (owner fue más rápido).");
-    -medicina_recogida_owner(DrugName, SimulatedHour, SimulatedMinute)[source(owner)]; // Eliminar creencia específica
+    -medicina_recogida_owner(DrugName, SimulatedHour, SimulatedMinute)[source(owner)]; 
     +free[source(self)]. // Marcarse como libre
 
 /* ----- RECEPCIÓN DE PAUTAS DE MEDICACIÓN ----- */
@@ -477,8 +392,8 @@ free[source(self)].
     +medician(M, H);
     .println("Pauta recibida y almacenada: Tomar ", M, " a las ", H, "h.").
 
-+!clear_schedule // Forma más simple si no necesitas saber quién lo envió
-    : true // Condición de contexto: siempre aplicable cuando se recibe el objetivo
++!clear_schedule 
+    : true 
 <-
     .println("Enfermera: Recibida orden para borrar el horario de medicación.");
     .abolish(medician(_, _, _));
@@ -488,22 +403,22 @@ free[source(self)].
 +!check_schedule
    : clock(H, M) 
 <-
-       .println("ENFERMERA: [Check Schedule] Hora ", H, ":", M, ". Revisando pautas...");
-       .wait(500); // Espera un poco para simular el tiempo de revisión
+       //.println("ENFERMERA: [Check Schedule] Hora ", H, ":", M, ". Revisando pautas...");
+       .wait(500);    // Necesario para recibir mensaje del owner
  if (not ha_caducado(DrugToDeliver)) {
     if (medician(DrugToDeliver, H, M) & not waiting_for_aux_delivery(DrugToDeliver, _, _) & not self_delivering(DrugToDeliver, H, M)) {
-       //.println("PLAN REACTIVO (Clock ", H, M, "): Pauta encontrada: Entregar ", DrugToDeliver, " a owner.");
-
         if (not too_much(DrugToDeliver, owner)) {
                 .println("PLAN REACTIVO (Clock ", H, M, "): Intentando iniciar entrega de ", DrugToDeliver);
+                //La enfermera se dirige a la medicina
                 if(ir_medicina){
                     !has(owner, DrugToDeliver)[source(self)]; 
-                    +self_delivering(DrugToDeliver, H, M); // Marca que está auto-entregando esta pauta
+                    +self_delivering(DrugToDeliver, H, M); 
                 }
                 
+                // El auxiliar ayuda a la enfermera a entregar el medicamento
                 if(esperar_medicina){
                 .send(auxiliar, achieve, traer_medicamento(DrugToDeliver)); 
-                +waiting_for_aux_delivery(DrugToDeliver, H, M); // Creencia para saber que está esperando esta medicina
+                +waiting_for_aux_delivery(DrugToDeliver, H, M);
                 }
         }else{
             .println("PLAN REACTIVO (Clock ", H, M, "): No se puede entregar ", DrugToDeliver, ": Límite de consumo alcanzado.");
@@ -521,19 +436,18 @@ free[source(self)].
 // Plan Bucle: Si está OCUPADO o la Energía está BAJA, simplemente esperar
 +!check_schedule
    : ( not free[source(self)]) <-
-   // .print("DEBUG: [Bucle Check Schedule] Ocupado o Energía Baja, esperando..."); // Log opcional
    .wait(100); 
    !check_schedule.
 
 // Plan Bucle: Si falta la hora 
 +!check_schedule : not clock(_, _) <-
-   .print("WARN: [Bucle Check Schedule] No se encontró la creencia clock(H,M). Esperando...");
+   //.print("WARN: [Bucle Check Schedule] No se encontró la creencia clock(H,M). Esperando...");
    .wait(100); 
    !check_schedule.
 
 -!check_schedule : true <-
-    .print("La ejecución del cuerpo de un plan para !check_schedule falló. Reintentando...");
-    .wait(200); // Pequeña espera
+    //.print("La ejecución del cuerpo de un plan para !check_schedule falló. Reintentando...");
+    .wait(200); 
     !check_schedule.
 
 
@@ -541,38 +455,25 @@ free[source(self)].
 +medicamento_traido_auxiliar(DrugName)[source(auxiliar)]
   : waiting_for_aux_delivery(DrugName, H, M) // Solo reacciona si estaba esperando esta medicina específica
 <-
-  -waiting_for_aux_delivery(DrugName, H, M); // Elimina la creencia de espera
+  -waiting_for_aux_delivery(DrugName, H, M); 
   .println("ENFERMERA: Auxiliar me ha entregado '", DrugName, "' (pauta de las ", H, ":", M, "). Procedo a entregarla al owner.");
-  // En este punto, la acción transferir_medicamento_enfermera ejecutada por el auxiliar
-  // ya debería haber puesto model.robotCarryingDrug = true.
-  // Ahora la enfermera adopta un nuevo objetivo para llevar la medicina que tiene "en mano" al owner.
-  !deliver_drug_to_owner_from_hand(DrugName, H, M). // Pasamos H, M para poder eliminar la pauta 'medician' después.
+  !deliver_drug_to_owner_from_hand(DrugName, H, M). 
 
 // ENFERMERA: enfermera.asl
 
 // Nuevo objetivo para entregar la medicina que la enfermera ya tiene (recibida del auxiliar)
 +!deliver_drug_to_owner_from_hand(DrugName, OriginalHour, OriginalMinute)
-  : free[source(self)] // Asume que model.robotCarryingDrug es true.
-                     // Si hubieras añadido el percept carrying_drug(true): : carrying_drug(true) & free[source(self)]
+  : free[source(self)] 
 <-
   -free[source(self)]; // Se marca como ocupada
   .println("ENFERMERA: Fase de entrega final: Llevando '", DrugName, "' al owner.");
-
-  !at(enfermera, owner); // Va hacia el owner
-
-  hand_in(owner, DrugName); // Ejecuta la acción de entregar
-                            // Esta acción en HouseModel debería poner robotCarryingDrug = false
-
+  !at(enfermera, owner); 
+  hand_in(owner, DrugName); 
   .println("ENFERMERA: Medicamento '", DrugName, "' entregado al owner.");
-
-  // Elimina la pauta de medicación del horario de la enfermera una vez completada.
   .abolish(medician(DrugName, OriginalHour, OriginalMinute));
   .println("ENFERMERA: Pauta para '", DrugName, "' (originalmente a las ", OriginalHour, ":", OriginalMinute, "h) eliminada del horario.");
-  .send(owner, tell, medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)); // Asegúrate de que SimulatedHour/Minute estén definidas
-  // Opcional: Notificar al owner con un mensaje de chat
-  // .send(owner, tell, msg("Aquí tienes tu " + DrugName + "."));
-
-  +free[source(self)]; // Se marca como libre
+  .send(owner, tell, medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)); 
+  +free[source(self)];
   .println("ENFERMERA: Entrega de '", DrugName, "' al owner completada. Robot libre.");
   !check_energy.
 
@@ -581,17 +482,14 @@ free[source(self)].
   : not free[source(self)]
 <-
   .println("ENFERMERA: Ocupada, no puedo entregar '", DrugName, "' al owner ahora mismo. Reintentando en breve...");
-  .wait(2500); // Espera un momento
-  !deliver_drug_to_owner_from_hand(DrugName, OriginalHour, OriginalMinute). // Vuelve a intentar el objetivo
+  .wait(2500);
+  !deliver_drug_to_owner_from_hand(DrugName, OriginalHour, OriginalMinute). 
 
 // Plan de fallo para la acción hand_in (opcional pero recomendado)
 -hand_in(owner, DrugName)[error(E)]
-  // : .current_intention(I) & I = !deliver_drug_to_owner_from_hand(_,_,_) // Contexto más específico si es necesario
 <-
   .println("ENFERMERA: ¡ERROR al ejecutar hand_in(", owner, ",", DrugName, ")! Error: ", E);
-  +free[source(self)]; // Liberarse para evitar bloqueo
-  // La pauta medician(DrugName, OriginalHour, OriginalMinute) NO se elimina en este caso,
-  // para que se pueda reintentar o manejar el error.
+  +free[source(self)];
   .println("ENFERMERA: La entrega falló. La pauta para '", DrugName, "' sigue activa.").
 
 
@@ -599,60 +497,50 @@ free[source(self)].
     .println("Recibida señal de ", auxiliar, " para eliminar la caducacion.");
     .abolish(ha_caducado(_));
     .println("Caducacion eliminada.");
-    -orden_eliminar_caducaciones[source(auxiliar)]; // Limpia la creencia señal
-    .
+    -orden_eliminar_caducaciones[source(auxiliar)].
 
 // Plan que se activa cuando la energía llega a 0
 +current_energy(E) : E == 0 & .my_name(Me) & not out_of_battery_signal_sent <-
     .print("ROBOT (", Me, "): ¡Energía crítica (0)! Avisando al Auxiliar...");
-    // Envía señal al agente 'auxiliar'
     .send(auxiliar, tell, robot_needs_energy(Me));
-    +out_of_battery_signal_sent; // Marca que la señal se ha enviado
+    +out_of_battery_signal_sent; 
     // Detiene otras tareas para esperar ayuda
     .drop_all_intentions;
     .print("ROBOT (", Me, "): Deteniendo actividad, esperando ayuda del Auxiliar.");
-    +free[source(self)]. // Se marca como libre para recibir ayuda
+    +free[source(self)]. 
 
-// Plan para resetear la señal cuando la energía se recupera
-// En el archivo .asl de la enfermera
-
-// Plan para resetear la señal CUANDO la energía se recupera (REVISADO)
+// Plan para resetear la señal CUANDO la energía se recupera
 +current_energy(E) : E > 0 & .my_name(Me) & out_of_battery_signal_sent <-
     .print("ROBOT (", Me, "): ¡Energía recuperada (", E, ")! Reiniciando operaciones.");
-    -out_of_battery_signal_sent; // Elimina la marca de señal enviada
+    -out_of_battery_signal_sent; 
     .print("DEBUG: Estado fijado a 'free' en recuperación.");
-    +free[source(self)]. // Asegurarse de que el agente se marque como libre
+    +free[source(self)]. 
 
 
 // Plan para asegurar que los bucles principales estén activos cuando el agente queda libre.
 // Este plan se ejecuta CADA VEZ que se añade la creencia `free[source(self)]`.
 
 +free[source(self)]
-  // No se necesita un contexto específico más allá del evento en sí.
 <-
-  .my_name(MyAg); // Obtiene el nombre del agente actual
-  .print(MyAg, ": ** Me he quedado LIBRE. Verificando bucles principales (!check_energy, !check_schedule). **");
+  .my_name(MyAg);
+  //.print(MyAg, ": ** Me he quedado LIBRE. Verificando bucles principales (!check_energy, !check_schedule). **");
 
-  // Verificar e iniciar !check_energy si no está ya como una intención activa.
-  // La función interna .intend(nombre_meta) comprueba si ya hay una intención para esa meta.
   if (not .intend(check_energy)) {
-    .print(MyAg, ": El objetivo !check_energy no parece estar activo. Reiniciándolo AHORA.");
     !check_energy;
   } else {
-    .print(MyAg, ": El objetivo !check_energy ya está activo o pendiente de ejecución.");
+    //.print(MyAg, ": El objetivo !check_energy ya está activo o pendiente de ejecución.");
   };
 
   // Verificar e iniciar !check_schedule si no está ya como una intención activa.
   if (not .intend(check_schedule)) {
-    .print(MyAg, ": El objetivo !check_schedule no parece estar activo. Reiniciándolo AHORA.");
     !check_schedule;
   } else {
-    .print(MyAg, ": El objetivo !check_schedule ya está activo o pendiente de ejecución.");
+    //.print(MyAg, ": El objetivo !check_schedule ya está activo o pendiente de ejecución.");
   };
 .
 
 +stock_actualizado(DrugName, NewQuantity)[source(auxiliar)] <-
     .print("ENFERMERA: Recibida actualización de stock para ", DrugName, " del auxiliar. Nueva cantidad: ", NewQuantity);
-    -note(DrugName, _);             // Elimina la nota antigua para ese medicamento (el _ indica cualquier valor)
-    +note(DrugName, NewQuantity);   // Añade la nueva nota con la cantidad actualizada
+    -note(DrugName, _);           
+    +note(DrugName, NewQuantity); 
     .print("ENFERMERA: Creencia interna 'note' para ", DrugName, " actualizada a ", NewQuantity, ".").

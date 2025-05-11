@@ -9,11 +9,10 @@ import java.awt.*;
 /**
  * Clase que simula un reloj interno para la aplicación Domotic.
  * Incrementa la hora (horas, minutos) automáticamente.
- * La velocidad de simulación está ajustada para que 1 hora simulada = 30 // <--
- * COMENTARIO ACTUALIZADO
+ * La velocidad de simulación está ajustada para que 1 hora simulada = 30 
  * segundos reales.
  * Los minutos avanzan de uno en uno en la pantalla (la pantalla se actualiza
- * cada medio segundo real). // <-- COMENTARIO ACTUALIZADO
+ * cada medio segundo real).
  * Notifica al entorno cuando la HORA simulada cambia.
  * Muestra la hora (HH:MM) en una ventana con un diseño mejorado y tamaño
  * ajustado.
@@ -25,11 +24,11 @@ public class SimulatedClock {
     private HouseEnv houseEnv;
     private JLabel timeLabel;
     private JFrame clockFrame;
-    private HouseModel model; // <-- AÑADIR ESTA LÍNEA
+    private HouseModel model;
 
     // --- AJUSTE DE VELOCIDAD ---
     // El Timer se dispara cada TICK_INTERVAL_MS milisegundos reales.
-    private static final int TICK_INTERVAL_MS = 500; // <-- VALOR CAMBIADO (antes 333)
+    private static final int TICK_INTERVAL_MS = 500;
 
     // Segundos simulados que avanzan en cada tick del Timer.
     private static final int SIMULATED_SECONDS_PER_TICK = 60; 
@@ -44,35 +43,23 @@ public class SimulatedClock {
      */
     public SimulatedClock(HouseEnv env, HouseModel model) {
         this.houseEnv = env;
-        this.model = model; // <-- AÑADIR ESTA LÍNEA para guardar la referencia
+        this.model = model;
 
         initClockWindow();
 
-        // Dentro del constructor de SimulatedClock
         timer = new Timer(TICK_INTERVAL_MS, new ActionListener() { 
             @Override
             public void actionPerformed(ActionEvent e) {
-                updateTime(); // <--- CORREGIDO: Llama a updateTime()
-    
-                // --- Llamar al modelo para aplicar la carga ---
+                updateTime();
                 if (model != null) {
-                    model.applyChargeEnergy(); // Llama al método del modelo
+                    model.applyChargeEnergy();
                 }
-    
-                // La notificación al entorno ahora está dentro de updateTime() en tu código,
-                // así que la llamada aquí podría ser redundante si updateTime() ya llama a
-                // env.updatePercepts(). Verifica tu método updateTime(). Si ya lo llama,
-                // puedes quitar la siguiente sección 'if (env != null)'.
-                // Si no, déjala.
-                if (houseEnv != null) { // Usa houseEnv (el campo de tu clase)
+                if (houseEnv != null) {
                      houseEnv.updatePercepts();
                 }
-    
-                // Actualizar etiqueta de tiempo (esto ya estaba en tu método updateTime, así que ok)
             }
         });
         timer.start();
-        // ...
     }
 
     /**
@@ -81,8 +68,7 @@ public class SimulatedClock {
      * y un tamaño más grande.
      */
     private void initClockWindow() {
-        // Actualiza el título para reflejar la nueva velocidad
-        clockFrame = new JFrame("Reloj Simulado Domotic (1h = 30s)"); // <-- TÍTULO CAMBIADO
+        clockFrame = new JFrame("Reloj Simulado Domotic (1h = 30s)");
         clockFrame.setSize(400, 200);
         clockFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         clockFrame.setLocationRelativeTo(null);
@@ -112,7 +98,6 @@ public class SimulatedClock {
      * Notifica al entorno SÓLO cuando la hora (el valor de 'hours') cambia.
      */
     private synchronized void updateTime() {
-        // --- El resto del método updateTime() sigue igual ---
         int previousHour = this.hours;
 
         int totalSecondsToday = this.hours * 3600 + this.minutes * 60;
@@ -127,18 +112,13 @@ public class SimulatedClock {
         int remainingSecondsAfterHours = totalSecondsToday % 3600;
         this.minutes = remainingSecondsAfterHours / 60;
 
-        // --- Dentro de updateTime() en SimulatedClock.java ---
-
         String currentTime = String.format("%02d:%02d", this.hours, this.minutes);
         SwingUtilities.invokeLater(() -> timeLabel.setText(currentTime));
 
         // Notifica al entorno SIEMPRE (en cada tick/minuto simulado)
-        if (houseEnv != null) { // Simplemente comprueba que la referencia exista
-            houseEnv.updatePercepts(); // Llama a la actualización en cada minuto simulado
+        if (houseEnv != null) {
+            houseEnv.updatePercepts();
         }
-
-        // boolean hourChanged = (this.hours != previousHour); // Ya no es necesaria
-        // para la notificación
     }
 
     // Métodos getTime (para obtener la hora) y getMinutes

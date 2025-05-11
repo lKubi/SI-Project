@@ -1,7 +1,7 @@
 // src/java/domotic/AStar.java
 package domotic;
 
-import jason.environment.grid.GridWorldModel; // Need this for OBSTACLE constant if used directly
+import jason.environment.grid.GridWorldModel;
 import jason.environment.grid.Location;
 
 import java.util.HashMap;
@@ -62,34 +62,28 @@ public class AStar {
      */
     public static List<Location> findPath(HouseModel model, int Ag, Location start, Location dest) {
 
-        // 1. Initialization
         Map<Location, Location> cameFrom = new HashMap<>();
-        Map<Location, Integer> gScore = new HashMap<>(); // Cost from start along best known path.
-        Map<Location, Integer> fScore = new HashMap<>(); // Estimated total cost from start to goal through y.
+        Map<Location, Integer> gScore = new HashMap<>();
+        Map<Location, Integer> fScore = new HashMap<>();
 
-        // Comparator for the priority queue based on fScore
         Comparator<Location> fScoreComparator = Comparator.comparingInt(loc -> fScore.getOrDefault(loc, Integer.MAX_VALUE));
-        PriorityQueue<Location> openSet = new PriorityQueue<>(fScoreComparator); // Nodes to be evaluated.
+        PriorityQueue<Location> openSet = new PriorityQueue<>(fScoreComparator);
 
-        Set<Location> closedSet = new HashSet<>(); // Nodes already evaluated.
+        Set<Location> closedSet = new HashSet<>();
 
-        // Initialize scores for the start node
         gScore.put(start, 0);
         fScore.put(start, manhattanDistance(start, dest));
         openSet.add(start);
 
-        // 2. Main A* Loop
         while (!openSet.isEmpty()) {
-            Location current = openSet.poll(); // Get node with the lowest fScore.
+            Location current = openSet.poll();
 
-            // Goal Check: If we reached the destination
             if (current.equals(dest)) {
-                return reconstructPath(cameFrom, current); // Path found!
+                return reconstructPath(cameFrom, current);
             }
 
-            closedSet.add(current); // Mark current node as evaluated.
+            closedSet.add(current);
 
-            // 3. Explore Neighbors (Up, Down, Left, Right)
             int[] dx = {0, 0, 1, -1};
             int[] dy = {1, -1, 0, 0};
 
@@ -98,22 +92,14 @@ public class AStar {
                 int nextY = current.y + dy[i];
                 Location neighbor = new Location(nextX, nextY);
 
-                // --- Neighbor Validation ---
-                // Apply canMoveTo ONLY if the neighbor is NOT the final destination.
-                // If it IS the final destination, allow A* to consider it to complete the path,
-                // even if technically impassable by canMoveTo (e.g., a chair). The actual move will stop adjacent.
+        
                 boolean isValidNeighbor = false;
                 if (!neighbor.equals(dest)) {
-                    // For intermediate steps, check full walkability using HouseModel's rules
                     if (model.canMoveTo(Ag, nextX, nextY)) {
                          isValidNeighbor = true;
                     }
                 } else {
-                    // For the destination step, perform basic checks (in bounds, not a wall)
-                    // We relax the other canMoveTo checks (like FURNITURE) here.
                     if (nextX >= 0 && nextX < model.getWidth() && nextY >= 0 && nextY < model.getHeight()) {
-                        // Check if it's a fundamental obstacle (like a wall)
-                        // Assuming GridWorldModel.OBSTACLE is the constant for walls
                         if (!model.hasObject(GridWorldModel.OBSTACLE, nextX, nextY)) {
                             isValidNeighbor = true;
                         }
@@ -121,37 +107,31 @@ public class AStar {
                 }
 
                 if (!isValidNeighbor) {
-                    continue; // Skip this neighbor if it's invalid/impassable
+                    continue;
                 }
 
                 if (closedSet.contains(neighbor)) {
-                    continue; // Skip if already evaluated.
+                    continue;
                 }
 
-                // Cost to move to the neighbor (assuming uniform cost of 1 for adjacent steps)
                 int tentativeGScore = gScore.getOrDefault(current, Integer.MAX_VALUE) + 1;
 
-                // If this path to the neighbor is better than any previous one
                 if (tentativeGScore < gScore.getOrDefault(neighbor, Integer.MAX_VALUE)) {
-                    // Update path information
                     cameFrom.put(neighbor, current);
                     gScore.put(neighbor, tentativeGScore);
                     fScore.put(neighbor, tentativeGScore + manhattanDistance(neighbor, dest));
 
-                    // Add to openSet if new, or update priority if already present
                     if (!openSet.contains(neighbor)) {
                         openSet.add(neighbor);
                     } else {
-                        // Force priority update in Java's PriorityQueue by removing and re-adding
                         openSet.remove(neighbor);
                         openSet.add(neighbor);
                     }
                 }
-            } // End neighbor loop
-        } // End while loop
+            }
+        }
 
-        // If the loop finishes and the destination was not reached, no path exists.
         System.err.println("A* Warning: No path found from " + start + " to " + dest + " for agent " + Ag);
-        return new ArrayList<>(); // Return an empty list to indicate failure
+        return new ArrayList<>();
     }
 }

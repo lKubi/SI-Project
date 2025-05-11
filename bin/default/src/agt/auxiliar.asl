@@ -24,7 +24,7 @@ connect(livingroom, hallway, doorSal2).
 caduca("Amoxicilina", 1, 00).
 caduca("Omeprazol", 2, 00).
 caduca("Ibuprofeno",3, 00).
-caduca("Loratadina", 4, 00).
+caduca("Loratadina", 14, 00).
 caduca("Paracetamol", 18, 00).
 
 

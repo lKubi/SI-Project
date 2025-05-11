@@ -20,11 +20,14 @@ connect(livingroom, hall, doorSal1).
 connect(hallway, livingroom, doorSal2).
 connect(livingroom, hallway, doorSal2).
 
+// Medicamentos disponibles en el botiquín
 available("Paracetamol", medCab).
 available("Ibuprofeno", medCab).
 available("Amoxicilina", medCab).
 available("Omeprazol", medCab).
 available("Loratadina", medCab).
+
+// Cervezas disponibles en la nevera
 available(beer, fridge).  
 
 free.
@@ -40,30 +43,8 @@ orderBeer :- not available(beer, fridge).
 !update_schedule_later.
 !check_schedule.
 
-// Plan para ejecutar la mentira si aún no se ha hecho
-+!lie_once_about_medicine : not lied_about_medicine_once <-
-    .println("Owner: [OBJETIVO INICIAL] Voy a MENTIR sobre tomar Paracetamol (sólo esta vez).");
-    -free[source(self)];
-    .wait(1500); 
 
-    // Definimos sobre qué mentimos (ej. Paracetamol a las 0:10)
-    LiedDrug = "Paracetamol";
-    LiedHour = 0;
-    LiedMinute = 10;
-
-    // Enviamos la notificación FALSA a la enfermera
-    .send(enfermera, tell, medication_consumed(LiedDrug, LiedHour, LiedMinute));
-    .println("Owner: Notificada 'enfermera' FALSAMENTE sobre consumo de ", LiedDrug, " (", LiedHour, ":", LiedMinute, "h).");
-    +lied_about_medicine_once;
-    +free[source(self)];
-    .println("Owner: [OBJETIVO INICIAL] Mentira inicial completada.").
-
-// Plan para ignorar el objetivo si ya se ha mentido
-+!lie_once_about_medicine : lied_about_medicine_once <-
-    .println("Owner: [OBJETIVO INICIAL] El objetivo '!lie_once_about_medicine' ya se completó (se mintió una vez). No hago nada.").
-
-
-/* ----- NUEVO: PLANES PARA GESTIONAR ESTADO DE LA ENFERMERA/ROBOT ----- */
+/* ----- PLANES PARA GESTIONAR ESTADO DE LA ENFERMERA/ROBOT ----- */
 
 // Este plan ahora espera DrugName y SimulatedHour, SimulatedMinute (si es posible enviarlos)
 +medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)[source(enfermera)]<-
@@ -79,7 +60,7 @@ orderBeer :- not available(beer, fridge).
 /* ----- PLAN PARA ENVIAR PAUTAS INICIALES Y GUARDARLAS LOCALMENTE ----- */
 +!medical_guides_initial : not medical_guides_sent <-
     .println("Owner: Enviando pautas iniciales a la enfermera y guardándolas localmente...");
-    .send(enfermera, tell, medician("Paracetamol", 0, 45)); +medician("Paracetamol", 0, 45);
+    .send(enfermera, tell, medician("Paracetamol", 0, 40)); +medician("Paracetamol", 0, 40);
     .send(enfermera, tell, medician("Amoxicilina", 1,40)); +medician("Amoxicilina", 1, 40);
     .send(enfermera, tell, medician("Ibuprofeno", 2, 40)); +medician("Ibuprofeno", 2,40);
     .send(enfermera, tell, medician("Amoxicilina", 3, 40)); +medician("Amoxicilina", 3,40);
@@ -126,7 +107,7 @@ orderBeer :- not available(beer, fridge).
 
         // Envía y guarda la creencia con ambos, hora y minuto
         .send(enfermera, tell, medician(MedName, RandomHour, RandomMinute));
-        +medician(MedName, RandomHour, RandomMinute); // Añade la creencia al agente Owner también
+        +medician(MedName, RandomHour, RandomMinute); 
     }
     .println("Owner: NUEVAS pautas ALEATORIAS (con minutos) enviadas y guardadas.").
 
@@ -208,7 +189,6 @@ orderBeer :- not available(beer, fridge).
 +!check_schedule
    : clock(SimulatedHour, SimulatedMinute) 
 <-
-    //.println("Owner: [Clock ", SimulatedHour, ":", SimulatedMinute, "] Hora actual recibida.");
     if (not ha_caducado(DrugToDeliver)) {
 
     if (medician(DrugToTake, SimulatedHour, SimulatedMinute)) { // Ahora busca HORA y MINUTO
@@ -228,18 +208,17 @@ orderBeer :- not available(beer, fridge).
 // Plan Bucle: Si está OCUPADO o la Energía está BAJA, simplemente esperar
 +!check_schedule
    : ( not free[source(self)]) <-
-   // .print("DEBUG: [Bucle Check Schedule] Ocupado o Energía Baja, esperando..."); // Log opcional
    .wait(100); 
    !check_schedule.
 
 // Plan Bucle: Si falta la hora 
 +!check_schedule : not clock(_, _) <-
-   .print("WARN: [Bucle Check Schedule] No se encontró la creencia clock(H,M). Esperando...");
+  // .print("WARN: [Bucle Check Schedule] No se encontró la creencia clock(H,M). Esperando...");
    .wait(100); 
    !check_schedule.
 
 -!check_schedule : true <-
-    .print("La ejecución del cuerpo de un plan para !check_schedule falló. Reintentando...");
+    //.print("La ejecución del cuerpo de un plan para !check_schedule falló. Reintentando...");
     .wait(200); // Pequeña espera
     !check_schedule.
 
@@ -274,7 +253,6 @@ orderBeer :- not available(beer, fridge).
             .wait(1000);
             .println("omando ", DrugToTake, "...");
             .println("Terminé de tomar ", DrugToTake, ".");
-            // Eliminar SÓLO la creencia para esta droga y hora específicas
             .send(enfermera, tell, medication_consumed(DrugToTake, SimulatedHour, SimulatedMinute));
             .println("Notificado a 'enfermera de que consumi la medicacion.");
             .wait(1000);
@@ -313,7 +291,6 @@ orderBeer :- not available(beer, fridge).
             .wait(1000);
             .println("Tomando ", DrugToTake, "...");
             .println("Terminé de tomar ", DrugToTake, ".");
-            // Eliminar SÓLO la creencia para esta droga y hora específicas
             .send(enfermera, tell, medication_consumed(DrugToTake, SimulatedHour, SimulatedMinute));
             .println("Notificado a 'enfermera de que consumi la medicacion.");
             .wait(1000);

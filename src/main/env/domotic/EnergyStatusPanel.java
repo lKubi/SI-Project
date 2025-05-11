@@ -1,16 +1,15 @@
-// src/java/domotic/EnergyStatusPanel.java
 package domotic;
 
 import javax.swing.*;
-import java.awt.*; // Import completo para Color, GridLayout, Font, etc.
+import java.awt.*;
 
 /**
  * CREA UNA VENTANA (JFrame) que muestra el estado de energía (texto y barra de progreso)
  * para el Robot (Enfermera) y el Auxiliar.
  */
-public class EnergyStatusPanel { // YA NO EXTIENDE JPANEL
+public class EnergyStatusPanel {
 
-    private JFrame energyFrame; // <-- NUEVO: La ventana propia
+    private JFrame energyFrame;
     private JLabel robotEnergyLabel;
     private JProgressBar robotEnergyBar;
     private JLabel auxiliarEnergyLabel;
@@ -23,17 +22,14 @@ public class EnergyStatusPanel { // YA NO EXTIENDE JPANEL
      * @param initialMaxEnergyAuxiliar La energía máxima inicial del auxiliar.
      */
     public EnergyStatusPanel(int initialMaxEnergyRobot, int initialMaxEnergyAuxiliar) {
+        energyFrame = new JFrame("Estado Energía Agentes");
+        energyFrame.setSize(350, 120);
+        energyFrame.setLocationRelativeTo(null);
+        energyFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-        energyFrame = new JFrame("Estado Energía Agentes"); // <-- Crear el JFrame
-        energyFrame.setSize(350, 120); // Tamaño adecuado para el panel
-        energyFrame.setLocationRelativeTo(null); // Centrar en pantalla inicialmente
-        energyFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // Cerrar solo esta ventana
-
-        // Crear el panel interno que SÍ usa GridLayout
         JPanel internalPanel = new JPanel(new GridLayout(2, 2, 5, 5));
         internalPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
-        // --- Robot (Configuración sin cambios) ---
         robotEnergyLabel = new JLabel("Robot E: ---/---", JLabel.CENTER);
         robotEnergyLabel.setFont(statusFont);
         robotEnergyBar = new JProgressBar(0, Math.max(1, initialMaxEnergyRobot));
@@ -42,7 +38,6 @@ public class EnergyStatusPanel { // YA NO EXTIENDE JPANEL
         robotEnergyBar.setForeground(Color.GREEN.darker());
         robotEnergyBar.setValue(initialMaxEnergyRobot);
 
-        // --- Auxiliar (Configuración sin cambios) ---
         auxiliarEnergyLabel = new JLabel("Aux E: ---/---", JLabel.CENTER);
         auxiliarEnergyLabel.setFont(statusFont);
         auxiliarEnergyBar = new JProgressBar(0, Math.max(1, initialMaxEnergyAuxiliar));
@@ -51,32 +46,26 @@ public class EnergyStatusPanel { // YA NO EXTIENDE JPANEL
         auxiliarEnergyBar.setForeground(Color.CYAN.darker());
         auxiliarEnergyBar.setValue(initialMaxEnergyAuxiliar);
 
-        // --- Añadir componentes AL PANEL INTERNO ---
         internalPanel.add(robotEnergyLabel);
         internalPanel.add(robotEnergyBar);
         internalPanel.add(auxiliarEnergyLabel);
         internalPanel.add(auxiliarEnergyBar);
 
-        // --- Añadir el panel interno al JFrame ---
-        energyFrame.getContentPane().add(internalPanel, BorderLayout.CENTER); // Añadir al content pane
+        energyFrame.getContentPane().add(internalPanel, BorderLayout.CENTER);
 
-        // Actualizar texto inicial
         updateEnergy(HouseModel.ROBOT_AGENT_ID, initialMaxEnergyRobot, initialMaxEnergyRobot);
         updateEnergy(HouseModel.AUXILIAR_AGENT_ID, initialMaxEnergyAuxiliar, initialMaxEnergyAuxiliar);
 
-        // Hacer visible la ventana
-        energyFrame.setVisible(true); // <-- Hacer visible el JFrame
+        energyFrame.setVisible(true);
     }
 
     /**
      * Actualiza la visualización de energía para un agente específico.
-     * (Método sin cambios lógicos, solo actualiza componentes internos)
      * @param agentId ID del agente (0 para Robot, 2 para Auxiliar).
      * @param currentEnergy Energía actual.
      * @param maxEnergy Energía máxima.
      */
     public void updateEnergy(int agentId, int currentEnergy, int maxEnergy) {
-       // ... (el código interno de este método es el mismo que antes) ...
          if (agentId == HouseModel.ROBOT_AGENT_ID) {
              if (maxEnergy > 0) {
                  robotEnergyLabel.setText(String.format("Robot E: %d/%d", currentEnergy, maxEnergy));
@@ -106,8 +95,6 @@ public class EnergyStatusPanel { // YA NO EXTIENDE JPANEL
      */
      public void updatePanelFromModel(HouseModel model) {
          if (model == null) return;
-         // Usar SwingUtilities.invokeLater si se llama desde un hilo diferente al EDT
-         // Pero como lo llamará el Timer de HouseView (que está en el EDT), debería ser seguro.
          updateEnergy(HouseModel.ROBOT_AGENT_ID,
                       model.getCurrentEnergy(HouseModel.ROBOT_AGENT_ID),
                       model.getMaxEnergy(HouseModel.ROBOT_AGENT_ID));
