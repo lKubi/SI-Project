@@ -73,18 +73,21 @@ orderBeer :- not available(beer, fridge).
     .println("Owner: Pauta para ", DrugName, " (", SimulatedHour, SimulatedMinute,"h) eliminada localmente (enfermera fue más rápida).");
     -medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)[source(enfermera)]; 
     +nurse_delivering;
-    +free[source(self)].
+    +free[source(self)];
+    !check_schedule.
 
 /* ----- PLAN PARA ENVIAR PAUTAS INICIALES Y GUARDARLAS LOCALMENTE ----- */
 +!medical_guides_initial : not medical_guides_sent <-
     .println("Owner: Enviando pautas iniciales a la enfermera y guardándolas localmente...");
-    .send(enfermera, tell, medician("Paracetamol", 0, 40)); +medician("Paracetamol", 0, 40);
+    .send(enfermera, tell, medician("Paracetamol", 0, 45)); +medician("Paracetamol", 0, 45);
     .send(enfermera, tell, medician("Amoxicilina", 1,40)); +medician("Amoxicilina", 1, 40);
     .send(enfermera, tell, medician("Ibuprofeno", 2, 40)); +medician("Ibuprofeno", 2,40);
     .send(enfermera, tell, medician("Amoxicilina", 3, 40)); +medician("Amoxicilina", 3,40);
     .send(enfermera, tell, medician("Omeprazol", 4, 40)); +medician("Omeprazol", 4,40);
     .send(enfermera, tell, medician("Loratadina", 6, 40)); +medician("Loratadina 10mg", 6, 40);
+    .send(enfermera, tell, medician("Omeprazol", 8, 40)); +medician("Omeprazol", 8, 40);
     .send(enfermera, tell, medician("Omeprazol", 12, 40)); +medician("Omeprazol", 12, 40);
+    .send(enfermera, tell, medician("Loratadina", 16, 40)); +medician("Loratadina 10mg", 16, 40);
     .send(enfermera, tell, medician("Paracetamol", 20, 40)); +medician("Paracetamol", 20, 40);
     .send(enfermera, tell, medician("Omeprazol", 23, 40)); +medician("Omeprazol", 23, 40);
     +medical_guides_sent;
@@ -205,7 +208,7 @@ orderBeer :- not available(beer, fridge).
 +!check_schedule
    : clock(SimulatedHour, SimulatedMinute) 
 <-
-    .println("Owner: [Clock ", SimulatedHour, ":", SimulatedMinute, "] Hora actual recibida.");
+    //.println("Owner: [Clock ", SimulatedHour, ":", SimulatedMinute, "] Hora actual recibida.");
     if (not ha_caducado(DrugToDeliver)) {
 
     if (medician(DrugToTake, SimulatedHour, SimulatedMinute)) { // Ahora busca HORA y MINUTO
@@ -248,7 +251,7 @@ orderBeer :- not available(beer, fridge).
     .println("",DrugToTake,",",SimulatedHour, SimulatedMinute,")] Iniciando gestión. Manos libres.");
     
     // --- Decisión Aleatoria ---
-    .random([0], Decision); // 0 = Ir a por ella, 1 = Esperar al robot
+    .random([0,1,2], Decision); // 0 = Ir a por ella y robot al mismo tiempo, 1 = Esperar al robot, 2 = Ir a por ella
 
     if (Decision == 0) {
         // --- DECISIÓN: Ir a por la medicina y el robot al mismo tiempo carrera ---

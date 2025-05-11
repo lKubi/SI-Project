@@ -74,7 +74,7 @@ orderBeer :- not available(beer, fridge).
     -medicina_recogida_robot(DrugName, SimulatedHour, SimulatedMinute)[source(enfermera)]; 
     +nurse_delivering;
     +free[source(self)];
-    !update_schedule_later.
+    !check_schedule.
 
 /* ----- PLAN PARA ENVIAR PAUTAS INICIALES Y GUARDARLAS LOCALMENTE ----- */
 +!medical_guides_initial : not medical_guides_sent <-
@@ -206,7 +206,7 @@ orderBeer :- not available(beer, fridge).
 +!check_schedule
    : clock(SimulatedHour, SimulatedMinute) 
 <-
-    .println("Owner: [Clock ", SimulatedHour, ":", SimulatedMinute, "] Hora actual recibida.");
+    //.println("Owner: [Clock ", SimulatedHour, ":", SimulatedMinute, "] Hora actual recibida.");
     if (not ha_caducado(DrugToDeliver)) {
 
     if (medician(DrugToTake, SimulatedHour, SimulatedMinute)) { // Ahora busca HORA y MINUTO
@@ -249,7 +249,7 @@ orderBeer :- not available(beer, fridge).
     .println("",DrugToTake,",",SimulatedHour, SimulatedMinute,")] Iniciando gestión. Manos libres.");
     
     // --- Decisión Aleatoria ---
-    .random([0], Decision); // 0 = Ir a por ella, 1 = Esperar al robot
+    .random([0], Decision); // 0 = Ir a por ella y robot al mismo tiempo, 1 = Esperar al robot, 2 = Ir a por ella
 
     if (Decision == 0) {
         // --- DECISIÓN: Ir a por la medicina y el robot al mismo tiempo carrera ---
@@ -320,6 +320,7 @@ orderBeer :- not available(beer, fridge).
         }
         +free[source(self)];
     };
+    !check_schedule; // Revisa el horario después de tomar la medicina
 .
 
 +!do_something: not nurse_delivering & free[source(self)] <-

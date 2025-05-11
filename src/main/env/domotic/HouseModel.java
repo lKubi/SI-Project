@@ -240,11 +240,11 @@ public class HouseModel extends GridWorldModel {
         contadorMedicamentos.put("Omeprazol", 0);
         contadorMedicamentos.put("Loratadina", 4);
 
-        medicamentosExpiry.put("Paracetamol", new Location(18, 05));
-        medicamentosExpiry.put("Amoxicilina", new Location(1, 30));
-        medicamentosExpiry.put("Omeprazol", new Location(2, 30));
-        medicamentosExpiry.put("Ibuprofeno", new Location(3, 30));
-        medicamentosExpiry.put("Loratadina", new Location(4, 30));
+        medicamentosExpiry.put("Paracetamol", new Location(18, 00));
+        medicamentosExpiry.put("Amoxicilina", new Location(1, 00));
+        medicamentosExpiry.put("Omeprazol", new Location(2, 00));
+        medicamentosExpiry.put("Ibuprofeno", new Location(3, 00));
+        medicamentosExpiry.put("Loratadina", new Location(14, 00));
 
         this.availableDrugs = calcularTotalMedicamentos(contadorMedicamentos);
         this.robotCarryingDrug = false;
@@ -452,55 +452,127 @@ boolean openMedCab() { // Podrías cambiarlo a int para devolver más estados
         }
     }
 
-    /**
-     * Encuentra una celda adyacente a currentLoc que esté libre, sea válida para
-     * moverse
-     * por el agente 'ag', y no sea la celda 'avoidTarget'.
-     * Intenta buscar en un orden aleatorio para evitar sesgos.
-     *
-     * @param ag          ID del agente que se mueve.
-     * @param currentLoc  Ubicación actual del agente.
-     * @param avoidTarget Celda que se debe evitar (normalmente, la celda bloqueada
-     *                    original).
-     * @return Una Location válida para apartarse, o null si no se encuentra
-     *         ninguna.
-     */
-    private Location findClearAdjacentCell(int ag, Location currentLoc, Location avoidTarget) {
-        // Define los desplazamientos a celdas adyacentes (arriba, abajo, izq, der)
-        List<Location> possibleSteps = new ArrayList<>();
-        int[] dx = { 0, 0, 1, -1 };
-        int[] dy = { 1, -1, 0, 0 }; // abajo, arriba, derecha, izquierda
-
-        // Crea una lista de posibles ubicaciones adyacentes
-        for (int i = 0; i < 4; i++) {
-            possibleSteps.add(new Location(currentLoc.x + dx[i], currentLoc.y + dy[i]));
-        }
-
-        // Baraja la lista para comprobar en orden aleatorio y evitar que siempre
-        // elija la misma dirección si hay múltiples opciones.
-        Collections.shuffle(possibleSteps);
-
-        // Busca la primera celda válida en la lista barajada
-        for (Location potentialStep : possibleSteps) {
-            // Comprobaciones:
-            // 1. Dentro de los límites del grid (ya incluido en canMoveTo generalmente)
-            // 2. Es un movimiento válido según las reglas (canMoveTo)
-            // 3. La celda está actualmente vacía (getAgAtPos == -1)
-            // 4. No es la celda que originalmente queríamos evitar (avoidTarget)
-            if (potentialStep.x >= 0 && potentialStep.x < getWidth() &&
-                    potentialStep.y >= 0 && potentialStep.y < getHeight() && // Comprobación básica de límites
-                    canMoveTo(ag, potentialStep.x, potentialStep.y) && // ¿Puede el agente moverse AQUI en general?
-                    getAgAtPos(potentialStep.x, potentialStep.y) == -1 && // ¿Está VACIA AHORA MISMO?
-                    !potentialStep.equals(avoidTarget) // ¿No es la celda que causó el conflicto?
-            ) {
-                // Encontró una celda válida para apartarse
-                return potentialStep;
-            }
-        }
-
-        // No se encontró ninguna celda adyacente válida y libre
-        return null;
+  private Location findClearAdjacentCell(int ag, Location currentLoc, Location avoidTarget) {
+    // ... (generación de possibleSteps y shuffle igual que antes) ...
+    List<Location> possibleSteps = new ArrayList<>();
+    int[] dx = { 0, 0, 1, -1 };
+    int[] dy = { 1, -1, 0, 0 }; 
+    for (int i = 0; i < 4; i++) {
+        possibleSteps.add(new Location(currentLoc.x + dx[i], currentLoc.y + dy[i]));
     }
+    Collections.shuffle(possibleSteps);
+
+    // Nueva condición: si el agente que se mueve es el ROBOT y el avoidTarget (nextStep bloqueado)
+    // es una puerta y está ocupada por el OWNER, quizás el robot no debería hacer side-step
+    // y en su lugar debería esperar a que el OWNER se mueva.
+    // Esto requeriría acceso a qué tipo de objeto es avoidTarget o si es una puerta.
+    // También necesitarías saber QUIÉN está en avoidTarget.
+    // Esta información no está directamente disponible en findClearAdjacentCell,
+    // pero SÍ en moveTowards ANTES de llamar a findClearAdjacentCell.
+
+    // El 'agentInNextCell' se conoce en moveTowards.
+    // boolean isDoor = hasObject(DOOR, avoidTarget.x, avoidTarget.y);
+    // if (ag == ROBOT_AGENT_ID && agentInNextCell == OWNER_AGENT_ID && isDoor) {
+    //     // Forzar espera en lugar de side-step
+    //     // Esto debería hacerse en moveTowards, no aquí.
+    //     // Si lo haces aquí, simplemente devuelve null:
+    //     // return null; // Esto forzaría al robot a usar su lógica de espera.
+    // }
+
+
+    for (Location potentialStep : possibleSteps) {
+        if (potentialStep.x >= 0 && potentialStep.x < getWidth() &&
+                potentialStep.y >= 0 && potentialStep.y < getHeight() &&
+                canMoveTo(ag, potentialStep.x, potentialStep.y) &&
+                getAgAtPos(potentialStep.x, potentialStep.y) == -1 &&
+                !potentialStep.equals(avoidTarget)
+        ) {
+            return potentialStep;
+        }
+    }
+    return null;
+}
+
+/**
+ * Intenta "empujar" a un agente (blockerAgentId) que está en targetCell
+ * a la celda directamente "detrás" de él, según la dirección de movimiento
+ * desde pushingAgentStartCell hacia targetCell.
+ *
+ * @param pushingAgentId         ID del agente que realiza el empuje (ej. ROBOT_AGENT_ID).
+ * @param pushingAgentStartCell  Ubicación actual del agente que empuja.
+ * @param targetCell             La celda a la que el pushingAgent quiere moverse y que está
+ * ocupada por el blockerAgentId.
+ * @param blockerAgentId         ID del agente que está siendo empujado (ej. OWNER_AGENT_ID).
+ * @return true si el empuje fue exitoso y ambos agentes se movieron, false en caso contrario.
+ */
+private synchronized boolean attemptPushAgent(int pushingAgentId, Location pushingAgentStartCell, Location targetCell, int blockerAgentId) {
+    // Determinar la dirección del empuje (desde la celda del que empuja hacia la celda del bloqueador)
+    int dx_push = targetCell.x - pushingAgentStartCell.x;
+    int dy_push = targetCell.y - pushingAgentStartCell.y;
+
+    // Calcular la celda a la que el blockerAgentId sería empujado
+    Location pushToCell = new Location(targetCell.x + dx_push, targetCell.y + dy_push);
+
+    System.out.println("[PUSH] Agente " + pushingAgentId + " en " + pushingAgentStartCell +
+                       " intenta empujar a Agente " + blockerAgentId + " de " + targetCell +
+                       " hacia " + pushToCell);
+
+    // --- Validar la celda de destino del empuje (pushToCell) ---
+    // 1. ¿Está dentro de los límites del grid?
+    if (!(pushToCell.x >= 0 && pushToCell.x < getWidth() &&
+          pushToCell.y >= 0 && pushToCell.y < getHeight())) {
+        System.out.println("  [PUSH FAILED] " + pushToCell + " está fuera de los límites.");
+        return false;
+    }
+
+    // 2. ¿Es la celda 'pushToCell' transitable por el 'blockerAgentId' Y está actualmente vacía?
+    //    'canMoveTo' verifica obstáculos fijos y, en tu implementación, también otros agentes.
+    //    'getAgAtPos' verifica explícitamente si está vacía.
+    if (!canMoveTo(blockerAgentId, pushToCell.x, pushToCell.y) || getAgAtPos(pushToCell.x, pushToCell.y) != -1) {
+        if (getAgAtPos(pushToCell.x, pushToCell.y) != -1) {
+            System.out.println("  [PUSH FAILED] La celda de destino del empuje " + pushToCell + " está ocupada por el agente: " + getAgAtPos(pushToCell.x, pushToCell.y));
+        } else {
+            System.out.println("  [PUSH FAILED] Agente " + blockerAgentId + " no puede moverse (obstáculo/regla) a la celda de destino del empuje " + pushToCell);
+        }
+        return false;
+    }
+
+    // --- Si el empuje es posible ---
+    System.out.println("  [PUSH SUCCESS] Agente " + blockerAgentId + " es empujado a " + pushToCell +
+                       ". Agente " + pushingAgentId + " se mueve a " + targetCell);
+
+    // Mover al agente bloqueador (owner) a la celda 'pushToCell'
+    updateAgentDirection(blockerAgentId, targetCell, pushToCell); // Actualiza animación del owner
+    setAgPos(blockerAgentId, pushToCell);
+
+    // Mover al agente que empuja (robot) a la celda 'targetCell' (que ahora está libre)
+    updateAgentDirection(pushingAgentId, pushingAgentStartCell, targetCell); // Actualiza animación del robot
+    setAgPos(pushingAgentId, targetCell);
+
+    // Limpiar contadores de espera si se movieron exitosamente
+    agentWaitCounters.remove(pushingAgentId);
+    agentWaitCounters.remove(blockerAgentId);
+
+    return true;
+}
+
+// (Asegúrate de tener este método o uno similar para actualizar la dirección visual del agente)
+private void updateAgentDirection(int agentId, Location from, Location to) {
+    if (from == null || to == null) return;
+    int dx = to.x - from.x;
+    int dy = to.y - from.y;
+    String dir = directionMap.getOrDefault(agentId, "walk_down"); // Valor por defecto o mantener anterior
+
+    if (dx == 0 && dy == 0) {
+        // No hay movimiento, se podría poner "idle" o no cambiar la dirección
+        // dir = "idle"; // Descomentar si tienes una animación "idle"
+    } else if (Math.abs(dx) > Math.abs(dy)) { // Movimiento predominantemente horizontal
+        dir = (dx > 0) ? "walk_right" : "walk_left";
+    } else { // Movimiento predominantemente vertical o igual en ambos ejes (prioriza vertical)
+        dir = (dy > 0) ? "walk_down" : "walk_up";
+    }
+    directionMap.put(agentId, dir);
+}
 
     /**
      * Calcula el camino óptimo utilizando A* e intenta mover al agente un paso.
@@ -570,44 +642,44 @@ boolean openMedCab() { // Podrías cambiarlo a int para devolver más estados
                 agentWaitCounters.remove(Ag); // Limpiar contador de espera si se movió
                 // System.out.println("Agente " + Ag + " se movió a " + nextStep);
 
-            } else {
-                // --- CASO BLOQUEO: El nextStep está ocupado por agentInNextCell ---
-                System.out.println(
-                        "Agente " + Ag + " - Intento a " + nextStep + " bloqueado por Agente " + agentInNextCell);
+           } else { // --- CASO BLOQUEO: El nextStep está ocupado por agentInNextCell ---
+            System.out.println(
+                    "Agente " + Ag + " - Intento a " + nextStep + " bloqueado por Agente " + agentInNextCell);
 
-                // 5. Intentar Maniobra Lateral (Side Step)
-                Location sideStepLocation = findClearAdjacentCell(Ag, start, nextStep);
+            boolean PUSH_OR_SIDESTEP_ACTION_TAKEN = false;
 
-                if (sideStepLocation != null) {
-                    // Encontró una celda libre adyacente para apartarse
-                    System.out.println("Agente " + Ag + " realizando maniobra lateral a " + sideStepLocation);
-
-                    // Calcula la dirección para el paso lateral
-                    int dx = sideStepLocation.x - start.x;
-                    int dy = sideStepLocation.y - start.y;
-                    String dir = "walkr"; // Dirección por defecto
-                    if (Math.abs(dx) > Math.abs(dy)) {
-                        dir = (dx > 0) ? "walk_right" : "walk_left";
-                    } else if (Math.abs(dy) > 0) {
-                        dir = (dy > 0) ? "walk_down" : "walk_up";
-                    }
-
-                    // Mover al agente a la celda lateral
-                    directionMap.put(Ag, dir);
-                    setAgPos(Ag, sideStepLocation);
-                    agentWaitCounters.remove(Ag); // Limpiar contador de espera si se movió (side-step)
-
+            // Estrategia específica: Si el ROBOT es bloqueado por el OWNER, intentar EMPUJAR.
+            if (Ag == ROBOT_AGENT_ID && agentInNextCell == OWNER_AGENT_ID) {
+                System.out.println("  Robot (" + Ag + ") evaluando empujar a Owner (" + agentInNextCell + ") de " + nextStep);
+                if (attemptPushAgent(Ag, start, nextStep, agentInNextCell)) {
+                    PUSH_OR_SIDESTEP_ACTION_TAKEN = true; // El empuje fue exitoso y es la acción de este turno.
                 } else {
-                    // No hay espacio para apartarse, inicia espera aleatoria (Deadlock situation)
-                    int waitTime = 1 + random.nextInt(3); // Espera entre 1 y 3 ciclos (inclusive)
-                    agentWaitCounters.put(Ag, waitTime);
-                    System.out
-                            .println("Agente " + Ag + " esperando: No hay espacio adyacente libre. Iniciando espera de "
-                                    + waitTime + " ciclos.");
-                    // No se llama a setAgPos. El agente se queda en 'start'.
-                    // directionMap.put(Ag, "idle"); // Opcional: indicar espera en la animación
+                    System.out.println("  Empuje de Owner por Robot falló o no fue posible.");
+                    // Si el empuje falla, el robot procederá a intentar un side-step o esperar.
                 }
             }
+
+            // Si no se realizó un empuje (o no era aplicable), intentar maniobra lateral (side-step)
+            if (!PUSH_OR_SIDESTEP_ACTION_TAKEN) {
+                Location sideStepLocation = findClearAdjacentCell(Ag, start, nextStep);
+                if (sideStepLocation != null) {
+                    System.out.println("Agente " + Ag + " realizando maniobra lateral a " + sideStepLocation);
+                    updateAgentDirection(Ag, start, sideStepLocation);
+                    setAgPos(Ag, sideStepLocation);
+                    agentWaitCounters.remove(Ag); // Limpiar contador de espera si se movió
+                    PUSH_OR_SIDESTEP_ACTION_TAKEN = true; // El side-step fue la acción.
+                }
+            }
+
+            // Si ni el empuje ni el side-step funcionaron o fueron aplicables, el agente espera.
+            if (!PUSH_OR_SIDESTEP_ACTION_TAKEN) {
+                int waitTime = 1 + random.nextInt(3); // Espera entre 1 y 3 ciclos
+                agentWaitCounters.put(Ag, waitTime);
+                System.out.println("Agente " + Ag + " esperando: No se pudo empujar ni hacer side-step. Iniciando espera de "
+                                + waitTime + " ciclos.");
+                // directionMap.put(Ag, "idle"); // Opcional: animación de espera
+            }
+        }
 
         } else {
             // No se encontró ruta por A* o el camino solo tenía el punto de inicio.

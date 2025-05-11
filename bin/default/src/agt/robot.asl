@@ -489,7 +489,7 @@ free[source(self)].
    : clock(H, M) 
 <-
        .println("ENFERMERA: [Check Schedule] Hora ", H, ":", M, ". Revisando pautas...");
-       .wait(1000); // Espera un poco para simular el tiempo de revisión
+       .wait(500); // Espera un poco para simular el tiempo de revisión
  if (not ha_caducado(DrugToDeliver)) {
     if (medician(DrugToDeliver, H, M) & not waiting_for_aux_delivery(DrugToDeliver, _, _) & not self_delivering(DrugToDeliver, H, M)) {
        //.println("PLAN REACTIVO (Clock ", H, M, "): Pauta encontrada: Entregar ", DrugToDeliver, " a owner.");
@@ -650,3 +650,9 @@ free[source(self)].
     .print(MyAg, ": El objetivo !check_schedule ya está activo o pendiente de ejecución.");
   };
 .
+
++stock_actualizado(DrugName, NewQuantity)[source(auxiliar)] <-
+    .print("ENFERMERA: Recibida actualización de stock para ", DrugName, " del auxiliar. Nueva cantidad: ", NewQuantity);
+    -note(DrugName, _);             // Elimina la nota antigua para ese medicamento (el _ indica cualquier valor)
+    +note(DrugName, NewQuantity);   // Añade la nueva nota con la cantidad actualizada
+    .print("ENFERMERA: Creencia interna 'note' para ", DrugName, " actualizada a ", NewQuantity, ".").

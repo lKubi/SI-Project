@@ -24,7 +24,7 @@ connect(livingroom, hallway, doorSal2).
 caduca("Amoxicilina", 1, 00).
 caduca("Omeprazol", 2, 00).
 caduca("Ibuprofeno",3, 00).
-caduca("Loratadina", 4, 00).
+caduca("Loratadina", 14, 00).
 caduca("Paracetamol", 18, 00).
 
 
@@ -275,6 +275,7 @@ free[source(self)].
         !at(Ag, medCab);
         open(medCab);
         reponer_medicamento(NombreMedicina);
+        .send(enfermera, tell, stock_actualizado(NombreMedicina, 50));
         close(medCab);
         .wait(1000); 
         .println("Medicamento ", NombreMedicina, " repuesto.");
