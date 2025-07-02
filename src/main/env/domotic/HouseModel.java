@@ -43,7 +43,7 @@ public class HouseModel extends GridWorldModel {
     private static final int AUXILIAR_CHARGE_DURATION_MINS = 30;
     private static final int DEFAULT_CHARGE_DURATION_MINS = 60; // Un valor por si acaso
     public static final int PARTIAL_CHARGE_LIMIT = 3; // Permitidas 3, la 4ta penaliza
-    public static final double MAX_ENERGY_PENALTY_FACTOR = 0.95; // Reducción del 5%
+    public static final double MAX_ENERGY_PENALTY_FACTOR = 0.90; // Reducción del 10%
 
     // --- Configuración del Grid y Agentes ---
 
@@ -114,7 +114,7 @@ public class HouseModel extends GridWorldModel {
     Location lBed2 = new Location(14, 0);
     Location lBed3 = new Location(21, 0);
     Location lBed1 = new Location(13, 9);
-    Location lCargador = new Location(2, 2);
+    Location lCargador = new Location(23, 5);
 
     // --- Ubicaciones de Puertas ---
 
