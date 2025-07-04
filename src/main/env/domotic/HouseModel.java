@@ -167,7 +167,7 @@ public class HouseModel extends GridWorldModel {
         // Posiciones iniciales de los agentes
         setAgPos(ROBOT_AGENT_ID, 19, 3);
         setAgPos(1, 13, 9);
-        setAgPos(2, 1, 10);
+        setAgPos(2, 1, 8);
 
         // Energía inicial y máxima de los agentes
         agentCurrentEnergy.put(ROBOT_AGENT_ID, 150);
@@ -224,7 +224,7 @@ public class HouseModel extends GridWorldModel {
         contadorMedicamentos.put("Paracetamol", 3);
         contadorMedicamentos.put("Ibuprofeno", 4);
         contadorMedicamentos.put("Amoxicilina", 8);
-        contadorMedicamentos.put("Omeprazol", 0);
+        contadorMedicamentos.put("Omeprazol", 3);
         contadorMedicamentos.put("Loratadina", 4);
 
         // Caducidad de medicamentos
