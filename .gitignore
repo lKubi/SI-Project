@@ -1,92 +1,36 @@
-# Ignorar todo por defecto
-.gradle/*
-build/*
+*.class
+*.log
+*.ctxt
+.mtj.tmp/
 
-# Pero mantener estos archivos específicos ya trackeados:
+.gradle
+/build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
 
-# .gradle
-!.gradle/8.10/checksums/checksums.lock
-!.gradle/8.10/dependencies-accessors/gc.properties
-!.gradle/8.10/executionHistory/executionHistory.bin
-!.gradle/8.10/executionHistory/executionHistory.lock
-!.gradle/8.10/fileChanges/last-build.bin
-!.gradle/8.10/fileHashes/fileHashes.bin
-!.gradle/8.10/fileHashes/fileHashes.lock
-!.gradle/8.10/fileHashes/resourceHashesCache.bin
-!.gradle/8.10/gc.properties
-!.gradle/buildOutputCleanup/buildOutputCleanup.lock
-!.gradle/buildOutputCleanup/cache.properties
-!.gradle/buildOutputCleanup/outputFiles.bin
-!.gradle/file-system.probe
-!.gradle/vcs-1/gc.properties
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.settings/
+.loadpath
+.recommenders
 
-# build/classes
-!build/classes/java/main/bot/chat.class
-!build/classes/java/main/domotic/HouseEnv.class
-!build/classes/java/main/domotic/HouseModel.class
-!build/classes/java/main/domotic/HouseView.class
-!build/classes/java/main/time/check.class
+.idea
+*.iws
+*.iml
+*.ipr
+out/
 
-# build/resources
-!build/resources/main/doc/House.pd
-!build/resources/main/doc/beds.jpeg
-!build/resources/main/doc/beds.png
-!build/resources/main/doc/beds.webp
-!build/resources/main/doc/beds2.png
-!build/resources/main/doc/beerBot.png
-!build/resources/main/doc/bot.png
-!build/resources/main/doc/cdHouse.pdf
-!build/resources/main/doc/chair.png
-!build/resources/main/doc/chairD.png
-!build/resources/main/doc/chairL.png
-!build/resources/main/doc/chairR.png
-!build/resources/main/doc/chairU.png
-!build/resources/main/doc/closeDoor.png
-!build/resources/main/doc/closeDoor2.png
-!build/resources/main/doc/closeNevera.png
-!build/resources/main/doc/closeWasher.png
-!build/resources/main/doc/doubleBed.png
-!build/resources/main/doc/doubleBedlt.png
-!build/resources/main/doc/doubleBedrt.png
-!build/resources/main/doc/doubleBedup.png
-!build/resources/main/doc/emptyWasher.png
-!build/resources/main/doc/horno
-!build/resources/main/doc/lavadora.avif
-!build/resources/main/doc/lavadora2.avif
-!build/resources/main/doc/openDoor.png
-!build/resources/main/doc/openDoor2.png
-!build/resources/main/doc/openNevera.png
-!build/resources/main/doc/openWasher.png
-!build/resources/main/doc/overview.png
-!build/resources/main/doc/singleBed.png
-!build/resources/main/doc/sitd.png
-!build/resources/main/doc/sitl.png
-!build/resources/main/doc/sitr.png
-!build/resources/main/doc/situ.png
-!build/resources/main/doc/sofa.png
-!build/resources/main/doc/table.png
-!build/resources/main/doc/vitroClose.png
-!build/resources/main/doc/vitroOpen.jpeg
-!build/resources/main/doc/walkf.png
-!build/resources/main/doc/walkfld.png
-!build/resources/main/doc/walkfll.png
-!build/resources/main/doc/walkflr.png
-!build/resources/main/doc/walkflu.png
-!build/resources/main/doc/walkfrd.png
-!build/resources/main/doc/walkfrl.png
-!build/resources/main/doc/walkfrr.png
-!build/resources/main/doc/walkfru.png
-!build/resources/main/doc/walkld.png
-!build/resources/main/doc/walkll.png
-!build/resources/main/doc/walklr.png
-!build/resources/main/doc/walklu.png
-!build/resources/main/doc/walkrd.png
-!build/resources/main/doc/walkrl.png
-!build/resources/main/doc/walkrr.png
-!build/resources/main/doc/walkru.png
+.vscode/
 
-# build/tmp
-!build/tmp/compileJava/compileTransaction/stash-dir/HouseEnv.class.uniqueId1
-!build/tmp/compileJava/compileTransaction/stash-dir/HouseModel.class.uniqueId0
-!build/tmp/compileJava/compileTransaction/stash-dir/HouseView.class.uniqueId2
-!build/tmp/compileJava/previous-compilation-data.bin
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+mas.log
