@@ -162,8 +162,7 @@ El sistema incluye mecanismos avanzados de simulación:
 ### Pasos
 1.  **Clonar el repositorio:**
     ```bash
-    git clone [https://github.com/tu-usuario/SI_31.git](https://github.com/tu-usuario/SI_31.git)
-    cd SI_31
+    git clone https://github.com/lKubi/SI-Project.git
     ```
 
 2.  **Compilar y Ejecutar:**
